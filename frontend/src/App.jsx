@@ -9,6 +9,7 @@ import { setNav } from './lib/nav.js'
 import { initBackButton } from './lib/back.js'
 import { useWakeLock } from './lib/wakelock.js'
 import { installViewportGuard } from './lib/viewport-guard.js'
+import { installChipDrag } from './lib/hchips.js'
 import { startFlow } from './sheets.jsx'
 import Icon from './components/Icon.jsx'
 import TabBar from './components/TabBar.jsx'
@@ -80,6 +81,9 @@ function Shell() {
   const pathRef = useRef(loc.pathname)
   // iOS leaves the page displaced after the keyboard goes away (see lib/viewport-guard.js).
   useEffect(() => installViewportGuard(), [])
+  // Click-drag a horizontal chip strip to scroll it sideways (lib/hchips.js) — on a desktop
+  // browser there's otherwise no way to reach the filters past the edge.
+  useEffect(() => installChipDrag(), [])
   useEffect(() => {
     const onScroll = () => {
       // Modals pins the body while a sheet is open; scrollY is 0 then, not a position.
