@@ -329,6 +329,8 @@ export default {
   'Reset everything?': 'सब कुछ रीसेट करें?',
   'Reset everything': 'सब कुछ रीसेट करें',
   'Deletes your plan, workouts and body weight on this device. This cannot be undone.': 'इस डिवाइस पर आपकी योजना, वर्कआउट और वज़न हट जाएँगे। इसे पूर्ववत नहीं किया जा सकता।',
+  'Deletes your plan, workouts and body weight from your profile on this server and on every signed-in device. This cannot be undone.': 'इस सर्वर पर आपकी प्रोफ़ाइल से और साइन इन किए हुए सभी डिवाइस से आपकी योजना, वर्कआउट और वज़न हट जाएँगे। इसे पूर्ववत नहीं किया जा सकता।',
+  'Sync failed: the server refused the upload as too large. Your changes have not reached the server.': 'सिंक विफल: सर्वर ने अपलोड को बहुत बड़ा बताकर अस्वीकार कर दिया। आपके बदलाव सर्वर तक नहीं पहुँचे हैं।',
   'Delete everything': 'सब हटाएँ',
   'All data reset': 'सारा डेटा रीसेट',
   'Backup exported': 'बैकअप निर्यात हुआ',

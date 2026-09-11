@@ -13,6 +13,7 @@ import { t, LANGS, INSTR_LANGS } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
 import { MOBILE, isAndroid, shareExport, syncReminder } from '../lib/mobile.js'
 import { checkForUpdate, downloadAndInstall } from '../lib/update.js'
+import { forgetCoach } from '../lib/coach-api.js'
 import { ConnectSheet } from './MobileOnboarding.jsx'
 import { starterPlanSheet, confirmSheet, importFromApp, importFromHevy, equipmentProfileSheet, menuSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
@@ -156,6 +157,25 @@ export default function Settings() {
     onConfirm: async () => {
       try { await signOutAll(); nav('/home'); toast(t('Signed out on all devices')) }
       catch (e) { toast(t('Could not sign out everywhere — you are still signed in.')) }
+    },
+  })
+  // Signed in, the empty state is pushed to the profile like any other change, so the wipe
+  // reaches the server and every device that syncs with it — the dialog has to say so. The Coach
+  // keeps its data outside S in two homes that can both be in use on one phone: a file per
+  // profile on the server, and — when it runs with the phone's own key — a file on the device.
+  // Each is cleared on its own; forgetCoach() alone would pick one by mode. A failed call must
+  // not stop the reset.
+  const resetEverything = () => confirmSheet({
+    title: t('Reset everything?'),
+    message: user
+      ? t('Deletes your plan, workouts and body weight from your profile on this server and on every signed-in device. This cannot be undone.')
+      : t('Deletes your plan, workouts and body weight on this device. This cannot be undone.'),
+    confirmText: t('Delete everything'), danger: true,
+    onConfirm: () => {
+      if (user) api('/api/coach/forget', { method: 'POST', body: '{}' }).catch(() => {})
+      if (coachLocal?.mode === 'byok') forgetCoach().catch(() => {})
+      replaceState(JSON.parse(JSON.stringify(DEF)), true)
+      nav('/home'); toast(t('All data reset'))
     },
   })
 
@@ -350,7 +370,7 @@ export default function Settings() {
         subtitle={t('Saves a dated copy to the Documents folder after finishing a workout or editing a routine — point a sync app at it, or copy it out by hand.')}>
         <Switch checked={!!S.autoBackup} onChange={v => update(s => { s.autoBackup = v })} />
       </Row>}
-      <Row icon="trash" iconTint="var(--red)" title={t('Reset everything')} danger onClick={() => confirmSheet({ title: t('Reset everything?'), message: t('Deletes your plan, workouts and body weight on this device. This cannot be undone.'), confirmText: t('Delete everything'), danger: true, onConfirm: () => { replaceState(JSON.parse(JSON.stringify(DEF)), true); nav('/home'); toast(t('All data reset')) } })} />
+      <Row icon="trash" iconTint="var(--red)" title={t('Reset everything')} danger onClick={resetEverything} />
     </Section>
     <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={doImport} />
     {/* Reset after reading so picking the same file twice still fires onChange. */}

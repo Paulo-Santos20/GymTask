@@ -335,6 +335,8 @@ export default {
   'Reset everything?': 'รีเซ็ตทุกอย่าง?',
   'Reset everything': 'รีเซ็ตทุกอย่าง',
   'Deletes your plan, workouts and body weight on this device. This cannot be undone.': 'จะลบแผน, การออกกำลังกาย และน้ำหนักตัวบนเครื่องนี้ ไม่สามารถย้อนกลับได้',
+  'Deletes your plan, workouts and body weight from your profile on this server and on every signed-in device. This cannot be undone.': 'จะลบแผน, การออกกำลังกาย และน้ำหนักตัวออกจากโปรไฟล์ของคุณบนเซิร์ฟเวอร์นี้ และจากทุกอุปกรณ์ที่เข้าสู่ระบบอยู่ ไม่สามารถย้อนกลับได้',
+  'Sync failed: the server refused the upload as too large. Your changes have not reached the server.': 'ซิงค์ไม่สำเร็จ: เซิร์ฟเวอร์ปฏิเสธการอัปโหลดเพราะข้อมูลใหญ่เกินไป การเปลี่ยนแปลงของคุณยังไม่ถึงเซิร์ฟเวอร์',
   'Delete everything': 'ลบทุกอย่าง',
   'All data reset': 'รีเซ็ตข้อมูลทั้งหมดแล้ว',
   'Backup exported': 'ส่งออกข้อมูลสำรองแล้ว',

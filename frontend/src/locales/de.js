@@ -344,6 +344,8 @@ export default {
   'Reset everything?': 'Alles zurücksetzen?',
   'Reset everything': 'Alles zurücksetzen',
   'Deletes your plan, workouts and body weight on this device. This cannot be undone.': 'Löscht Plan, Trainings und Körpergewicht auf diesem Gerät. Das kann nicht rückgängig gemacht werden.',
+  'Deletes your plan, workouts and body weight from your profile on this server and on every signed-in device. This cannot be undone.': 'Löscht Plan, Trainings und Körpergewicht aus deinem Profil auf diesem Server und auf allen angemeldeten Geräten. Das kann nicht rückgängig gemacht werden.',
+  'Sync failed: the server refused the upload as too large. Your changes have not reached the server.': 'Synchronisierung fehlgeschlagen: Der Server hat den Upload als zu groß abgelehnt. Deine Änderungen sind noch nicht auf dem Server angekommen.',
   'Delete everything': 'Alles löschen',
   'All data reset': 'Alle Daten zurückgesetzt',
   'Backup exported': 'Backup exportiert',
