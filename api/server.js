@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import https from 'node:https';
 import dns from 'node:dns';
+import net from 'node:net';
 import {
   generateRegistrationOptions, verifyRegistrationResponse,
   generateAuthenticationOptions, verifyAuthenticationResponse
@@ -96,7 +97,10 @@ webpush.setVapidDetails(VAPID_SUBJECT, vapid.publicKey, vapid.privateKey);
    1. PUSH_AGENT rejects any connection to a private/loopback/link-local address at the moment
       the socket is opened. Validating the URL alone would leave a DNS-rebinding window — the
       name is resolved a second time inside web-push — so the check has to live in the lookup
-      the request itself uses, not in a prior pass.
+      the request itself uses, not in a prior pass. A literal IP address never goes through
+      that lookup at all — Node hands it straight to connect() — so literals are judged by
+      pushEndpointError instead: at subscribe, and again in sendPush for an endpoint that got
+      into db.json some other way.
    2. PUSH_TIMEOUT_MS: an endpoint that accepts TCP and then stalls used to hang the request
       handler that awaited it, indefinitely. web-push sets no timeout of its own.
    3. PUSH_CONCURRENCY: one small request must not turn into an unbounded burst of outbound
@@ -119,12 +123,35 @@ function isPrivateAddr(ip) {
     if (a >= 224) return true;                                    // multicast + reserved
     return false;
   }
-  const m6 = /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.exec(v);
-  if (m6) return isPrivateAddr(m6[1]);                            // IPv4-mapped IPv6
-  if (v === '::' || v === '::1') return true;                     // unspecified, loopback
-  if (/^fe[89ab]/.test(v)) return true;                           // link-local
-  if (/^f[cd]/.test(v)) return true;                              // unique local
+  // IPv6 is judged on its eight groups, never on the text: the same address arrives as
+  // `::ffff:127.0.0.1` from dns.lookup, as `::ffff:7f00:1` from new URL, and in whatever
+  // spelling a caller chose, and a rule keyed to one spelling misses the others.
+  const g = ipv6Groups(v);
+  if (!g) return false;
+  if (g.slice(0, 5).every(x => x === 0) && g[5] === 0xffff) {     // IPv4-mapped IPv6
+    return isPrivateAddr(`${g[6] >> 8}.${g[6] & 255}.${g[7] >> 8}.${g[7] & 255}`);
+  }
+  if (g.slice(0, 7).every(x => x === 0) && g[7] <= 1) return true; // unspecified, loopback
+  if ((g[0] & 0xffc0) === 0xfe80) return true;                    // link-local fe80::/10
+  if ((g[0] & 0xfe00) === 0xfc00) return true;                    // unique local fc00::/7
   return false;
+}
+
+// The eight 16-bit groups of an IPv6 literal in any textual form — compressed, zero-padded,
+// upper-case, with a dotted IPv4 tail — or null when the string is not one.
+function ipv6Groups(v) {
+  if (!net.isIPv6(v)) return null;
+  let s = v.replace(/%.*$/, '');                                  // zone id
+  const m4 = /:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.exec(s);
+  if (m4) {
+    const [a, b, c, d] = m4[1].split('.').map(Number);
+    s = s.slice(0, -m4[1].length) + ((a << 8) | b).toString(16) + ':' + ((c << 8) | d).toString(16);
+  }
+  const [head, tail = ''] = s.split('::');
+  const groups = head ? head.split(':') : [];
+  const rest = tail ? tail.split(':') : [];
+  if (s.includes('::')) while (groups.length + rest.length < 8) groups.push('0');
+  return groups.concat(rest).map(x => parseInt(x, 16));
 }
 
 // Same shape as dns.lookup, so https.Agent can use it directly.
@@ -141,15 +168,16 @@ function guardedLookup(hostname, options, cb) {
 const PUSH_AGENT = new https.Agent({ lookup: guardedLookup, keepAlive: false });
 
 // Cheap pre-check so a bad endpoint is refused at subscribe time with a useful message, rather
-// than silently never delivering. PUSH_AGENT is what actually enforces the address rule.
+// than silently never delivering. For a hostname PUSH_AGENT is what actually enforces the address
+// rule; for a literal address this is the check, which is why sendPush runs it again.
 function pushEndpointError(raw) {
   let u;
   try { u = new URL(String(raw || '')); } catch { return 'endpoint is not a valid URL'; }
   if (u.protocol !== 'https:') return 'endpoint must be an https:// URL';
   if (u.username || u.password) return 'endpoint must not carry credentials';
-  // A literal address can be judged right here, which turns the common case into a clear error
-  // at subscribe time instead of a delivery that quietly never happens. Hostnames are left to
-  // PUSH_AGENT, which is the check that actually has to hold.
+  // A literal address is judged right here — and only here: Node hands a literal straight to
+  // connect() without consulting the Agent's lookup. Hostnames are left to PUSH_AGENT, which is
+  // the check that has to hold against rebinding.
   const host = u.hostname.replace(/^\[|\]$/g, '');
   if (/^[0-9.]+$/.test(host) || host.includes(':')) {
     if (isPrivateAddr(host)) return 'endpoint must not point at a private address';
@@ -166,6 +194,14 @@ async function sendPush(userId, payload) {
   const worker = async () => {
     while (next < subs.length) {
       const sub = subs[next++];
+      // Re-judged before every send: PUSH_AGENT never sees a literal address, so an endpoint
+      // that is private (however it got into db.json) is dropped here rather than connected to.
+      const bad = pushEndpointError(sub.endpoint);
+      if (bad) {
+        console.error('push endpoint refused', userId, bad);
+        db.subs = db.subs.filter(s => s.endpoint !== sub.endpoint); dirty = true;
+        continue;
+      }
       // urgency 'high' is the one lever we have over delivery speed — iOS/Android throttle
       // low-urgency background push more aggressively under battery-saving modes. TTL is left
       // at the library default (long) so a briefly-offline device still gets it once reconnected,
@@ -230,19 +266,26 @@ function userNow(tz) {
 setInterval(() => {
   for (const user of db.users) {
     if (!db.subs.some(s => s.userId === user.id)) continue;
-    const S = readState(user.id);
-    if (!S?.reminder?.on) continue;
-    const now = userNow(S.reminder.tz || 'UTC');
-    if (!now || S.reminder.time !== now.hhmm) continue;
-    if (user.lastReminder === now.date) continue;
-    if ((S.workouts || []).some(w => w.d === now.date)) continue;
-    const rid = effectiveRoutineId(S, now.date);
-    if (!rid) continue; // rest day — nothing planned
-    const routine = (S.routines || []).find(r => r.id === rid);
-    console.log('reminder firing', user.id, rid);
-    user.lastReminder = now.date;
-    saveDb();
-    sendPush(user.id, dayReminderPush(S.lang, routine));
+    // One user's state file is one user's problem: a shape this tick cannot read is logged and
+    // skipped, not allowed to take the process — and everyone else's reminders — down with it.
+    // PUT /api/data refuses the obvious shapes, but a file already on disk answers to nobody.
+    try {
+      const S = readState(user.id);
+      if (!S?.reminder?.on) continue;
+      const now = userNow(S.reminder.tz || 'UTC');
+      if (!now || S.reminder.time !== now.hhmm) continue;
+      if (user.lastReminder === now.date) continue;
+      if ((S.workouts || []).some(w => w.d === now.date)) continue;
+      const rid = effectiveRoutineId(S, now.date);
+      if (!rid) continue; // rest day — nothing planned
+      const routine = (S.routines || []).find(r => r.id === rid);
+      console.log('reminder firing', user.id, rid);
+      user.lastReminder = now.date;
+      saveDb();
+      sendPush(user.id, dayReminderPush(S.lang, routine));
+    } catch (e) {
+      console.error('reminder tick', user.id, e);
+    }
   }
 // Checked every 10s (not 60s) — ticks aren't aligned to the top of the minute, so a 60s
 // interval could sit on your target minute for up to 59s before noticing. 10s caps that at ~9s.
@@ -716,6 +759,8 @@ const routes = {
     const user = readSession(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     user.sv = sessionVersion(user) + 1;
+    // An unredeemed pairing code is a session-in-waiting for this account; it goes too.
+    for (const [k, v] of pairings) if (v.uid === user.id) pairings.delete(k);
     saveDb();
     audit(req, 'auth.logout.all', { user });
     json(res, 200, { ok: true }, { 'Set-Cookie': clearCookie });
@@ -766,6 +811,11 @@ const routes = {
     if (!user) return json(res, 401, { error: 'not signed in' });
     const body = await readBody(req);
     if (!body.state || typeof body.state !== 'object') return json(res, 400, { error: 'state required' });
+    // The reminder tick and the admin routes iterate these two on the server's side, so a truthy
+    // non-array would throw there on every pass for as long as it sat on disk. Absent or null is
+    // fine — every client fills its own defaults.
+    const list = v => v == null || Array.isArray(v);
+    if (!list(body.state.workouts) || !list(body.state.routines)) return json(res, 400, { error: 'invalid state' });
     delete body.state.active;              // in-progress workouts stay device-local
     atomicWrite(stateFile(user.id), JSON.stringify(body.state));
     json(res, 200, { ok: true, ts: body.state._ts || null });
@@ -1012,7 +1062,11 @@ http.createServer(async (req, res) => {
     });
     return res.end();
   }
-  const url = new URL(req.url, 'http://x');
+  // A target that does not parse (`//`, `//api%2Fhealth`) is a bad request, not a server error —
+  // and the try below only covers the route handler, so it is refused here.
+  let url;
+  try { url = new URL(req.url, 'http://x'); }
+  catch { return json(res, 400, { error: 'bad request' }); }
   const key = req.method + ' ' + url.pathname;
   const handler = routes[key];
   if (!handler) return json(res, 404, { error: 'not found' });
