@@ -63,9 +63,22 @@ function patchUser(uid, patch) {
   writeUser(uid, rec);
   return rec;
 }
-/** Consent revoked, profile deleted, "reset everything" — no server-side residue (FR-51). */
+/** Consent revoked, profile deleted, "reset everything" — no server-side residue (FR-51).
+ *  Today's job count is the one thing that stays: it is the spending record the daily cap
+ *  reads, not the profile's data, and forgetting must not hand out a fresh cap; the record
+ *  outlives the day only until the next job or forget touches it, and counts for nothing once
+ *  the date has passed. A job still waiting in the queue is dropped here; one already mid-call
+ *  is cancelled where the adapter can be (the HTTP ones — a spawned runtime runs to its end),
+ *  and either way finishes without writing anything back (see finish). */
 export function clearUser(uid) {
+  const { daily } = readUser(uid);
   try { fs.unlinkSync(userFile(uid)); } catch { /* nothing to clear */ }
+  if (daily?.date === todayISO()) writeUser(uid, { ...EMPTY, daily });
+  const queued = queue.findIndex(j => j.uid === uid);
+  if (queued >= 0) { queue.splice(queued, 1); inflight.delete(uid); }
+  aborts.get(uid)?.abort();
+  forgetSeq.set(uid, (forgetSeq.get(uid) || 0) + 1);
+  invalidateCohort();
 }
 
 /** Every profile with a state file — the population a cohort is drawn from. */
@@ -107,9 +120,16 @@ export function capState(uid) {
   const used = rec.daily?.date === todayISO() ? rec.daily.count : 0;
   return { used, limit: caps.perProfileDaily || 0 };
 }
-function instanceUsedToday() {
+// The instance-wide count is kept the same way in coach.json, not read off the job log: the
+// log keeps its last hundred entries, and a count that stops at a hundred is not a cap.
+function bumpInstanceDaily() {
+  const cur = cfgStore.load().daily;
   const d = todayISO();
-  return (cfgStore.load().log || []).filter(e => (e.at || '').slice(0, 10) === d).length;
+  cfgStore.save({ daily: cur?.date === d ? { date: d, count: cur.count + 1 } : { date: d, count: 1 } });
+}
+function instanceUsedToday() {
+  const daily = cfgStore.load().daily;
+  return daily?.date === todayISO() ? daily.count : 0;
 }
 
 /* ---------- status ---------- */
@@ -148,6 +168,8 @@ function archive(uid, rec, outcome) {
 const queue = [];
 let running = 0;
 const inflight = new Set();     // uids with a job queued or running (FR-07 single-flight)
+const forgetSeq = new Map();    // uid → bumped by every clearUser; a job carries the value it saw at enqueue
+const aborts = new Map();       // uid → AbortController of the provider call in flight, for clearUser to pull
 
 class CoachError extends Error {
   constructor(code, message) { super(message); this.code = code; }
@@ -197,10 +219,12 @@ export function enqueue(uid, opts) {
   // of the owner's provider account, and queueing twenty jobs spends it whether or not the
   // twentieth ever finishes.
   bumpDaily(uid);
+  bumpInstanceDaily();
 
   const job = {
     id: crypto.randomBytes(8).toString('hex'),
     uid,
+    forgetSeq: forgetSeq.get(uid) || 0,
     kind: opts.kind,                                  // 'create' | 'review' | 'debrief'
     trigger: opts.trigger || 'manual',                // 'manual' | 'scheduled'
     workoutId: opts.workoutId ? String(opts.workoutId).slice(0, 40) : null,
@@ -228,6 +252,14 @@ function pump() {
 }
 
 function finish(job, result) {
+  cfgStore.logJob({
+    at: new Date().toISOString(), uid: job.uid, kind: job.kind, trigger: job.trigger,
+    outcome: result.outcome, errorClass: result.errorClass || null,
+    ms: Date.now() - job.startedAt, detail: result.detail || null
+  });
+  // Forgotten while it ran: the record is gone and stays gone, and nobody is notified. The
+  // job still ran and still spent, which is why the instance log above keeps its line.
+  if ((forgetSeq.get(job.uid) || 0) !== job.forgetSeq) return;
   const rec = readUser(job.uid);
   const history = [...(rec.history || []), {
     id: job.id, kind: job.kind, trigger: job.trigger, outcome: result.outcome,
@@ -243,11 +275,6 @@ function finish(job, result) {
     current: null,
     pending: result.pending !== undefined ? result.pending : rec.pending,
     history
-  });
-  cfgStore.logJob({
-    at: new Date().toISOString(), uid: job.uid, kind: job.kind, trigger: job.trigger,
-    outcome: result.outcome, errorClass: result.errorClass || null,
-    ms: Date.now() - job.startedAt, detail: result.detail || null
   });
   if (result.outcome === 'ready' && onProposal) {
     try { onProposal(job.uid, result.pending, job); } catch (e) { console.error('coach notify failed', e); }
@@ -266,6 +293,10 @@ async function execute(job) {
 
   const S = readState(job.uid);
   if (!S) return finish(job, { outcome: 'failed', errorClass: 'nostate' });
+  // Checked again here, not only at enqueue: a job can wait behind two others, and consent
+  // withdrawn or the Coach switched off in the meantime means no payload leaves for it.
+  if (!S.coach?.consent?.agreedAt) return finish(job, { outcome: 'failed', errorClass: 'consent' });
+  if (!cfgStore.isEnabled()) return finish(job, { outcome: 'failed', errorClass: 'off' });
 
   const cfg = cfgStore.load();
   const adapter = adapterFor(cfg.provider);
@@ -292,17 +323,22 @@ async function execute(job) {
   // An HTTPS provider has no child process, so no directory for one to live in either.
   const jobDir = adapter.spawns === false ? null : fs.mkdtempSync(path.join(os.tmpdir(), 'coach-'));
   const env = cfgStore.jobEnv(jobDir || os.tmpdir(), cfgStore.credentialFor(job.uid));
+  const ctl = new AbortController();
+  aborts.set(job.uid, ctl);
   try {
     const ids = jobDir && unprivilegedIds();
     if (ids) fs.chownSync(jobDir, ids.uid, ids.gid);
 
     const attempt = await runPipeline({
       adapter, cfg, kind: job.kind, payload, model: cfgStore.modelFor(cfg), timeoutMs: TIMEOUT_MS,
-      // The HTTP adapters take the fetch they are given; the runtime adapters ignore it.
-      invokeOpts: { jobDir, env, fetch: fetchFor(TIMEOUT_MS) }
+      // The HTTP adapters take the fetch and the abort signal they are given; the runtime
+      // adapters ignore both.
+      invokeOpts: { jobDir, env, fetch: fetchFor(TIMEOUT_MS), signal: ctl.signal }
     });
     if (!attempt.ok) {
-      return finish(job, { outcome: 'failed', errorClass: attempt.errorClass, detail: attempt.detail });
+      // Cancelled by a forget, not failed by the provider: the log must not blame the job budget.
+      const errorClass = ctl.signal.aborted ? 'forgotten' : attempt.errorClass;
+      return finish(job, { outcome: 'failed', errorClass, detail: attempt.detail });
     }
     if (attempt.nochange) {
       return finish(job, { outcome: 'nochange', pending: null, detail: null, reading: attempt.reading });
@@ -320,6 +356,7 @@ async function execute(job) {
     };
     return finish(job, { outcome: 'ready', pending });
   } finally {
+    aborts.delete(job.uid);
     if (jobDir) fs.rmSync(jobDir, { recursive: true, force: true });
   }
 }
