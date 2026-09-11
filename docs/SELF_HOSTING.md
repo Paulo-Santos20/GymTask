@@ -80,7 +80,9 @@ gym.example.com {
 ### Option C — Traefik / nginx / Nginx Proxy Manager
 
 Route `gym.example.com` (HTTPS) → `web:80` (or `<docker-host>:8080`). Any reverse proxy works —
-openGym only needs the browser to reach it over `https://gym.example.com`.
+openGym only needs the browser to reach it over `https://gym.example.com`. If that proxy caps
+request bodies (nginx does, at 1 MiB by default), allow at least 5 MiB on `/api/` — the app syncs
+its whole history in one PUT; the bundled web image already allows 5 MiB, matching the API.
 
 Then set your domain in `.env` and restart:
 
