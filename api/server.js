@@ -797,13 +797,14 @@ const routes = {
     json(res, 200, { token: makeSession(user), user: { id: user.id, name: user.name, admin: isAdmin(user) } });
   },
 
+  // `rev` is the server's own count of writes to this profile (also stored inside the document as
+  // `_rev`, so every other reader of the file — reminder tick, admin, Coach, MCP — is unaffected).
+  // A client pushes it back as `baseRev`, and a write over a document it never saw is refused.
   'GET /api/data': async (req, res) => {
     const user = readSession(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
-    try {
-      const state = JSON.parse(fs.readFileSync(stateFile(user.id), 'utf8'));
-      json(res, 200, { state });
-    } catch { json(res, 200, { state: null }); }
+    const state = readState(user.id);
+    json(res, 200, { state, rev: state?._rev || 0 });
   },
 
   'PUT /api/data': async (req, res) => {
@@ -816,9 +817,22 @@ const routes = {
     // fine — every client fills its own defaults.
     const list = v => v == null || Array.isArray(v);
     if (!list(body.state.workouts) || !list(body.state.routines)) return json(res, 400, { error: 'invalid state' });
+    // Conditional write: a `baseRev` that is not the current revision means this client last
+    // read an older document — another device has written since — and the copy it is about to
+    // push would silently drop that write. The current document travels back with the 409, so
+    // the client can merge and try again without a second request. No `baseRev` (a client from
+    // before revisions, or a deliberate replace such as a backup import) overwrites, as before.
+    // readState and atomicWrite are synchronous with nothing awaited between them, so the
+    // compare-and-write is atomic for this process.
+    const cur = readState(user.id);
+    const curRev = cur?._rev || 0;
+    if (body.baseRev != null && body.baseRev !== curRev) {
+      return json(res, 409, { error: 'conflict', rev: curRev, state: cur });
+    }
     delete body.state.active;              // in-progress workouts stay device-local
+    body.state._rev = curRev + 1;          // server-owned; whatever the client sent is ignored
     atomicWrite(stateFile(user.id), JSON.stringify(body.state));
-    json(res, 200, { ok: true, ts: body.state._ts || null });
+    json(res, 200, { ok: true, ts: body.state._ts || null, rev: body.state._rev });
   },
 
   'GET /api/push/public-key': async (req, res) => json(res, 200, { key: vapid.publicKey }),
