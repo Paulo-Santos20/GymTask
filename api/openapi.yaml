@@ -386,7 +386,8 @@ paths:
         Bumps the account's session version, which invalidates **every** cookie and
         Bearer token ever issued for it — on every device, including a copy someone
         walked off with. Passkeys are untouched; signing back in works immediately.
-        Also clears the caller's own cookie.
+        Also clears the caller's own cookie. Unredeemed pairing codes for the account
+        are voided too.
       responses:
         '200':
           description: All sessions revoked.
@@ -518,11 +519,15 @@ paths:
                     oneOf: [{ type: number }, { type: 'null' }]
                     description: Echo of the pushed state's `_ts`, if present.
         '400':
-          description: '`state` missing or not an object.'
+          description: >-
+            `state` missing or not an object, or `workouts`/`routines` set to anything
+            other than an array or null.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-              example: { error: "state required" }
+              examples:
+                missing: { value: { error: "state required" } }
+                invalid: { value: { error: "invalid state" } }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
   /api/push/public-key:
@@ -1135,7 +1140,8 @@ components:
       description: |
         The whole app state as one blob. The server treats it as opaque (it only
         strips `active` on save and reads a few fields for reminders and the admin
-        dashboard) — the schema below is **representative, not enforced**, and grows
+        dashboard) — the schema below is **representative, not enforced** (except
+        `workouts` and `routines`, which must be arrays (or null) when present), and grows
         with the app. Conflict resolution is client-side via `_ts`.
       properties:
         _ts:

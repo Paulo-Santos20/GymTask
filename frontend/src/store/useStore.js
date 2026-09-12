@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { api, setRemoteAuth } from '../lib/api.js'
 import { localTZ } from '../lib/format.js'
+import { t } from '../lib/i18n.js'
 import { registerCustom } from '../lib/exercises.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { guestAllowed } from '../lib/guest.js'
@@ -92,6 +93,7 @@ export function restoredStateFor(local, remote, dirty = false) {
 export const useStore = create((set, get) => {
   let pushTm = null
   let saveTm = null
+  let toldTooLarge = false
 
   initReminderSync(() => get().S)
 
@@ -102,8 +104,12 @@ export const useStore = create((set, get) => {
     saveTm = setTimeout(() => { saveTm = null; nativeSave(get().S); syncReminder(get().S) }, 800)
   }
 
-  const persist = (S, push = true) => {
-    S._ts = Date.now()
+  // `_ts` is when this device last changed the data — it decides which copy wins on the next
+  // pull (restoredStateFor). A copy merely adopted from the server or the file mirror keeps the
+  // stamp it came with: re-stamping a read would make an unchanged copy look newer than a real
+  // change made on another device, and push it over that change.
+  const persist = (S, push = true, stamp = true) => {
+    if (stamp) S._ts = Date.now()
     registerCustom(S.customEx)
     localStorage.setItem(KEY, JSON.stringify(S))
     set({ S })
@@ -133,13 +139,31 @@ export const useStore = create((set, get) => {
     }
   })
 
-  // Everything a sign-out leaves behind on this device, whichever way it was triggered.
+  // The owner check in setUser only runs in the tab that signs in. Another tab of the same
+  // browser still holding the previous profile would keep writing that profile's data over the
+  // shared copy and push it under the new session's cookie — so it drops the profile, and
+  // whoever signs in there passes the same check. The owner key is written last on both a
+  // sign-in and a sign-out, so on a new owner the copy in storage is already the wiped one; with
+  // no owner (a sign-out) this tab falls back to defaults rather than read the key at all — the
+  // previous profile's data must not stay here whichever key's event lands first.
+  window.addEventListener('storage', e => {
+    if (e.key !== 'gym_owner') return
+    const user = get().user
+    if (!user || e.newValue === user.id) return
+    clearTimeout(pushTm)
+    pushTm = null
+    set({ user: null, S: e.newValue ? loadState() : clone(DEF) })
+  })
+
+  // Everything a sign-out leaves behind on this device, whichever way it was triggered. The owner
+  // goes last, after the wiped copy is written — the storage listener above relies on the order.
   const clearLocalSession = () => {
     get().setUser(null)
     localStorage.removeItem('gym_guest')
     localStorage.removeItem('gym_dirty')
     localStorage.removeItem(KEY)
     persist(clone(DEF), false)
+    localStorage.removeItem('gym_owner')
   }
 
   return {
@@ -194,16 +218,41 @@ export const useStore = create((set, get) => {
     },
 
     setUser(u) {
-      if (u) { localStorage.setItem('gym_user', JSON.stringify(u)); localStorage.removeItem('gym_guest') }
-      else localStorage.removeItem('gym_user')
+      if (u) {
+        // The local copy belongs to whoever last signed in here. When a session expires or is
+        // revoked elsewhere, boot() only drops the user and the data stays; a different profile
+        // signing in next must not inherit it (pullState would push it into that account, and
+        // carry the in-progress workout along). A proper sign-out clears the owner, so a guest's
+        // data still moves into a freshly created profile.
+        const owner = localStorage.getItem('gym_owner')
+        if (owner && owner !== u.id) {
+          localStorage.removeItem('gym_dirty')
+          localStorage.removeItem(KEY)
+          persist(clone(DEF), false)
+        }
+        localStorage.setItem('gym_owner', u.id)
+        localStorage.setItem('gym_user', JSON.stringify(u)); localStorage.removeItem('gym_guest')
+      } else localStorage.removeItem('gym_user')
       set({ user: u })
     },
 
     async pushState() {
       if (!get().user) return
       clearTimeout(pushTm)
-      try { await api('/api/data', { method: 'PUT', body: JSON.stringify({ state: get().S }) }); localStorage.removeItem('gym_dirty') }
-      catch (e) { localStorage.setItem('gym_dirty', '1') }
+      try { await api('/api/data', { method: 'PUT', body: JSON.stringify({ state: get().S }) }); localStorage.removeItem('gym_dirty'); toldTooLarge = false }
+      catch (e) {
+        localStorage.setItem('gym_dirty', '1')
+        // A 413 comes from the proxy in front of the API (nginx: client_max_body_size), which
+        // caps the request body. Every later push is at least as big, so nothing reaches the
+        // server until the limit is raised — said once per refusal streak; gym_dirty keeps the
+        // retries going. useUI imports this store, hence the lazy import.
+        if (e.status === 413 && !toldTooLarge) {
+          toldTooLarge = true
+          import('./useUI.js')
+            .then(({ useUI }) => useUI.getState().toast(t('Sync failed: the server refused the upload as too large. Your changes have not reached the server.')))
+            .catch(() => {})
+        }
+      }
     },
     async pullState() {
       try {
@@ -212,7 +261,7 @@ export const useStore = create((set, get) => {
         const dirty = localStorage.getItem('gym_dirty') === '1'
         const restored = restoredStateFor(S, state, dirty)
         if (restored) {
-          persist(restored, false)
+          persist(restored, false, false)
         } else if (hasData(S)) { await get().pushState() }
       } catch (e) { /* offline — keep local */ }
     },
@@ -297,7 +346,7 @@ export const useStore = create((set, get) => {
         const saved = await nativeLoad()
         const S = get().S
         if (saved && (!hasData(S) || (saved._ts || 0) >= (S._ts || 0))) {
-          persist(Object.assign(clone(DEF), saved), false)
+          persist(Object.assign(clone(DEF), saved), false, false)
         } else if (hasData(S)) {
           nativeSave(S)   // first run after an update from a file-less version: seed the mirror
         }

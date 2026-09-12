@@ -329,6 +329,8 @@ export default {
   'Reset everything?': 'Azzerare tutto?',
   'Reset everything': 'Azzera tutto',
   'Deletes your plan, workouts and body weight on this device. This cannot be undone.': 'Elimina piano, allenamenti e peso corporeo su questo dispositivo. Irreversibile.',
+  'Deletes your plan, workouts and body weight from your profile on this server and on every signed-in device. This cannot be undone.': 'Elimina piano, allenamenti e peso corporeo dal tuo profilo su questo server e su tutti i dispositivi connessi. Irreversibile.',
+  'Sync failed: the server refused the upload as too large. Your changes have not reached the server.': 'Sincronizzazione fallita: il server ha rifiutato il caricamento perché troppo grande. Le tue modifiche non hanno raggiunto il server.',
   'Delete everything': 'Elimina tutto',
   'All data reset': 'Tutti i dati azzerati',
   'Backup exported': 'Backup esportato',

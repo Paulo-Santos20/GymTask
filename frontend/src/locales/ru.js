@@ -329,6 +329,8 @@ export default {
   'Reset everything?': 'Сбросить всё?',
   'Reset everything': 'Сбросить всё',
   'Deletes your plan, workouts and body weight on this device. This cannot be undone.': 'Удаляет план, тренировки и вес тела на этом устройстве. Отменить нельзя.',
+  'Deletes your plan, workouts and body weight from your profile on this server and on every signed-in device. This cannot be undone.': 'Удаляет план, тренировки и вес тела из профиля на этом сервере и со всех устройств, где выполнен вход. Отменить нельзя.',
+  'Sync failed: the server refused the upload as too large. Your changes have not reached the server.': 'Синхронизация не удалась: сервер отклонил загрузку как слишком большую. Твои изменения не дошли до сервера.',
   'Delete everything': 'Удалить всё',
   'All data reset': 'Все данные сброшены',
   'Backup exported': 'Копия экспортирована',

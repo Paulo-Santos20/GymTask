@@ -335,6 +335,8 @@ export default {
   'Reset everything?': 'Mindent visszaállítasz?',
   'Reset everything': 'Minden visszaállítása',
   'Deletes your plan, workouts and body weight on this device. This cannot be undone.': 'Törli a terved, edzéseid és testsúlyod ezen az eszközön. Ez nem vonható vissza.',
+  'Deletes your plan, workouts and body weight from your profile on this server and on every signed-in device. This cannot be undone.': 'Törli a terved, edzéseid és testsúlyod a profilodból ezen a szerveren és minden bejelentkezett eszközön. Ez nem vonható vissza.',
+  'Sync failed: the server refused the upload as too large. Your changes have not reached the server.': 'A szinkronizálás nem sikerült: a szerver túl nagynak találta a feltöltést és elutasította. A módosításaid nem jutottak el a szerverre.',
   'Delete everything': 'Minden törlése',
   'All data reset': 'Minden adat visszaállítva',
   'Backup exported': 'Biztonsági mentés exportálva',
