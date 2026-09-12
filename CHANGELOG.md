@@ -39,6 +39,13 @@ tab bar mid-screen during a workout. Web bundle, APK and API image.
   per account, so a desktop tab finishing its rest on screen cancelled the alert the phone in the
   gym was waiting for. Each browser now carries its own token; older clients keep the old behaviour.
   (The Android APK has no Web Push: its reminders are local notifications scheduled on the phone.)
+- ➕ **A weight off the increment grid keeps its offset when it goes up.** Progression snapped the
+  sum to the step's grid, so a sled logged as 397 lb (its own 167 plus plates) with a 10 lb step
+  came back as 410 instead of 407. The step is now added the way a stepper tap adds it: snapped
+  only from a weight that already sits on the grid (issue #175).
+- 🔕 **Rest-timer notifications no longer pile up.** Every push carried a `tag` so a new alert
+  should replace the last one, but iOS keeps them all; the service worker now closes the previous
+  notification with the same tag before showing the next (issue #172).
 - 👉 **The Exercises chip rows scroll sideways only.** Revealing the active chip used
   `scrollIntoView`, which also scrolls every ancestor: with the row above the fold a tap made the
   whole page jump. The row now moves only its own scroll position, it contains overscroll on
