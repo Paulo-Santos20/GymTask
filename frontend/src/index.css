@@ -438,6 +438,11 @@ h4.sec{
    strip is at its end, a diagonal drag must not chain into the page either. */
 .chips,.hm-wrap{overscroll-behavior-x:contain;scroll-padding-inline:16px}
 .chips{touch-action:pan-x;overscroll-behavior:contain}
+/* The chip hit-area (.chip::before, inset:-6px) must not poke out of the strip vertically:
+   overflow-x:auto makes overflow-y auto as well, and that 6px of positioned overflow gave
+   the 32px row a 36px scroll height — a diagonal swipe, wheel or drag then scrolled the
+   whole row up by 4px and left it there. Vertical slop is clipped by the strip anyway. */
+.chips .chip::before{top:0;bottom:0}
 .chip{
   flex:none;padding:6px 13px;border-radius:99px;background:var(--surface);
   font-size:14px;font-weight:400;color:var(--label);text-transform:capitalize;

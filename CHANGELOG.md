@@ -41,8 +41,9 @@ tab bar mid-screen during a workout. Web bundle, APK and API image.
   (The Android APK has no Web Push: its reminders are local notifications scheduled on the phone.)
 - 👉 **The Exercises chip rows scroll sideways only.** Revealing the active chip used
   `scrollIntoView`, which also scrolls every ancestor: with the row above the fold a tap made the
-  whole page jump. The row now moves only its own scroll position, and it contains overscroll on
-  both axes. On a desktop browser a chip row can be dragged with the mouse (HenryByte, !119, #147).
+  whole page jump. The row now moves only its own scroll position, it contains overscroll on
+  both axes, and the chips' enlarged tap area no longer gives the row a 4 px vertical scroll range
+  of its own (a diagonal swipe or a wheel tick used to shift the whole row up and leave it there). On a desktop browser a chip row can be dragged with the mouse (HenryByte, !119, #147).
 - 📱 **Sheets stop short of the notch / Dynamic Island.** Every bottom sheet's height now subtracts
   the top safe-area inset (and so does the exercise picker when the keyboard is up); centred
   dialogs scroll inside themselves instead of growing past the screen. On Android the app declares
