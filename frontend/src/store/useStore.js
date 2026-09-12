@@ -550,7 +550,7 @@ export const useStore = create((set, get) => {
             await get().pullState()
           } catch (e) {
             if (e.status === 401) { await forgetRemote(); get().setGuest(true) }
-            else get().setUser(remote.user)   // offline — keep going from the last-synced local copy
+            else { get().setUser(remote.user); setSync({ offline: true }) }   // offline — keep going from the last-synced local copy
           }
           syncReminder(get().S)
           finishBoot()
@@ -599,6 +599,9 @@ export const useStore = create((set, get) => {
         }
       } catch (e) {
         if (e.status === 401) get().setUser(null)
+        // Started without a network (a home-screen app reopened in the gym's basement): keep the
+        // signed-in copy and say so from the first screen, not only after the first failed push.
+        else if (isNetworkError(e) && get().user) setSync({ offline: true })
       }
       finishBoot()
     }

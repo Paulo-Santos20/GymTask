@@ -40,6 +40,15 @@ tab bar mid-screen during a workout. Web bundle, APK and API image.
   synced with the server". The app also flushes a pending change on `pagehide`, since Safari can
   kill the home-screen app without a visibility event. Guests and the standalone Android build have
   no server and see none of this.
+- 🧱 **The home-screen app comes back without a network.** The service worker cloned each
+  response for its cache a moment too late — after the page had started reading it — so the
+  clone failed silently and nothing but exercise media was ever cached: a reload of the installed
+  app without a connection gave the browser's "you're offline" page. The worker now caches the
+  shell and every script, style and icon the built index.html references at install, keeps them
+  fresh network-first, and serves them when the network is gone. Its cache is named after the
+  build, so a deploy is a new worker with its own cache and the previous build's files are
+  dropped. Starting the app offline also raises the offline line at once, and the in-progress
+  workout, stored on the device, is exactly where it was.
 - 🔔 **Reminders that were due still arrive.** The workout-day reminder wanted its exact minute:
   an API restart, a redeploy or a stalled tick across those 60 seconds lost the whole day's
   reminder. A reminder is now sent for up to 15 minutes after its time, once per day, never later.
