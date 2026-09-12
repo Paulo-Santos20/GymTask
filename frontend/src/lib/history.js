@@ -107,7 +107,10 @@ const effortTail = s => {
 // entry or a workout entry); passing an id alone keeps the old body-part behaviour.
 export function setLabel(id, s, cfg) {
   const c = cfg || { id }
-  const mode = modeOf(c)
+  let mode = modeOf(c)
+  // A set saved by an older build carries no target with it; the set's own fields still say what
+  // it was — seconds for a timed set, minutes for cardio — so those are not read back as "0 reps".
+  if (!cfg && !(s.r > 0)) { if (s.min > 0 || s.speed > 0) mode = 'cardio'; else if (s.sec > 0) mode = 'time' }
   if (mode === 'cardio') return `${s.min || 0} min @ ${fmtNum(s.speed || 0)} km/h`
   if (mode === 'time') return fmtSec(s.sec) + (s.w > 0 ? ` · ${fmtNum(s.w)}` : '')
   const bw = isBw({ ...c, id: c.id ?? id })
@@ -483,8 +486,13 @@ export function workoutVolume(w) {
   // does it; this line was the one that did not, which only stopped being harmless when a
   // routine started planning warm-ups by default. The number is written into the saved
   // workout, so an inflated one would stay wrong forever.
+  // A per-side row's mirror is `w = max(L, R), r = L + R` (workout-model syncSideAggregate) —
+  // right for a headline, wrong for a product: 14×10 left and 12.5×6 right is 215, not 14×16.
+  // Each side is its own weight × reps, with its own drops and bursts.
   w.entries.forEach(e => e.sets.forEach(s => {
-    if (s.done && !isWarmupRow(s)) v += (s.w || 0) * (s.r || 0) + extraVolumeOf(s)
+    if (!s.done || isWarmupRow(s)) return
+    if (isSideSet(s)) { for (const side of [s.sides.L, s.sides.R]) v += (side.w || 0) * (side.r || 0) + extraVolumeOf(side); return }
+    v += (s.w || 0) * (s.r || 0) + extraVolumeOf(s)
   }))
   return v
 }

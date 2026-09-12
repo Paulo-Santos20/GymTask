@@ -674,7 +674,8 @@ body.chips-dragging *{cursor:inherit}
 .setph{margin:8px 0 2px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:10px}
 .setph::after{content:'';flex:1;height:1px;background:var(--sep)}
 .setsep{height:1px;background:var(--sep);margin:9px 0}
-.setrow .n{
+/* the per-side wrapper carries its own .n (the set number in front of the L/R rows) */
+.setrow .n,.setrow-side>.n{
   width:24px;height:24px;border-radius:50%;background:var(--surface-2);color:var(--label-2);
   display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;flex:none;
   position:relative;padding:0;border:0;font-family:inherit;cursor:pointer;
@@ -1168,7 +1169,7 @@ body.chips-dragging *{cursor:inherit}
   #modal-root .list,.narrow .list{display:flex;flex-direction:column}
   .narrow{max-width:640px;margin:0 auto}
   .tiles{grid-template-columns:repeat(4,1fr)}
-  .cols .tiles{grid-template-columns:1fr 1fr}
+  .cols .tiles,.center .tiles{grid-template-columns:1fr 1fr}   /* a 300px dialog has no room for four */
   #tabbar{
     left:50%;right:auto;bottom:16px;transform:translateX(-50%);width:520px;
     border:var(--hair) solid var(--sep-op);border-radius:var(--r-xl);
