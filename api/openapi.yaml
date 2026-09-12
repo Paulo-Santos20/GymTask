@@ -566,6 +566,25 @@ paths:
                 invalid: { value: { error: "invalid state" } }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  /api/data/rev:
+    get:
+      tags: [Data]
+      summary: Current revision of the caller's profile state
+      description: |
+        The `rev` that `GET /api/data` would return, without the document. Signed-in clients poll
+        this while open and on every return to the foreground and fetch the document only when
+        the number changed.
+      responses:
+        '200':
+          description: The current revision (0 when the profile has no state yet).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rev: { type: integer }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
   /api/push/public-key:
     get:
       tags: [push]

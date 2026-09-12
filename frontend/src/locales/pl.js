@@ -1217,4 +1217,13 @@ export default {
   'Exercise': 'Ćwiczenie',
   'Layout': 'Układ',
   'No exercises yet.': 'Brak ćwiczeń.',
+  // --- sign-in adoption + offline banner (v1.3.6) ---
+  'Add this device\'s workouts to your profile?': 'Dodać treningi z tego urządzenia do profilu?',
+  '{0} workouts and {1} weigh-ins were logged on this device while signed out. Add them to your profile, or keep the profile exactly as it is on the server.': '{0} treningów i {1} ważeń zapisano na tym urządzeniu bez logowania. Dodaj je do profilu albo zostaw profil dokładnie taki, jaki jest na serwerze.',
+  'Add them': 'Dodaj',
+  'Keep profile as is': 'Zostaw profil bez zmian',
+  'Offline — your changes are saved on this device and sync when you are back online.': 'Offline — zmiany są zapisane na tym urządzeniu i zsynchronizują się, gdy znów będziesz online.',
+  'Offline — showing the last copy synced with the server.': 'Offline — wyświetlana jest ostatnia kopia zsynchronizowana z serwerem.',
+  'Not synced yet — tap to retry.': 'Jeszcze nie zsynchronizowano — dotknij, aby ponowić.',
+  'Back online — synced with the server.': 'Znów online — zsynchronizowano z serwerem.',
 }

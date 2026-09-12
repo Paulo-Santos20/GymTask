@@ -172,6 +172,14 @@ body.resting #app{padding-bottom:calc(206px + var(--sab))}
 @keyframes viewfade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 #app.vfade{animation:viewfade var(--med) var(--ease)}
 
+/* sync banner: one line for a signed-in user whose changes are not on the server yet */
+.sync-banner{
+  display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+  margin:0 0 12px;padding:9px 12px;border-radius:var(--r);
+  background:color-mix(in srgb,var(--yellow) 16%,var(--surface));color:var(--label);font-size:13px;line-height:1.35;
+}
+.sync-banner.off{background:color-mix(in srgb,var(--label-3) 18%,var(--surface))}
+.sync-banner .icn,.sync-banner svg{flex:none;font-size:16px;color:var(--label-2)}
 /* large title, the way a nav bar does it */
 .hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:8px 0 18px}
 .hdr h1{font-size:34px;line-height:1.06;font-weight:700;letter-spacing:-.028em}

@@ -1228,4 +1228,13 @@ export default {
   'Exercise': 'ท่าออกกำลังกาย',
   'Layout': 'เลย์เอาต์',
   'No exercises yet.': 'ยังไม่มีท่าออกกำลังกาย',
+  // --- sign-in adoption + offline banner (v1.3.6) ---
+  'Add this device\'s workouts to your profile?': 'เพิ่มการฝึกจากอุปกรณ์นี้ลงในโปรไฟล์ของคุณหรือไม่',
+  '{0} workouts and {1} weigh-ins were logged on this device while signed out. Add them to your profile, or keep the profile exactly as it is on the server.': 'มีการบันทึกการฝึก {0} ครั้งและการชั่งน้ำหนัก {1} ครั้งบนอุปกรณ์นี้ขณะไม่ได้ลงชื่อเข้าใช้ เพิ่มลงในโปรไฟล์ของคุณ หรือคงโปรไฟล์ไว้ตามที่อยู่บนเซิร์ฟเวอร์',
+  'Add them': 'เพิ่ม',
+  'Keep profile as is': 'คงโปรไฟล์ไว้',
+  'Offline — your changes are saved on this device and sync when you are back online.': 'ออฟไลน์ — การเปลี่ยนแปลงถูกบันทึกไว้ในอุปกรณ์นี้และจะซิงค์เมื่อกลับมาออนไลน์',
+  'Offline — showing the last copy synced with the server.': 'ออฟไลน์ — แสดงสำเนาล่าสุดที่ซิงค์กับเซิร์ฟเวอร์',
+  'Not synced yet — tap to retry.': 'ยังไม่ได้ซิงค์ — แตะเพื่อลองใหม่',
+  'Back online — synced with the server.': 'กลับมาออนไลน์แล้ว — ซิงค์กับเซิร์ฟเวอร์แล้ว',
 }

@@ -21,6 +21,25 @@ tab bar mid-screen during a workout. Web bundle, APK and API image.
   and nothing pushes before the first pull of a session has landed. Older clients that send no
   revision keep overwriting as before, so a paired phone on an old build still syncs.
   Import and "Reset everything" are deliberate replacements and skip the merge.
+- 👤 **Signed in, the server's profile is the truth — always.** Signing in used to keep whatever
+  copy had the newer timestamp, and anything tracked while signed out is always newer: the owner
+  signed out, logged a session as a guest, signed back in and kept seeing the guest copy while the
+  desktop showed the real profile. Sign-in (and pairing a phone) now adopts the server's profile —
+  settings, plan, history, everything — and asks one question when the device holds workouts or
+  weigh-ins the profile does not have: **Add them** (only those entries join the profile) or
+  **Keep profile as is**. A profile that has no state yet still takes the device's data, as
+  creating one always did.
+- 📡 **The newest copy is fetched every chance it gets.** While the app is open and signed in it
+  asks the server for its revision every 30 seconds (one tiny request, `GET /api/data/rev`) and on
+  every return to the tab, window, app or network, and fetches the document only when the number
+  moved. A desktop tab left open all day now shows the phone's session within half a minute.
+- 📴 **Offline mode says so.** A signed-in user who cannot reach the server sees one line under the
+  header — "Offline — your changes are saved on this device and sync when you are back online" —
+  or "Not synced yet — tap to retry" when the server refused a push. The changes stay on the device,
+  are retried by the poll and the moment the network is back, and a toast confirms "Back online —
+  synced with the server". The app also flushes a pending change on `pagehide`, since Safari can
+  kill the home-screen app without a visibility event. Guests and the standalone Android build have
+  no server and see none of this.
 - 🔔 **Reminders that were due still arrive.** The workout-day reminder wanted its exact minute:
   an API restart, a redeploy or a stalled tick across those 60 seconds lost the whole day's
   reminder. A reminder is now sent for up to 15 minutes after its time, once per day, never later.

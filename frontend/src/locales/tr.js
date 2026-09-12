@@ -1217,4 +1217,13 @@ export default {
   'Exercise': 'Egzersiz',
   'Layout': 'Düzen',
   'No exercises yet.': 'Henüz egzersiz yok.',
+  // --- sign-in adoption + offline banner (v1.3.6) ---
+  'Add this device\'s workouts to your profile?': 'Bu cihazdaki antrenmanlar profiline eklensin mi?',
+  '{0} workouts and {1} weigh-ins were logged on this device while signed out. Add them to your profile, or keep the profile exactly as it is on the server.': 'Bu cihazda oturum açılmadan {0} antrenman ve {1} tartım kaydedildi. Bunları profiline ekle ya da profili sunucudaki hâliyle bırak.',
+  'Add them': 'Ekle',
+  'Keep profile as is': 'Profili olduğu gibi bırak',
+  'Offline — your changes are saved on this device and sync when you are back online.': 'Çevrimdışı — değişikliklerin bu cihazda kayıtlı, tekrar çevrimiçi olunca eşitlenecek.',
+  'Offline — showing the last copy synced with the server.': 'Çevrimdışı — sunucuyla en son eşitlenen kopya gösteriliyor.',
+  'Not synced yet — tap to retry.': 'Henüz eşitlenmedi — yeniden denemek için dokun.',
+  'Back online — synced with the server.': 'Yeniden çevrimiçi — sunucuyla eşitlendi.',
 }
