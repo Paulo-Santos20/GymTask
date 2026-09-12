@@ -249,7 +249,7 @@ h4.sec{
    none of the shrink — a long value would otherwise take the whole row and squeeze the title
    to 21px. A basis of 45% fixes that but reserves the space even for "3", costing the title
    141px on the rows that need it most. A cap does neither. */
-.lrow-v{color:var(--label-2);font-size:17px;letter-spacing:-.012em;flex:0 1 auto;max-width:45%;min-width:0;
+.lrow-v{color:var(--label-2);font-size:17px;letter-spacing:-.012em;flex:0 1 auto;max-width:55%;min-width:0;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
 .lrow-c{color:var(--label);font-size:15px;flex:none;--icon-stroke:2.4}
 .lrow-k{color:var(--acc);font-size:17px;flex:none;--icon-stroke:2.4}
@@ -540,8 +540,13 @@ body.chips-dragging *{cursor:inherit}
 .seg button .icn{font-size:16px}
 .seg button:not(.on){color:var(--label-2);font-weight:400}
 .seg button:active{opacity:.5}
-/* sitting in a list row: shrink to content instead of filling the row */
-.seg-inline{flex:none;min-width:132px}
+/* sitting in a list row: shrink to content instead of filling the row. The control never
+   shrinks below its labels, so a row whose title and control do not both fit — most translated
+   packs at 390px: "Übungs-Animationen" against "Voll · Klein · Aus" — wraps the control onto its
+   own line under the title instead of painting it over the title. */
+.seg-inline{flex:none;min-width:132px;max-width:100%;margin-left:auto}
+.lrow:has(.seg-inline){flex-wrap:wrap}
+.lrow:has(.seg-inline) .lrow-m{min-width:min(150px,100%)}
 .seg-range{margin-bottom:10px}
 .seg-inline button{padding:5px 10px;font-size:13px;min-height:28px}
 .seg-inline button .icn{font-size:14px}
@@ -1147,7 +1152,9 @@ body.chips-dragging *{cursor:inherit}
 .today-row .lbl2{font-size:11px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:var(--label-3)}
 .today-row .ttl{
   font-weight:500;font-size:17px;line-height:1.25;text-transform:capitalize;
-  letter-spacing:-.012em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;
+  letter-spacing:-.012em;margin-top:2px;
+  /* two lines before the ellipsis: "Leg Day — in progress" grows past one line in hu/tr/th/pt-BR */
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;
 }
 
 /* Only where a pointer really hovers — on a phone :hover sticks to the row after the tap.

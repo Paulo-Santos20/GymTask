@@ -63,6 +63,18 @@ tab bar mid-screen during a workout. Web bundle, APK and API image.
   deletes and where; a 413 on sync is shown instead of swallowed; nginx allows 5 MiB on `/api/`.
 - 🌍 Seven strings that arrived with combine routines, the layout switch and the 1RM deload were in
   no locale pack and showed in English in every language.
+- 🧪 **From a headless sweep of every screen after the above** (phone and desktop, all 14
+  languages): the set number in front of a per-side (L/R) set was an unstyled 11-px button; a
+  unilateral set's volume was max-weight × total reps (14×10 left and 12.5×6 right read 224 kg,
+  not 215); timed and cardio sets saved by older builds read "0" in history and on the workout
+  card; the finish summary's tiles cramped into four columns inside the dialog on desktop;
+  exercise names in menu titles and "added to" toasts were lower-case and the 1RM line said
+  "Kg"; in German, Russian, Spanish, French, Italian, Portuguese, Polish and Hungarian the
+  segmented controls in Settings painted over their row titles (the control now wraps under the
+  title when both do not fit); the Home "today" title can take two lines before the ellipsis
+  ("Leg Day — in progress" in Hungarian); the Language row shows the full pack name; the routine
+  editor's rows showed a red sliver of the swipe-to-delete button at their corners; FitNotes'
+  stock "Flat Barbell Bench Press" now matches on import.
 
 - 🔍 **A failed Coach run on the phone says what the provider said.** With your own API key there
   is no admin card and no instance owner, so "the instance owner needs to check its setup" was the
