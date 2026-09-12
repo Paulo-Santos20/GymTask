@@ -445,6 +445,16 @@ h4.sec{
 .chip:active{background:var(--surface-2)}
 .chip.on{background:var(--acc);color:var(--on-acc);font-weight:500}
 .chip.on .dim{color:color-mix(in srgb,var(--on-acc) 62%,transparent)}
+/* On a phone these rows scroll by swipe. On a pointer device lib/hchips.js lets you
+   click-drag anywhere on the row to pull it along; a grab cursor on rows that actually
+   overflow (data-xscroll, set by hchips.js on hover) is the hint. */
+@media (hover:hover) and (pointer:fine){
+  .chips[data-xscroll]{cursor:grab}
+}
+/* while a drag is in flight: no text selection, grabbing cursor everywhere (the `*` rule
+   outweighs button{cursor:pointer} so it holds even over a chip) */
+body.chips-dragging{cursor:grabbing;user-select:none;-webkit-user-select:none}
+body.chips-dragging *{cursor:inherit}
 
 /* =========================== CONTROLS ==================================== */
 
