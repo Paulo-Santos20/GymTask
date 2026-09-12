@@ -76,6 +76,11 @@ tab bar mid-screen during a workout. Web bundle, APK and API image.
   ("Leg Day — in progress" in Hungarian); the Language row shows the full pack name; the routine
   editor's rows showed a red sliver of the swipe-to-delete button at their corners; FitNotes'
   stock "Flat Barbell Bench Press" now matches on import.
+- ⚖️ **A weight off the increment grid keeps its offset when progression raises it** (#175): a sled
+  logged as its own 167 lb plus plates — 397 — with a 10 lb step now goes to 407, the way a stepper
+  tap does, instead of snapping to the grid's 410. Linear, Greyskull and double progression.
+- 🔕 **Rest-timer pushes no longer pile up in the tray on iOS** (#172): the service worker closes the
+  previous notification of the same kind before showing the next one.
 
 - 🔍 **A failed Coach run on the phone says what the provider said.** With your own API key there
   is no admin card and no instance owner, so "the instance owner needs to check its setup" was the

@@ -115,11 +115,19 @@ export function snapWeight(v, step) {
 // A tap moves by one step. Snapping to the grid keeps the number identical to what progression
 // would prescribe (61.3 → 62.5 with a 1.25 step, not 62.55) — but only when the current value
 // already sits on that grid; from 62.5 with a 5 kg step a tap gives 67.5, not 70.
+// Add `step` to a weight the way a stepper tap does: from a weight that sits on the increment's
+// grid the sum is snapped to it, from one off the grid the step is simply added. Progression
+// uses the same rule (issue #175): a sled logged as 397 lb — its own weight plus plates — with
+// a 10 lb step goes to 407, not to the grid's 410.
+export function addStep(w, step, inc) {
+  const v = +w || 0
+  const onGrid = inc > 0 && Math.abs(v - Math.round(v / inc) * inc) <= 0.1
+  const next = v + step
+  return Math.max(0, onGrid ? snapWeight(next, inc) : round1(next))
+}
 export function stepWeight(value, step, direction) {
   const v = Number(value) || 0
-  const onGrid = step > 0 && Math.abs(v - Math.round(v / step) * step) <= 0.1
-  const next = v + direction * step
-  return Math.max(0, onGrid ? snapWeight(next, step) : round1(next))
+  return addStep(v, direction * step, step)
 }
 // Back off by a factor, landing on something you can actually load. This remains the old policy
 // used by Greyskull and timed progression; linear/double loaded reps use the Epley selector below.
@@ -395,7 +403,7 @@ export function nextPrescription(S, cfg, routine) {
     const range = normalizeRepRange(cfg.reps || last.goal || 10, cfg.repsMin, repStep(cfg))
     const top = range.reps
     const bottom = range.repsMin
-    if (last.ok) return { policy, kind: 'up', weight: snapWeight(w + inc, inc), reps: bottom, why: ['Top of the rep range in every set — {0} {1} more, back to {2} reps.', inc, unit, bottom] }
+    if (last.ok) return { policy, kind: 'up', weight: addStep(w, inc, inc), reps: bottom, why: ['Top of the rep range in every set — {0} {1} more, back to {2} reps.', inc, unit, bottom] }
     if (stalls >= deloadAt) {
       const selected = epleyDeload()
       if (selected) return selected
@@ -413,7 +421,7 @@ export function nextPrescription(S, cfg, routine) {
     const dbl = policy === 'greyskull' && last.goal > 0 && last.amrap >= last.goal * 2
     const step = dbl ? inc * 2 : inc
     return {
-      policy, kind: 'up', weight: snapWeight(w + step, inc),
+      policy, kind: 'up', weight: addStep(w, step, inc),
       why: dbl
         ? ['Last set hit {0} reps — twice the target, so take a double jump of {1} {2}.', last.amrap, step, unit]
         : ['Every rep last time — {0} {1} more.', step, unit]

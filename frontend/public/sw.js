@@ -15,11 +15,16 @@ self.addEventListener('push', e => {
   e.waitUntil((async () => {
     let data = {}
     try { data = e.data ? e.data.json() : {} } catch { data = { body: (() => { try { return e.data.text() } catch { return '' } })() } }
+    // One alert per kind: a new rest-timer push replaces the last one instead of stacking
+    // up in the tray (issue #172). `tag` alone should do that, but iOS keeps every one, so
+    // the previous notification with the same tag is closed by hand first.
+    const tag = data.tag || 'opengym'
+    try { for (const n of await self.registration.getNotifications({ tag })) n.close() } catch {}
     await self.registration.showNotification(data.title || 'openGym', {
       body: data.body || '',
       icon: 'icon-512.png',
       badge: 'icon-180.png',
-      tag: data.tag || 'opengym',
+      tag,
       renotify: true
     })
   })())
