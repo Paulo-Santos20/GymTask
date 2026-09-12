@@ -809,6 +809,11 @@ function ActiveWorkout() {
   }
 
   const toggle = (idx, i, side) => {
+    // Ticking a set ends the typing in that row: drop the keyboard before the rest timer, the
+    // effort sheet or the next exercise moves in. WebKit keeps the input focused across the
+    // button tap, and a focused input with its keyboard gone is what leaves the tab bar
+    // mid-screen on iOS (lib/viewport-guard.js).
+    if (typeof document !== 'undefined') { const a = document.activeElement; if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) a.blur?.() }
     const m = modeAt(idx)
     const cardioEntry = m === 'cardio'
     let exJustDone = false, workoutDone = false, checked = false

@@ -115,7 +115,7 @@ body{
   background:var(--bg);color:var(--label);
   font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display','Segoe UI',Roboto,system-ui,sans-serif;
   font-size:17px;line-height:1.29;letter-spacing:-.01em;
-  min-height:100vh;overscroll-behavior-y:none;overflow-x:clip;
+  min-height:100vh;min-height:100dvh;overscroll-behavior-y:none;overflow-x:clip;
   -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
   touch-action:manipulation;
   font-variant-numeric:tabular-nums;
@@ -426,7 +426,7 @@ h4.sec{
 /* ---------------------------------------------------------------- chips -- */
 .chips{
   display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;
-  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
 }
 .chips::-webkit-scrollbar{display:none}
 /* horizontal strips: keep a sideways overscroll from chaining to the page and leave a
@@ -434,9 +434,10 @@ h4.sec{
    (touch-action:pan-x): on a phone a slightly diagonal swipe along the chips used to hand
    the gesture to the page, which scrolled down instead. The row is 32px tall, so losing a
    vertical scroll that happens to start on it costs nothing; the ~130px heatmap wrap keeps
-   both axes, there the trade-off goes the other way. */
+   both axes, there the trade-off goes the other way. The chips contain both axes: once a
+   strip is at its end, a diagonal drag must not chain into the page either. */
 .chips,.hm-wrap{overscroll-behavior-x:contain;scroll-padding-inline:16px}
-.chips{touch-action:pan-x}
+.chips{touch-action:pan-x;overscroll-behavior:contain}
 .chip{
   flex:none;padding:6px 13px;border-radius:99px;background:var(--surface);
   font-size:14px;font-weight:400;color:var(--label);text-transform:capitalize;
@@ -860,14 +861,18 @@ body.chips-dragging *{cursor:inherit}
   position:absolute;left:0;right:0;bottom:0;background:var(--bg-el);
   border-radius:var(--r-xl) var(--r-xl) 0 0;
   padding:8px 18px calc(20px + var(--sab));
-  max-height:90vh;max-height:min(90vh,calc(100dvh - 8px));
-  overflow-y:auto;-webkit-overflow-scrolling:touch;scroll-padding-bottom:calc(20px + var(--sab));
+  /* A tall sheet stops short of the status bar / Dynamic Island: every cap carries the top
+     safe-area inset, which the layout viewport does not (viewport-fit=cover). */
+  max-height:90vh;max-height:min(90vh,calc(100dvh - var(--sat) - 8px));
+  overflow-y:auto;scroll-padding-bottom:calc(20px + var(--sab));
   animation:sheetup .34s var(--ease);
   overscroll-behavior:contain;touch-action:pan-y;will-change:transform;
 }
 .sheet:has(.picker-search){
   bottom:var(--picker-keyboard-bottom,0px);
-  max-height:min(90vh,calc(100dvh - 8px),calc(var(--picker-visual-height,100vh) - 8px));
+  /* with the keyboard up the sheet is capped by the visual viewport — which still starts
+     under the notch, hence the inset here too */
+  max-height:min(90vh,calc(100dvh - var(--sat) - 8px),calc(var(--picker-visual-height,100vh) - var(--sat) - 8px));
 }
 :root[data-theme="light"] .sheet{background:var(--bg)}
 @keyframes sheetup{from{transform:translateY(100%)}to{transform:none}}
@@ -881,6 +886,7 @@ body.chips-dragging *{cursor:inherit}
 .center{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   width:min(84vw,300px);background:var(--bg-el);border-radius:var(--r-lg);padding:20px;
+  max-height:calc(100dvh - 2*var(--sat) - 24px);overflow-y:auto;
   box-shadow:0 20px 60px -12px rgba(0,0,0,.5);
   animation:pop .28s var(--ease);
 }
