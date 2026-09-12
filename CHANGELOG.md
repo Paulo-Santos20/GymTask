@@ -5,6 +5,65 @@
 What the Discord and GitLab reports after v1.3.5 had in common: the Coach failed and nobody could
 see why. Web bundle and APK; the API image only for the payload change.
 
+**Bug round (2026-09-12) — the reports from the owner's own phone:** push late or missing, desktop and
+phone out of step, the Exercises chip rows scrolling the page, sheets under the Dynamic Island, the
+tab bar mid-screen during a workout. Web bundle, APK and API image.
+
+- 🔄 **Two devices no longer overwrite each other.** Sync was "whichever copy was saved last wins,
+  whole document": a desktop tab left open for a day and then touched — one setting — pushed its
+  stale copy over the workouts the phone had logged meanwhile, and the phone adopted the loss at
+  its next start (issues #128, #124; GitLab #33, #25). The server now keeps a revision on every
+  profile (`_rev`, `GET /api/data` hands it out) and refuses a write that is not based on the
+  current one (`409`, with the current document attached). The app merges the two copies — every
+  workout, routine, weigh-in, custom exercise and favourite from both sides is kept; settings follow
+  the newer copy — and pushes once more. It also asks the server what changed whenever the tab,
+  window, app or network comes back (throttled to once per 15 s), one push and one pull at a time,
+  and nothing pushes before the first pull of a session has landed. Older clients that send no
+  revision keep overwriting as before, so a paired phone on an old build still syncs.
+  Import and "Reset everything" are deliberate replacements and skip the merge.
+- 🔔 **Reminders that were due still arrive.** The workout-day reminder wanted its exact minute:
+  an API restart, a redeploy or a stalled tick across those 60 seconds lost the whole day's
+  reminder. A reminder is now sent for up to 15 minutes after its time, once per day, never later.
+  The tick also stops re-reading every account's state every 10 seconds (it re-reads only files
+  that changed).
+- 🔁 **A push subscription the server lost comes back on its own.** The browser keeps its
+  subscription through anything that happens on the server — a row pruned after a dead send, a
+  rebuilt `db.json`, a regenerated VAPID key — and Settings said "on" while nothing would ever
+  arrive. On every signed-in start the app hands the server its subscription again
+  (`POST /api/push/subscribe` is an upsert, `GET /api/push/status` is what the switch shows),
+  a subscription made for a key the instance no longer has is replaced, the service worker answers
+  the push service's own key rotation (`pushsubscriptionchange`), a payload that fails to parse
+  still shows a notification instead of counting as a silent push, and a send refused with 403 is
+  pruned like a dead endpoint. Off https the row says push is not supported instead of hanging.
+- ⏱️ **A rest-timer alert belongs to the device that started the rest.** The server held one timer
+  per account, so a desktop tab finishing its rest on screen cancelled the alert the phone in the
+  gym was waiting for. Each browser now carries its own token; older clients keep the old behaviour.
+  (The Android APK has no Web Push: its reminders are local notifications scheduled on the phone.)
+- 👉 **The Exercises chip rows scroll sideways only.** Revealing the active chip used
+  `scrollIntoView`, which also scrolls every ancestor: with the row above the fold a tap made the
+  whole page jump. The row now moves only its own scroll position, and it contains overscroll on
+  both axes. On a desktop browser a chip row can be dragged with the mouse (HenryByte, !119, #147).
+- 📱 **Sheets stop short of the notch / Dynamic Island.** Every bottom sheet's height now subtracts
+  the top safe-area inset (and so does the exercise picker when the keyboard is up); centred
+  dialogs scroll inside themselves instead of growing past the screen. On Android the app declares
+  the cutout mode and `adjustResize`, so the same insets are real there.
+- 🧭 **The tab bar stays at the bottom after the keyboard.** On iOS a weight field kept its focus
+  when you tapped the tick (WebKit does not blur on button taps), the keyboard went away, and the
+  viewport stayed displaced — tab bar and rest timer mid-screen. Ticking a set and opening a sheet
+  now blur the field, and the correction also works while a sheet has the page pinned. The mobile
+  workout screen keeps less blank space under the last set (mflova, !121).
+- 🛡️ **The twelve Astra findings** (kurktchiev, #166, #160): a request target that does not parse
+  answers 400 instead of an unhandled rejection; a stored state the reminder tick cannot read is
+  skipped instead of taking the API down, and `PUT /api/data` refuses non-array `workouts` /
+  `routines`; the push-endpoint address rule judges every IPv6 spelling; "sign out everywhere"
+  voids unredeemed pairing codes; the built-in Coach's daily and instance limits cannot be reset by
+  "forget", queued jobs hold budget and are dropped on forget, scheduled reviews do not bill the
+  same workout twice; the local copy remembers its owner and is wiped when another profile signs
+  in; a copy adopted from the server keeps the server's timestamp; "Reset everything" says what it
+  deletes and where; a 413 on sync is shown instead of swallowed; nginx allows 5 MiB on `/api/`.
+- 🌍 Seven strings that arrived with combine routines, the layout switch and the 1RM deload were in
+  no locale pack and showed in English in every language.
+
 - 🔍 **A failed Coach run on the phone says what the provider said.** With your own API key there
   is no admin card and no instance owner, so "the instance owner needs to check its setup" was the
   wrong sentence and hid the one thing that mattered — OpenAI's "you exceeded your current quota",
