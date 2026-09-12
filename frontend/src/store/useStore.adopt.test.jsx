@@ -92,9 +92,12 @@ describe('offline and unsynced flags', () => {
     await useStore.getState().pushState()
     expect(useStore.getState().sync).toMatchObject({ offline: true, pending: true })
     expect(localStorage.getItem('gym_dirty')).toBe('1')
-    // back online: the push lands, the flags clear, and the user hears about it once
+    // back online: the `online` event checks with the server first (the pull clears the offline
+    // flag), then the owed push lands, the flags clear, and the user hears about it once
+    api.mockResolvedValueOnce({ state: { ...clone(DEF), _ts: 100, workouts: [workout('w1')], _rev: 1 }, rev: 1 })
     api.mockResolvedValueOnce({ ok: true, rev: 2 })
-    await useStore.getState().pushState()
+    window.dispatchEvent(new Event('online'))
+    await new Promise(r => setTimeout(r, 20))
     expect(useStore.getState().sync).toMatchObject({ offline: false, pending: false })
     expect(localStorage.getItem('gym_dirty')).toBeNull()
     await new Promise(r => setTimeout(r, 0))   // the toast goes through a lazy import of useUI

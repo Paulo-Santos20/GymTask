@@ -109,6 +109,7 @@ export const useStore = create((set, get) => {
   let forceNext = false    // the next push replaces the server copy outright (import, reset)
   let lastCheck = 0
   let pollTm = null
+  let offlineChanges = false   // a push failed for lack of network — the next one that lands says so
 
   const readSync = () => { try { return JSON.parse(localStorage.getItem(SYNC_KEY)) || null } catch { return null } }
   const writeSync = (rev, ts) => localStorage.setItem(SYNC_KEY, JSON.stringify({ rev, ts: ts || 0 }))
@@ -223,15 +224,15 @@ export const useStore = create((set, get) => {
       toldTooLarge = false
       // Back from offline with changes that were waiting: say so once — the banner that promised
       // "syncs when you're back online" has just kept its word.
-      const was = get().sync
       setSync({ offline: false, pending: false, lastSynced: Date.now() })
-      if (was.offline && was.pending) {
+      if (offlineChanges) {
+        offlineChanges = false
         import('./useUI.js').then(({ useUI }) => useUI.getState().toast(t('Back online — synced with the server.'))).catch(() => {})
       }
     } catch (e) {
       // A session that is gone is boot's business (/api/me); the copy stays owed to the server.
       if (e.status === 401) { localStorage.setItem('gym_dirty', '1'); return }
-      if (isNetworkError(e)) { localStorage.setItem('gym_dirty', '1'); setSync({ offline: true, pending: true }); return }
+      if (isNetworkError(e)) { localStorage.setItem('gym_dirty', '1'); offlineChanges = true; setSync({ offline: true, pending: true }); return }
       if (e.status === 409 && e.data && attempt < 2) {
         // Another device wrote since this one last read. The server sent its document along;
         // merge and push once more against that revision. A second refusal in a row leaves the
