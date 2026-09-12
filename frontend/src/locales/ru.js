@@ -1209,4 +1209,12 @@ export default {
   '{0} %': '{0} %',
   '{0} MB': '{0} МБ',
   'Checksum not available — not installing': 'Контрольная сумма недоступна — установка отменена',
+  // --- combine routines / layout / deload (v1.3.6) ---
+  'Add routine': 'Добавить программу',
+  'Bring another routine into this session': 'Добавить ещё одну программу в эту тренировку',
+  'Deload 1RM (%)': '1RM для разгрузки (%)',
+  'Enter a positive step to use this progression rule.': 'Введите положительный шаг, чтобы использовать это правило прогрессии.',
+  'Exercise': 'Упражнение',
+  'Layout': 'Вид',
+  'No exercises yet.': 'Пока нет упражнений.',
 }

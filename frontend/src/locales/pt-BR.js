@@ -4,6 +4,8 @@
 import pt from './pt.js'
 
 export const PT_BR_OVERRIDES = {
+  'Enter a positive step to use this progression rule.': 'Digite um passo positivo para usar esta regra de progressão.',
+  'Layout': 'Layout',
   'No sessions logged yet': 'Ainda não há sessões registradas',
   'What should change?': 'O que deve mudar?',
   'Coach is thinking…': 'O Coach está pensando…',

@@ -1209,4 +1209,12 @@ export default {
   '{0} %': '{0}%',
   '{0} MB': '{0} MB',
   'Checksum not available — not installing': 'चेकसम उपलब्ध नहीं — इंस्टॉल नहीं किया गया',
+  // --- combine routines / layout / deload (v1.3.6) ---
+  'Add routine': 'रूटीन जोड़ें',
+  'Bring another routine into this session': 'इस सत्र में एक और रूटीन लाएँ',
+  'Deload 1RM (%)': 'डीलोड 1RM (%)',
+  'Enter a positive step to use this progression rule.': 'इस प्रोग्रेशन नियम के लिए एक सकारात्मक चरण दर्ज करें।',
+  'Exercise': 'व्यायाम',
+  'Layout': 'लेआउट',
+  'No exercises yet.': 'अभी कोई व्यायाम नहीं।',
 }

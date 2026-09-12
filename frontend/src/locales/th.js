@@ -1220,4 +1220,12 @@ export default {
   '{0} %': '{0}%',
   '{0} MB': '{0} MB',
   'Checksum not available — not installing': 'ไม่มีค่าตรวจสอบ — ยกเลิกการติดตั้ง',
+  // --- combine routines / layout / deload (v1.3.6) ---
+  'Add routine': 'เพิ่มรูทีน',
+  'Bring another routine into this session': 'นำรูทีนอื่นเข้ามาในเซสชันนี้',
+  'Deload 1RM (%)': '1RM ดีโหลด (%)',
+  'Enter a positive step to use this progression rule.': 'กรอกค่าขั้นที่เป็นบวกเพื่อใช้กฎการเพิ่มระดับนี้',
+  'Exercise': 'ท่าออกกำลังกาย',
+  'Layout': 'เลย์เอาต์',
+  'No exercises yet.': 'ยังไม่มีท่าออกกำลังกาย',
 }

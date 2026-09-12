@@ -1212,4 +1212,12 @@ export default {
   '{0} %': '{0} %',
   '{0} MB': '{0} MB',
   'Checksum not available — not installing': 'Ellenőrző összeg nem érhető el — nincs telepítés',
+  // --- combine routines / layout / deload (v1.3.6) ---
+  'Add routine': 'Rutin hozzáadása',
+  'Bring another routine into this session': 'Másik rutin behozása ebbe az edzésbe',
+  'Deload 1RM (%)': 'Deload 1RM (%)',
+  'Enter a positive step to use this progression rule.': 'Adj meg pozitív lépést a progressziós szabály használatához.',
+  'Exercise': 'Gyakorlat',
+  'Layout': 'Elrendezés',
+  'No exercises yet.': 'Még nincsenek gyakorlatok.',
 }

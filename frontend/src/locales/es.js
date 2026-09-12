@@ -1209,4 +1209,12 @@ export default {
   '{0} %': '{0} %',
   '{0} MB': '{0} MB',
   'Checksum not available — not installing': 'Suma de verificación no disponible — no se instala',
+  // --- combine routines / layout / deload (v1.3.6) ---
+  'Add routine': 'Añadir rutina',
+  'Bring another routine into this session': 'Traer otra rutina a esta sesión',
+  'Deload 1RM (%)': '1RM de descarga (%)',
+  'Enter a positive step to use this progression rule.': 'Introduce un paso positivo para usar esta regla de progresión.',
+  'Exercise': 'Ejercicio',
+  'Layout': 'Diseño',
+  'No exercises yet.': 'Aún no hay ejercicios.',
 }

@@ -1209,4 +1209,12 @@ export default {
   '{0} %': '%{0}',
   '{0} MB': '{0} MB',
   'Checksum not available — not installing': 'Sağlama toplamı yok — yüklenmedi',
+  // --- combine routines / layout / deload (v1.3.6) ---
+  'Add routine': 'Rutin ekle',
+  'Bring another routine into this session': 'Bu seansa başka bir rutin getir',
+  'Deload 1RM (%)': 'Deload 1RM (%)',
+  'Enter a positive step to use this progression rule.': 'Bu ilerleme kuralını kullanmak için pozitif bir adım gir.',
+  'Exercise': 'Egzersiz',
+  'Layout': 'Düzen',
+  'No exercises yet.': 'Henüz egzersiz yok.',
 }

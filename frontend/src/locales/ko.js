@@ -1209,4 +1209,12 @@ export default {
   '{0} %': '{0}%',
   '{0} MB': '{0} MB',
   'Checksum not available — not installing': '체크섬을 확인할 수 없어 설치하지 않습니다',
+  // --- combine routines / layout / deload (v1.3.6) ---
+  'Add routine': '루틴 추가',
+  'Bring another routine into this session': '이 세션에 다른 루틴 가져오기',
+  'Deload 1RM (%)': '디로드 1RM (%)',
+  'Enter a positive step to use this progression rule.': '이 점진적 증가 규칙을 사용하려면 양수 단계를 입력하세요.',
+  'Exercise': '운동',
+  'Layout': '레이아웃',
+  'No exercises yet.': '아직 운동이 없습니다.',
 }

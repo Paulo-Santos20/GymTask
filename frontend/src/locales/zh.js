@@ -1209,4 +1209,12 @@ export default {
   '{0} %': '{0}%',
   '{0} MB': '{0} MB',
   'Checksum not available — not installing': '校验和不可用，已取消安装',
+  // --- combine routines / layout / deload (v1.3.6) ---
+  'Add routine': '添加训练日',
+  'Bring another routine into this session': '把另一个训练日并入本次训练',
+  'Deload 1RM (%)': '减量 1RM (%)',
+  'Enter a positive step to use this progression rule.': '请输入一个正数步长以使用此进阶规则。',
+  'Exercise': '动作',
+  'Layout': '布局',
+  'No exercises yet.': '还没有动作。',
 }

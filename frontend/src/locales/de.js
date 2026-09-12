@@ -1229,4 +1229,12 @@ export default {
   '{0} %': '{0} %',
   '{0} MB': '{0} MB',
   'Checksum not available — not installing': 'Prüfsumme nicht verfügbar — Installation abgebrochen',
+  // --- combine routines / layout / deload (v1.3.6) ---
+  'Add routine': 'Routine hinzufügen',
+  'Bring another routine into this session': 'Eine weitere Routine in diese Einheit holen',
+  'Deload 1RM (%)': 'Deload-1RM (%)',
+  'Enter a positive step to use this progression rule.': 'Gib einen positiven Schritt ein, um diese Progressionsregel zu nutzen.',
+  'Exercise': 'Übung',
+  'Layout': 'Layout',
+  'No exercises yet.': 'Noch keine Übungen.',
 }
