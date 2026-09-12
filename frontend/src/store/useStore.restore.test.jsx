@@ -75,7 +75,29 @@ describe('saved workout state sync and restore', () => {
     expect(useStore.getState().S.routines.map(r => r.id)).toEqual(['local'])
   })
 
-  it('pushes local data instead of overwriting a dirty local state', async () => {
+  // A dirty copy is one the server has not seen yet — not one that outranks the server's. With a
+  // revision in the answer the two are merged and the merge is pushed against that revision.
+  it('merges a dirty local state with the server copy and pushes the merge', async () => {
+    const local = { ...clone(DEF), _ts: 10, routines: [routine('local')] }
+    const remote = { ...clone(DEF), _ts: 20, routines: [routine('remote')], _rev: 3 }
+    localStorage.setItem('gym_dirty', '1')
+    useStore.setState({ S: local, user: { id: 'user-1' }, ready: true })
+    api.mockResolvedValueOnce({ state: remote, rev: 3 }).mockResolvedValueOnce({ ok: true, rev: 4 })
+
+    await useStore.getState().pullState()
+
+    expect(api).toHaveBeenCalledTimes(2)
+    const put = JSON.parse(api.mock.calls[1][1].body)
+    expect(put.baseRev).toBe(3)
+    expect(put.state.routines.map(r => r.id).sort()).toEqual(['local', 'remote'])
+    expect(useStore.getState().S.routines.map(r => r.id).sort()).toEqual(['local', 'remote'])
+    expect(localStorage.getItem('gym_dirty')).toBeNull()
+    expect(JSON.parse(localStorage.getItem('gym_sync'))).toEqual({ rev: 4, ts: useStore.getState().S._ts })
+  })
+
+  // A server from before revisions answers without one; then the old rule holds and the dirty
+  // copy is pushed as it is.
+  it('pushes a dirty local state as-is to a server without revisions', async () => {
     const local = { ...clone(DEF), _ts: 10, routines: [routine('local')] }
     const remote = { ...clone(DEF), _ts: 20, routines: [routine('remote')] }
     localStorage.setItem('gym_dirty', '1')

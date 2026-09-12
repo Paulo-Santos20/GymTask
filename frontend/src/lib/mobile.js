@@ -163,6 +163,16 @@ export function initReminderSync(getState) {
   }).catch(() => {})
 }
 
+// Runs cb whenever the native shell returns to the foreground — the store pulls the account's
+// state then, so a phone that sat in a pocket all afternoon shows what the desktop did. No-op
+// off mobile; the store's own visibility/focus listeners cover the browser.
+export function onAppActive(cb) {
+  if (!MOBILE) return
+  import('@capacitor/app').then(({ App }) => {
+    App.addListener('appStateChange', ({ isActive }) => { if (isActive) cb() })
+  }).catch(() => {})
+}
+
 // WKWebView can't do blob-URL downloads, so the backup goes out through the OS share sheet
 // (Files, AirDrop, mail, …) from a temp file instead.
 export async function shareExport(json, filename) {

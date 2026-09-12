@@ -5,13 +5,20 @@ import { t } from '../lib/i18n.js'
 import { registerCustom } from '../lib/exercises.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { guestAllowed } from '../lib/guest.js'
-import { MOBILE, initReminderSync, nativeLoad, nativeSave, syncReminder, writeAutoBackup } from '../lib/mobile.js'
+import { MOBILE, initReminderSync, nativeLoad, nativeSave, onAppActive, syncReminder, writeAutoBackup } from '../lib/mobile.js'
+import { mergeStates } from '../lib/sync-merge.js'
 import { loadRemote, chooseLocal, forgetRemote, connect } from '../lib/remote.js'
 import { loadCoachDevice, saveCoachDevice, coachDeviceSettings } from '../lib/coach-device.js'
 
 import { WC_DEFAULT } from '../lib/workout-controls.js'
 
 const KEY = 'gym_state_v1'
+// Where this device stands with the server: the revision it last adopted or pushed, and its own
+// `_ts` at that moment. `rev` goes back to the server as `baseRev` on every push, so a write over
+// a document this device never saw is refused (409) instead of dropping another device's work;
+// `ts` tells a pull whether anything changed here since. See pushState/pullState.
+const SYNC_KEY = 'gym_sync'
+const PULL_MIN_MS = 15000   // resume pulls closer together than this are noise, not news
 export const DEF = {
   unit: 'kg', restSec: 90, restPauseSec: 15, sound: true, timerFlash: false, keepAwake: true, lang: 'en',
   theme: 'dark', accent: 'lime', body: 'male', targetW: null,
@@ -94,6 +101,15 @@ export const useStore = create((set, get) => {
   let pushTm = null
   let saveTm = null
   let toldTooLarge = false
+  let pushing = null       // the PUT in flight, so a second push waits for it instead of racing it
+  let pushAgain = false    // a push asked for while one was in flight — run once more after it
+  let pulling = null       // the GET in flight, so two resume signals make one request
+  let pushPending = false  // a change made before boot's pull — pushed once boot is through
+  let forceNext = false    // the next push replaces the server copy outright (import, reset)
+  let lastPull = 0
+
+  const readSync = () => { try { return JSON.parse(localStorage.getItem(SYNC_KEY)) || null } catch { return null } }
+  const writeSync = (rev, ts) => localStorage.setItem(SYNC_KEY, JSON.stringify({ rev, ts: ts || 0 }))
 
   initReminderSync(() => get().S)
 
@@ -115,8 +131,88 @@ export const useStore = create((set, get) => {
     set({ S })
     if (MOBILE) nativePersist()
     if (push && get().user) {
+      // Before boot has pulled, the copy in hand may be older than the server's: a push now
+      // would carry it with a stale (or no) baseRev. It waits for finishBoot.
+      if (!get().ready) { pushPending = true; return }
       clearTimeout(pushTm)
       pushTm = setTimeout(() => get().pushState(), 1500)
+    }
+  }
+  // Boot's last step: from here on changes push, and one made during boot goes now.
+  const finishBoot = (extra = {}) => {
+    set({ ready: true, ...extra })
+    if (pushPending && get().user) {
+      clearTimeout(pushTm)
+      pushTm = setTimeout(() => get().pushState(), 1500)
+    }
+    pushPending = false
+  }
+
+  // The other side of the hidden-tab flush below: coming back — to the tab, the window, the app,
+  // the network — asks the server what happened meanwhile. A phone that sat in a pocket all
+  // afternoon and a desktop tab left open all week used to show, and then push, whatever they
+  // last had; now they catch up first. Throttled, since focus and visibility fire together.
+  const resumePull = (force = false) => {
+    if (!get().user || !get().ready || document.visibilityState === 'hidden') return
+    if (!force && Date.now() - lastPull < PULL_MIN_MS) return
+    get().pullState()
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') resumePull() })
+  window.addEventListener('focus', () => resumePull())
+  window.addEventListener('pageshow', e => { if (e.persisted) resumePull() })
+  window.addEventListener('online', () => resumePull(true))   // also retries a push that failed offline
+  onAppActive(() => resumePull())
+
+  // Both copies changed: keep both sides' entries, let the newer copy decide the rest
+  // (lib/sync-merge.js), and remember the server's revision so the push that follows is
+  // conditional on exactly the document that was merged. The merged copy is stamped — it is a
+  // real change this device now holds — while `ts` in the marker stays old, so a pull that
+  // happens before the push lands still sees it as unsent.
+  const mergeInto = (local, remote, rev) => {
+    const merged = Object.assign(clone(DEF), mergeStates(local, remote))
+    merged.active = local.active || null
+    persist(merged, false)
+    writeSync(rev, readSync()?.ts || 0)
+  }
+  // Take the server's copy as this device's own, timestamp and all (see persist).
+  const adopt = (next, rev) => { persist(next, false, false); writeSync(rev, next._ts) }
+
+  const doPush = async (attempt = 0) => {
+    const S = get().S
+    const sync = readSync()
+    const force = forceNext
+    const body = { state: S }
+    if (!force && sync) body.baseRev = sync.rev
+    try {
+      const r = await api('/api/data', { method: 'PUT', body: JSON.stringify(body) })
+      if (force) forceNext = false
+      // A server from before revisions answers without one — then there is nothing to hold the
+      // next push to, and the marker must not pretend otherwise.
+      if (r.rev == null) localStorage.removeItem(SYNC_KEY)
+      else writeSync(r.rev, S._ts)
+      localStorage.removeItem('gym_dirty')
+      toldTooLarge = false
+    } catch (e) {
+      // A session that is gone is boot's business (/api/me); the copy stays owed to the server.
+      if (e.status === 401) { localStorage.setItem('gym_dirty', '1'); return }
+      if (e.status === 409 && e.data && attempt < 2) {
+        // Another device wrote since this one last read. The server sent its document along;
+        // merge and push once more against that revision. A second refusal in a row leaves the
+        // copy dirty and the next resume pull takes it from there.
+        mergeInto(get().S, e.data.state, e.data.rev || 0)
+        return doPush(attempt + 1)
+      }
+      localStorage.setItem('gym_dirty', '1')
+      // A 413 comes from the proxy in front of the API (nginx: client_max_body_size), which
+      // caps the request body. Every later push is at least as big, so nothing reaches the
+      // server until the limit is raised — said once per refusal streak; gym_dirty keeps the
+      // retries going. useUI imports this store, hence the lazy import.
+      if (e.status === 413 && !toldTooLarge) {
+        toldTooLarge = true
+        import('./useUI.js')
+          .then(({ useUI }) => useUI.getState().toast(t('Sync failed: the server refused the upload as too large. Your changes have not reached the server.')))
+          .catch(() => {})
+      }
     }
   }
 
@@ -161,6 +257,7 @@ export const useStore = create((set, get) => {
     get().setUser(null)
     localStorage.removeItem('gym_guest')
     localStorage.removeItem('gym_dirty')
+    localStorage.removeItem(SYNC_KEY)
     localStorage.removeItem(KEY)
     persist(clone(DEF), false)
     localStorage.removeItem('gym_owner')
@@ -189,7 +286,9 @@ export const useStore = create((set, get) => {
       mut(S)
       persist(S, push)
     },
-    replaceState(S, push = false) { persist(clone(S), push) },
+    // A replace that is meant to reach the server (backup import, reset) is a deliberate
+    // overwrite, not a change to merge: the push it arms goes without a baseRev.
+    replaceState(S, push = false) { if (push) forceNext = true; persist(clone(S), push) },
 
     // Fires after the moments where losing local data would actually hurt — a workout just
     // logged, a routine just edited — not on every keystroke. No-op off mobile or with the
@@ -227,6 +326,7 @@ export const useStore = create((set, get) => {
         const owner = localStorage.getItem('gym_owner')
         if (owner && owner !== u.id) {
           localStorage.removeItem('gym_dirty')
+          localStorage.removeItem(SYNC_KEY)
           localStorage.removeItem(KEY)
           persist(clone(DEF), false)
         }
@@ -236,34 +336,67 @@ export const useStore = create((set, get) => {
       set({ user: u })
     },
 
+    // One PUT at a time: a push asked for while one is in flight runs after it (once, however
+    // many asked), and the promise returned covers that follow-up too, so a caller that awaits
+    // before signing out knows the last change is on the server.
     async pushState() {
       if (!get().user) return
       clearTimeout(pushTm)
-      try { await api('/api/data', { method: 'PUT', body: JSON.stringify({ state: get().S }) }); localStorage.removeItem('gym_dirty'); toldTooLarge = false }
-      catch (e) {
-        localStorage.setItem('gym_dirty', '1')
-        // A 413 comes from the proxy in front of the API (nginx: client_max_body_size), which
-        // caps the request body. Every later push is at least as big, so nothing reaches the
-        // server until the limit is raised — said once per refusal streak; gym_dirty keeps the
-        // retries going. useUI imports this store, hence the lazy import.
-        if (e.status === 413 && !toldTooLarge) {
-          toldTooLarge = true
-          import('./useUI.js')
-            .then(({ useUI }) => useUI.getState().toast(t('Sync failed: the server refused the upload as too large. Your changes have not reached the server.')))
-            .catch(() => {})
-        }
-      }
+      pushTm = null
+      if (pushing) { pushAgain = true; return pushing.then(() => pushing) }
+      pushing = doPush().finally(() => {
+        pushing = null
+        if (pushAgain) { pushAgain = false; get().pushState() }
+      })
+      return pushing
     },
+    // Ask the server for its copy and settle the difference. Coalesced, and a push still waiting
+    // in the debounce goes first — the server's answer is then the one that already includes it,
+    // and the push itself is what catches a conflict.
     async pullState() {
-      try {
-        const { state } = await api('/api/data')
-        const S = get().S
-        const dirty = localStorage.getItem('gym_dirty') === '1'
-        const restored = restoredStateFor(S, state, dirty)
-        if (restored) {
-          persist(restored, false, false)
-        } else if (hasData(S)) { await get().pushState() }
-      } catch (e) { /* offline — keep local */ }
+      if (pulling) return pulling
+      pulling = (async () => {
+        try {
+          if (pushTm) { clearTimeout(pushTm); pushTm = null; await get().pushState() }
+          else if (pushing) await pushing
+          const res = await api('/api/data')
+          lastPull = Date.now()
+          const { state, rev } = res
+          const S = get().S
+          // Owed to the server: a push that failed, or a change made while boot was still pulling.
+          const dirty = localStorage.getItem('gym_dirty') === '1' || pushPending
+          const sync = readSync()
+          // A server from before revisions: the old rule, newer `_ts` wins outright.
+          if (rev == null) {
+            localStorage.removeItem(SYNC_KEY)
+            const restored = restoredStateFor(S, state, dirty)
+            if (restored) persist(restored, false, false)
+            else if (hasData(S)) await get().pushState()
+            return
+          }
+          // No marker yet — first pull on this device, or a client that just learned about
+          // revisions. The newer copy wins as before, except that a copy still owed to the
+          // server (dirty) is merged instead of pushed over whatever is there.
+          if (!sync) {
+            if (dirty && state) { mergeInto(S, state, rev); pushPending = false; await get().pushState(); return }
+            const restored = restoredStateFor(S, state, false)
+            if (restored) adopt(restored, rev)
+            else if (hasData(S)) { writeSync(rev, 0); await get().pushState() }
+            else writeSync(rev, state?._ts || 0)
+            return
+          }
+          const serverMoved = rev !== sync.rev
+          const localChanged = dirty || (S._ts || 0) > (sync.ts || 0)
+          if (!serverMoved) { if (localChanged) await get().pushState(); return }
+          if (!state) { writeSync(rev, 0); if (hasData(S)) await get().pushState(); return }
+          if (!localChanged) { adopt(Object.assign(clone(DEF), state, { active: S.active || null }), rev); return }
+          mergeInto(S, state, rev)
+          pushPending = false
+          await get().pushState()
+        } catch (e) { /* offline — keep local */ }
+        finally { pulling = null }
+      })()
+      return pulling
     },
 
     async signOut() {
@@ -340,7 +473,7 @@ export const useStore = create((set, get) => {
             else get().setUser(remote.user)   // offline — keep going from the last-synced local copy
           }
           syncReminder(get().S)
-          set({ ready: true })
+          finishBoot()
           return
         }
         const saved = await nativeLoad()
@@ -355,7 +488,7 @@ export const useStore = create((set, get) => {
         // Only a genuinely first launch — nothing chosen yet and nothing to lose either — offers
         // the choice. Picking local (even with no data yet) persists that choice below and this
         // never asks again.
-        set({ ready: true, needsMobileOnboarding: !remote && !hasData(get().S) })
+        finishBoot({ needsMobileOnboarding: !remote && !hasData(get().S) })
         return
       }
       // Demo build (GitHub Pages): no backend at all — seed once, stay in guest mode.
@@ -365,7 +498,7 @@ export const useStore = create((set, get) => {
           await get().resetDemo()
         }
         get().setGuest(true)
-        set({ ready: true })
+        finishBoot()
         return
       }
       // Guests never authenticate, so an instance that turned guest mode off has no request to
@@ -387,7 +520,7 @@ export const useStore = create((set, get) => {
       } catch (e) {
         if (e.status === 401) get().setUser(null)
       }
-      set({ ready: true })
+      finishBoot()
     }
   }
 })
