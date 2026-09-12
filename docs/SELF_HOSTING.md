@@ -218,6 +218,13 @@ first run and saved to `./data/vapid.json`, and each user's browser reports its 
 automatically when they turn the reminder on — it fires at their local time, and follows them if
 they travel, regardless of what timezone the server itself runs in.
 
+Where it works: any desktop browser, Android Chrome, and on iOS only the app **added to the Home
+Screen** (Safari in a tab has no Web Push). The Android APK does not use Web Push at all — its
+day reminder is a local notification scheduled on the phone, and rest-timer alerts there only
+sound while the app is in the foreground. A reminder that was due while the server was down or
+restarting is still sent up to 15 minutes late, once; the browser re-registers its subscription
+with the server on every signed-in start, so a subscription the server lost heals itself.
+
 **Keep screen awake** (Settings → *During a workout*) has the same transport requirement: the
 Wake Lock API is only available over HTTPS or on `http://localhost`, so on a plain-LAN-IP
 instance the switch shows as unsupported. Nothing to configure server-side either way, and iOS
@@ -304,6 +311,7 @@ everybody registers again — which is why it pays to settle the domain before o
 | Port 8080 already used | Set `WEB_PORT=9090` in `.env` (and update `ORIGIN` for local testing). |
 | No "Notifications" option in Settings | Requires a signed-in profile and HTTPS (or `localhost`) — guest mode and plain HTTP over LAN can't subscribe. |
 | Day reminder fires at the wrong time | Toggle it off and on in Settings so it re-detects your browser's timezone (also happens automatically on every app load — see section 7). |
+| Notifications switch is off although I turned it on | The server no longer holds the subscription (rebuilt `data/db.json`, regenerated `vapid.json`); the app re-registers on the next start, or switch it on again. On iOS, push only works from the Home Screen icon. |
 | Want to reset a stuck login | Delete the cookie in your browser; sessions are just signed cookies. |
 | `docker compose pull` fails with "denied" / "unauthorized" | The prebuilt images aren't published yet, or need to be, or the GHCR package is still private — build from source instead (`docker compose up -d --build`). |
 | Exercise images/GIFs blank when a routine is open | Fixed in current images (issue #79). On an older build, see the note below. |
