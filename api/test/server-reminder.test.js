@@ -42,7 +42,7 @@ async function startServer(t, subs = []) {
   const port = await freePort();
   const child = spawn(process.execPath, ['server.js'], {
     cwd: API, stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, ORIGIN: 'http://localhost:8080', RP_ID: 'localhost' }
+    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, ORIGIN: 'http://localhost:8080', RP_ID: 'localhost', REMINDER_TICK_MS: '300' }
   });
   const h = { api: `http://127.0.0.1:${port}`, dataDir, child, log: '' };
   child.stdout.on('data', d => h.log += d);
@@ -112,4 +112,54 @@ test('a non-array workouts on disk is logged and skipped by the reminder tick; t
   assert.equal((await fetch(`${h.api}/api/health`)).status, 200);
   const db = JSON.parse(fs.readFileSync(path.join(h.dataDir, 'db.json'), 'utf8'));
   assert.ok(db.users.find(u => u.id === 'u_test_2').lastReminder, 'the good user\'s reminder was recorded');
+});
+
+/* The catch-up window. The tick used to want the exact minute — an API restart or a stalled
+   tick across those 60 s lost the whole day's reminder. A reminder is now owed for 15 minutes
+   after its time, once per local date, and not later than that. */
+const hhmmMinusMinutes = m => {
+  const d = new Date(Date.now() - m * 60000);
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', hour12: false, hour: '2-digit', minute: '2-digit' }).formatToParts(d);
+  const g = type => parts.find(p => p.type === type)?.value;
+  return { hhmm: `${g('hour')}:${g('minute')}`, sameDay: d.getUTCDate() === new Date().getUTCDate() };
+};
+const goodState = (time, over = {}) => JSON.stringify({
+  reminder: { on: true, time, tz: 'UTC' },
+  routines: [{ id: 'r1', name: 'Full body', emoji: '💪', ex: [] }],
+  week: { 0: 'r1', 1: 'r1', 2: 'r1', 3: 'r1', 4: 'r1', 5: 'r1', 6: 'r1' },
+  workouts: [], ...over
+});
+const sub = { userId: 'u_test_1', endpoint: 'https://localhost/x', keys: { p256dh: 'p', auth: 'a' }, created: new Date().toISOString() };
+const firings = log => (log.match(/reminder firing u_test_1 r1/g) || []).length;
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+test('a reminder whose minute passed 3 minutes ago still fires — once', async t => {
+  const late = hhmmMinusMinutes(3);
+  if (!late.sameDay) return t.skip('just after midnight UTC — a same-day window cannot be set up');
+  const h = await startServer(t, [sub]);
+  fs.writeFileSync(path.join(h.dataDir, 'state-u_test_1.json'), goodState(late.hhmm));
+  const deadline = Date.now() + 30000;
+  while (Date.now() < deadline && !firings(h.log)) await wait(300);
+  assert.equal(firings(h.log), 1, h.log);
+  // several more ticks: the date-level dedupe holds inside the window
+  await wait(1500);
+  assert.equal(firings(h.log), 1, 'fired again inside the window');
+  const db = JSON.parse(fs.readFileSync(path.join(h.dataDir, 'db.json'), 'utf8'));
+  assert.ok(db.users.find(u => u.id === 'u_test_1').lastReminder, 'the day is recorded');
+});
+
+test('a reminder 20 minutes past is not delivered late, and a day already trained is skipped', async t => {
+  const stale = hhmmMinusMinutes(20);
+  const late = hhmmMinusMinutes(2);
+  if (!stale.sameDay || !late.sameDay) return t.skip('just after midnight UTC — a same-day window cannot be set up');
+  const h = await startServer(t, [sub]);
+  const file = path.join(h.dataDir, 'state-u_test_1.json');
+  fs.writeFileSync(file, goodState(stale.hhmm));
+  await wait(1500);   // several ticks
+  assert.equal(firings(h.log), 0, `20 minutes late must stay silent:\n${h.log}`);
+  // inside the window but today's workout is already logged
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  fs.writeFileSync(file, goodState(late.hhmm, { workouts: [{ id: 'w1', d: today }] }));
+  await wait(1500);
+  assert.equal(firings(h.log), 0, `a trained day must stay silent:\n${h.log}`);
 });

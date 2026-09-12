@@ -185,8 +185,12 @@ function pushEndpointError(raw) {
   return null;
 }
 
-async function sendPush(userId, payload) {
-  const subs = db.subs.filter(s => s.userId === userId);
+// `deviceId` narrows the send to the subscriptions one browser registered (the rest-timer alert
+// belongs to the device that started the rest); a subscription stored without one — an older
+// client — still gets everything, as before.
+async function sendPush(userId, payload, deviceId) {
+  let subs = db.subs.filter(s => s.userId === userId);
+  if (deviceId && subs.some(s => s.deviceId === deviceId)) subs = subs.filter(s => s.deviceId === deviceId);
   if (!subs.length) return;
   const body = JSON.stringify(payload);
   let dirty = false;
@@ -212,7 +216,11 @@ async function sendPush(userId, payload) {
           { urgency: 'high', timeout: PUSH_TIMEOUT_MS, agent: PUSH_AGENT });
       } catch (e) {
         console.error('push send failed', userId, e.statusCode, e.body || e.message);
-        if (e.statusCode === 404 || e.statusCode === 410) {
+        // 404/410: the push service says the subscription is gone. 403: it refuses our VAPID
+        // signature — a subscription made against a key this instance no longer has (data/vapid.json
+        // regenerated). Neither will ever deliver again; keeping them only hides the fact from the
+        // Settings toggle, which reads the browser's side. The client re-subscribes on its next boot.
+        if (e.statusCode === 404 || e.statusCode === 410 || e.statusCode === 403) {
           db.subs = db.subs.filter(s => s.endpoint !== sub.endpoint); dirty = true;
         }
       }
@@ -224,19 +232,30 @@ async function sendPush(userId, payload) {
 
 // Rest-timer alerts: client schedules on start/extend, cancels on skip or on-screen completion —
 // this only fires when the tab was backgrounded/suspended and never got to cancel it itself.
-const restTimers = new Map(); // userId -> Timeout
-function scheduleRestTimer(userId, sec, lang) {
-  const t = restTimers.get(userId);
+// One timer per device, not per account: a phone resting in the gym and a desktop tab at home
+// each carry their own, so the tab's on-screen completion (which cancels) cannot silence the
+// phone's alert. A client that sends no device id gets the old account-wide behaviour.
+// In memory only — an API restart drops whatever is pending.
+const restTimers = new Map(); // `${userId}:${deviceId}` -> Timeout
+const restKey = (userId, deviceId) => `${userId}:${deviceId || ''}`;
+function scheduleRestTimer(userId, deviceId, sec, lang) {
+  const k = restKey(userId, deviceId);
+  const t = restTimers.get(k);
   if (t) clearTimeout(t);
-  restTimers.set(userId, setTimeout(() => {
-    restTimers.delete(userId);
-    sendPush(userId, restTimerPush(lang));
+  restTimers.set(k, setTimeout(() => {
+    restTimers.delete(k);
+    sendPush(userId, restTimerPush(lang), deviceId);
   }, sec * 1000));
 }
-function cancelRestTimer(userId) {
-  const t = restTimers.get(userId);
-  if (t) { clearTimeout(t); restTimers.delete(userId); }
+function cancelRestTimer(userId, deviceId) {
+  // no device id: an older client — clear everything the account has pending, as it always did
+  for (const [k, t] of restTimers) {
+    if (deviceId ? k === restKey(userId, deviceId) : k.startsWith(userId + ':')) { clearTimeout(t); restTimers.delete(k); }
+  }
 }
+// A device id is what the browser made up for itself (lib/push.js): one short token per browser
+// profile, nothing identifying. Anything else is treated as absent.
+const deviceIdOf = v => (typeof v === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(v) ? v : undefined);
 
 // "Workout planned today" reminder — one per user per day, at their chosen time.
 // Duplicated (not imported) from frontend/src/lib/history.js effectiveRoutineId — tiny pure helper, not worth sharing across the two runtimes.
@@ -263,6 +282,34 @@ function userNow(tz) {
     return { date, hhmm: `${g('hour')}:${g('minute')}`, weekday: new Date(date + 'T12:00:00Z').getUTCDay() };
   } catch { return null; } // unknown/invalid tz string — skip this user rather than guess
 }
+// The tick used to want the exact minute: `reminder.time === now.hhmm`, checked every 10 s. Any
+// restart, redeploy or stalled event loop across that one minute lost the whole day's reminder —
+// "sometimes it just doesn't come". A reminder that is due is now sent for up to this many
+// minutes after its time, once per local date (`user.lastReminder`); later than that it is
+// skipped rather than delivered at a time nobody asked for.
+const REMINDER_WINDOW_MIN = 15;
+// How often the tick looks. 10 s keeps a reminder within ~9 s of its minute; the tests shorten it.
+const REMINDER_TICK_MS = Math.max(50, +(process.env.REMINDER_TICK_MS || 10000));
+const hhmmToMin = v => {
+  const m = /^(\d{2}):(\d{2})$/.exec(v || '');
+  return m ? Number(m[1]) * 60 + Number(m[2]) : NaN;
+};
+// Minutes since the reminder's time on the user's clock; negative before it, NaN when either
+// side does not parse. Same-day only — a 23:55 reminder is not owed at 00:05 the next day.
+const minutesLate = (time, now) => hhmmToMin(now.hhmm) - hhmmToMin(time);
+// The tick reads every subscribed user's state file every 10 s. Most of those files do not
+// change between ticks; a stat is far cheaper than a read and a parse of a state that can be
+// megabytes, and it keeps the tick short — a slow tick was one more way to miss the minute.
+const stateCache = new Map(); // uid -> { mtimeMs, size, S }
+function readStateCached(uid) {
+  let st;
+  try { st = fs.statSync(stateFile(uid)); } catch { stateCache.delete(uid); return null; }
+  const hit = stateCache.get(uid);
+  if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return hit.S;
+  const S = readState(uid);
+  stateCache.set(uid, { mtimeMs: st.mtimeMs, size: st.size, S });
+  return S;
+}
 setInterval(() => {
   for (const user of db.users) {
     if (!db.subs.some(s => s.userId === user.id)) continue;
@@ -270,10 +317,12 @@ setInterval(() => {
     // skipped, not allowed to take the process — and everyone else's reminders — down with it.
     // PUT /api/data refuses the obvious shapes, but a file already on disk answers to nobody.
     try {
-      const S = readState(user.id);
+      const S = readStateCached(user.id);
       if (!S?.reminder?.on) continue;
       const now = userNow(S.reminder.tz || 'UTC');
-      if (!now || S.reminder.time !== now.hhmm) continue;
+      if (!now) continue;
+      const late = minutesLate(S.reminder.time, now);
+      if (!(late >= 0 && late <= REMINDER_WINDOW_MIN)) continue;
       if (user.lastReminder === now.date) continue;
       if ((S.workouts || []).some(w => w.d === now.date)) continue;
       const rid = effectiveRoutineId(S, now.date);
@@ -289,7 +338,7 @@ setInterval(() => {
   }
 // Checked every 10s (not 60s) — ticks aren't aligned to the top of the minute, so a 60s
 // interval could sit on your target minute for up to 59s before noticing. 10s caps that at ~9s.
-}, 10000).unref();
+}, REMINDER_TICK_MS).unref();
 
 /* ---------- sessions (signed cookie) ---------- */
 function sign(payload) {
@@ -848,6 +897,11 @@ const routes = {
     // Only the two keys the push protocol needs are kept: `sub` is caller-supplied and would
     // otherwise put arbitrary fields into db.json, which every admin route reads back out.
     const keys = { p256dh: String(sub.keys.p256dh), auth: String(sub.keys.auth) };
+    const deviceId = deviceIdOf(body.deviceId);
+    // An upsert: the client re-sends its subscription on every boot (lib/push.js) so a row this
+    // instance lost — pruned after a dead send, a rebuilt db.json — comes back without anyone
+    // touching Settings. The same endpoint sent again keeps its original `created`.
+    const prev = db.subs.find(s => s.endpoint === sub.endpoint);
     db.subs = db.subs.filter(s => s.endpoint !== sub.endpoint);
     // A browser holds one subscription per device, so this cap is far above real use. Without
     // it a single account could pile up endpoints without limit — every one of them a target
@@ -857,9 +911,19 @@ const routes = {
       const drop = new Set(mine.slice(0, mine.length - MAX_SUBS_PER_USER + 1).map(s => s.endpoint));
       db.subs = db.subs.filter(s => !drop.has(s.endpoint));
     }
-    db.subs.push({ userId: user.id, endpoint: sub.endpoint, keys, created: new Date().toISOString() });
+    db.subs.push({ userId: user.id, endpoint: sub.endpoint, keys, ...(deviceId ? { deviceId } : {}), created: prev?.created || new Date().toISOString() });
     saveDb();
     json(res, 200, { ok: true });
+  },
+
+  // Whether this instance still holds the caller's subscription for `endpoint`. The browser's
+  // side (PushManager.getSubscription) says nothing about ours — a row pruned after a dead send
+  // leaves the browser subscribed to nowhere — so Settings asks here before it shows "on".
+  'GET /api/push/status': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    const endpoint = new URL(req.url, 'http://x').searchParams.get('endpoint') || '';
+    json(res, 200, { subscribed: db.subs.some(s => s.userId === user.id && s.endpoint === endpoint) });
   },
 
   'POST /api/push/unsubscribe': async (req, res) => {
@@ -884,14 +948,15 @@ const routes = {
     const body = await readBody(req);
     const sec = Math.max(1, Math.min(3600, Math.round(+body.seconds || 0)));
     if (!sec) return json(res, 400, { error: 'seconds required' });
-    scheduleRestTimer(user.id, sec, readState(user.id)?.lang);
+    scheduleRestTimer(user.id, deviceIdOf(body.deviceId), sec, readState(user.id)?.lang);
     json(res, 200, { ok: true });
   },
 
   'POST /api/push/rest-timer/cancel': async (req, res) => {
     const user = readSession(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
-    cancelRestTimer(user.id);
+    const body = await readBody(req);
+    cancelRestTimer(user.id, deviceIdOf(body.deviceId));
     json(res, 200, { ok: true });
   },
 

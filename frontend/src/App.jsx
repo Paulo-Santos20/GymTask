@@ -10,6 +10,8 @@ import { initBackButton } from './lib/back.js'
 import { useWakeLock } from './lib/wakelock.js'
 import { installViewportGuard } from './lib/viewport-guard.js'
 import { installChipDrag } from './lib/hchips.js'
+import { syncPushSubscription } from './lib/push.js'
+import { MOBILE } from './lib/mobile.js'
 import { startFlow } from './sheets.jsx'
 import Icon from './components/Icon.jsx'
 import TabBar from './components/TabBar.jsx'
@@ -84,6 +86,13 @@ function Shell() {
   // Click-drag a horizontal chip strip to scroll it sideways (lib/hchips.js) — on a desktop
   // browser there's otherwise no way to reach the filters past the edge.
   useEffect(() => installChipDrag(), [])
+  // Once per signed-in boot, hand the server this browser's push subscription again (see
+  // lib/push.js): a subscription the instance lost is back before the next reminder is due,
+  // with nobody having to visit Settings. Web only — the APK has no service worker.
+  useEffect(() => {
+    if (MOBILE || !user || !ready) return
+    syncPushSubscription().catch(() => {})
+  }, [user?.id, ready])
   useEffect(() => {
     const onScroll = () => {
       // Modals pins the body while a sheet is open; scrollY is 0 then, not a position.

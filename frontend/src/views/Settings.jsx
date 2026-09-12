@@ -7,7 +7,7 @@ import { useUI } from '../store/useUI.js'
 import { ACCENTS, todayISO, localTZ, weekStartOf, MONDAY, SUNDAY } from '../lib/format.js'
 import { effortOf } from '../lib/history.js'
 import { api, webauthnOK, passkeyLogin, passkeyRegister, IS_ANDROID } from '../lib/api.js'
-import { pushSupported, enablePush, disablePush, sendTestPush } from '../lib/push.js'
+import { pushSupported, enablePush, disablePush, sendTestPush, syncPushSubscription } from '../lib/push.js'
 import { wakeLockSupported } from '../lib/wakelock.js'
 import { t, LANGS, INSTR_LANGS } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
@@ -544,9 +544,17 @@ function PushCard({ S, update, toast }) {
   const [busy, setBusy] = useState(false)
   const supported = pushSupported()
 
+  // "On" means the server holds this browser's subscription, not merely that the browser has
+  // one: a row the instance dropped (dead send, rebuilt db.json) left the switch on with nothing
+  // ever arriving. syncPushSubscription re-registers on the way; if the server cannot be asked
+  // (offline), the browser's side is the best answer available.
   useEffect(() => {
     if (!supported) return
-    navigator.serviceWorker.ready.then(reg => reg.pushManager.getSubscription()).then(sub => setOn(!!sub)).catch(() => {})
+    let gone = false
+    syncPushSubscription()
+      .then(ok => { if (!gone) setOn(ok) })
+      .catch(() => navigator.serviceWorker.ready.then(reg => reg.pushManager.getSubscription()).then(sub => { if (!gone) setOn(!!sub) }).catch(() => {}))
+    return () => { gone = true }
   }, [supported])
 
   const toggle = async v => {
