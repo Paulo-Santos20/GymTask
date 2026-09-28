@@ -1,4 +1,5 @@
-/* opengym-api — passkey (WebAuthn) auth + per-user state storage for openGym
+/* gytask-api — session-authenticated per-user state storage for GymTask
+   (derived from openGym).
    No framework, JSON-file storage, signed session cookies.               */
 import http from 'node:http';
 import crypto from 'node:crypto';
@@ -7,10 +8,6 @@ import path from 'node:path';
 import https from 'node:https';
 import dns from 'node:dns';
 import net from 'node:net';
-import {
-  generateRegistrationOptions, verifyRegistrationResponse,
-  generateAuthenticationOptions, verifyAuthenticationResponse
-} from '@simplewebauthn/server';
 import webpush from 'web-push';
 import * as coachConfig from './coach/config.js';
 import * as coachJobs from './coach/jobs.js';
@@ -18,13 +15,10 @@ import { coachRoutes } from './coach/routes.js';
 import { startCadence } from './coach/cadence.js';
 import { startWarmup } from './coach/warmup.js';
 import { dayReminderPush, restTimerPush, testPush } from './push-messages.js';
-import { verifyError } from './verify-error.js';
 
 const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
-const RP_ID = process.env.RP_ID || 'localhost';
 const ORIGIN = process.env.ORIGIN || 'http://localhost:8080';
-const RP_NAME = process.env.RP_NAME || 'GymTask';
 // Guest mode ("Continue without account") keeps everything in the browser and never touches this
 // server. Default ON so existing instances are unchanged — the safe default is the permissive one.
 const ALLOW_GUEST = !/^(0|false|no|off)$/i.test(process.env.ALLOW_GUEST || '');
@@ -62,8 +56,9 @@ let db = { users: [], creds: [], subs: [] };
 try { db = JSON.parse(fs.readFileSync(dbFile, 'utf8')); } catch {}
 db.subs = db.subs || [];
 delete db.invites;   // invite codes are gone; strip them from an upgraded db.json on load
-// 0600: db.json holds passkey credential material. It used to be covered by a blanket 0700 on
-// the whole directory; now that the directory stays traversable, the file carries its own mode.
+// 0600: db.json holds account, credential and subscription records. It used to be covered by a
+// blanket 0700 on the whole directory; now that the directory stays traversable, the file
+// carries its own mode.
 function saveDb() { atomicWrite(dbFile, JSON.stringify(db, null, 2), 0o600); }
 function atomicWrite(file, content, mode) {
   const tmp = file + '.tmp';
@@ -363,10 +358,6 @@ function verifySig(token) {
 // signing out the whole instance. Cookies minted before `sv` existed have no third field and are
 // read as version 0, matching a user who has never bumped — they stay valid until they expire.
 const sessionVersion = user => user.sv || 0;
-function makeSession(user) {
-  const exp = Date.now() + SESSION_DAYS * 86400000;
-  return sign(user.id + ':' + exp + ':' + sessionVersion(user));
-}
 // With the __Host- prefix the *browser* guarantees the cookie is host-only (no Domain attribute
 // is even allowed) — which is what stops a sibling subdomain, e.g. anything-else.example.com
 // against gym.example.com, from planting a second session cookie for the shared parent domain
@@ -401,8 +392,8 @@ function cookieToken(req) {
   return null;
 }
 function readSession(req) {
-  // The paired mobile app has no cookie jar shared with the API's origin, so it carries the same
-  // signed token in an Authorization header instead — same payload, same verification below.
+  // Besides the cookie, the same signed token is accepted in an Authorization header — same
+  // payload, same verification below.
   const auth = req.headers.authorization || '';
   const tok = cookieToken(req) || (auth.startsWith('Bearer ') ? auth.slice(7).trim() : null);
   if (!tok) return null;
@@ -420,12 +411,6 @@ function readSession(req) {
   return user;
 }
 const expireCookie = name => `${name}=; Path=/; Max-Age=0; HttpOnly;${SECURE} SameSite=Lax`;
-function sessionCookie(user) {
-  const fresh = `${COOKIE}=${makeSession(user)}; Path=/; Max-Age=${SESSION_DAYS * 86400}; HttpOnly;${SECURE} SameSite=Lax`;
-  // Signing in also retires any pre-upgrade cookie, so nobody is left carrying an unprefixed one
-  // (or a shadowing copy of it) alongside the new session.
-  return COOKIE === LEGACY_COOKIE ? [fresh] : [fresh, expireCookie(LEGACY_COOKIE)];
-}
 const clearCookie = COOKIE === LEGACY_COOKIE
   ? [expireCookie(LEGACY_COOKIE)]
   : [expireCookie(COOKIE), expireCookie(LEGACY_COOKIE)];
@@ -438,21 +423,12 @@ const clearCookie = COOKIE === LEGACY_COOKIE
 // Content-Type claims, so a hostile page could reach the state-changing routes with a form-style
 // POST that needs no CORS preflight at all.
 //
-// So a state-changing request that came from a browser has to come from ORIGIN. The exemptions
-// below are not holes: each of those routes carries its own credential in the body (a WebAuthn
-// challenge id, a one-shot pairing code), none of them acts on the caller's existing session, and
-// they have to keep working from the mobile WebView, whose origin is never ORIGIN.
-const CSRF_EXEMPT = new Set([
-  'POST /api/register/options', 'POST /api/register/verify',
-  'POST /api/login/options', 'POST /api/login/verify',
-  'POST /api/pair/redeem'
-]);
+// So a state-changing request that came from a browser has to come from ORIGIN.
 const originsMatch = (a, b) => a.replace(/\/+$/, '') === b.replace(/\/+$/, '');
 function csrfOk(req, key) {
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return true;
-  if (CSRF_EXEMPT.has(key)) return true;
-  // The paired mobile app authenticates with a Bearer token. A browser never attaches one on its
-  // own, so there is no ambient authority for a hostile page to borrow and no origin to check.
+  // A Bearer token is attached deliberately — a browser never sends one on its own, so there is
+  // no ambient authority for a hostile page to borrow and no origin to check.
   if ((req.headers.authorization || '').startsWith('Bearer ')) return true;
   // Sec-Fetch-Site is set by the browser itself and no page can forge it, and it states exactly
   // the property wanted here — more precisely than comparing origins can. 'same-origin' is the
@@ -469,36 +445,6 @@ function csrfOk(req, key) {
   if (!origin) return true;
   return originsMatch(origin, ORIGIN);
 }
-
-/* ---------- challenge store (in-memory, 5 min TTL) ---------- */
-const challenges = new Map(); // cid -> {challenge, name?, uid?, exp}
-function putChallenge(data) {
-  const cid = crypto.randomBytes(16).toString('base64url');
-  challenges.set(cid, { ...data, exp: Date.now() + 5 * 60000 });
-  return cid;
-}
-function takeChallenge(cid) {
-  const c = challenges.get(cid);
-  challenges.delete(cid);
-  if (!c || c.exp < Date.now()) return null;
-  return c;
-}
-setInterval(() => { for (const [k, v] of challenges) if (v.exp < Date.now()) challenges.delete(k); }, 60000).unref();
-
-// ---------- device pairing (mobile app "connect to my server", no WebAuthn ceremony) ----------
-// A passkey ceremony can't run inside the app's WebView (its origin never matches RP_ID), so the
-// app authenticates by redeeming a short code minted from an already signed-in browser tab —
-// same 5-min-TTL/one-shot shape as the WebAuthn challenge store above.
-const pairings = new Map(); // code -> {uid, exp}
-const PAIR_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I — read off a screen
-function makePairCode() {
-  let code;
-  do {
-    code = Array.from(crypto.randomBytes(8)).map(b => PAIR_CODE_ALPHABET[b % PAIR_CODE_ALPHABET.length]).join('');
-  } while (pairings.has(code));
-  return code;
-}
-setInterval(() => { for (const [k, v] of pairings) if (v.exp < Date.now()) pairings.delete(k); }, 60000).unref();
 
 /* ---------- helpers ---------- */
 function json(res, code, obj, extraHeaders) {
@@ -553,7 +499,6 @@ function readBody(req) {
 // A caller-supplied field that is meant to be text. String() alone is not safe on a parsed body:
 // `{"code":{"toString":1}}` is valid JSON and String() throws on it.
 const text = v => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '');
-const b64uToBuf = s => Buffer.from(s, 'base64url');
 
 /* ---------- live presence (in-memory) ---------- */
 // Clients heartbeat /api/activity while a workout is on screen. Purely ephemeral — never
@@ -675,126 +620,6 @@ const routes = {
     json(res, 200, { user: { id: user.id, name: user.name } });
   },
 
-  'POST /api/register/options': async (req, res) => {
-    const body = await readBody(req);
-    const name = text(body.name).trim().slice(0, 40);
-    if (!name) return json(res, 400, { error: 'name required' });
-    const uid = crypto.randomBytes(12).toString('base64url');
-    const options = await generateRegistrationOptions({
-      rpName: RP_NAME, rpID: RP_ID,
-      userID: Buffer.from(uid), userName: name, userDisplayName: name,
-      attestationType: 'none',
-      authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
-      excludeCredentials: []
-    });
-    const cid = putChallenge({ challenge: options.challenge, name, uid });
-    json(res, 200, { cid, options });
-  },
-
-  'POST /api/register/verify': async (req, res) => {
-    const body = await readBody(req);
-    const c = takeChallenge(body.cid);
-    if (!c || !c.uid) {
-      audit(req, 'auth.register.fail', { ok: false, msg: 'challenge-expired' });
-      return json(res, 400, { error: 'challenge expired — try again' });
-    }
-    let verification;
-    try {
-      verification = await verifyRegistrationResponse({
-        response: body.credential,
-        expectedChallenge: c.challenge,
-        expectedOrigin: ORIGIN,
-        expectedRPID: RP_ID,
-        requireUserVerification: false
-      });
-    } catch (e) {
-      // e.message can echo attacker-supplied response fields, so only the reason code is kept.
-      audit(req, 'auth.register.fail', { ok: false, name: c.name, msg: 'verify-error' });
-      return json(res, 400, { error: verifyError(e, { rpId: RP_ID, origin: ORIGIN }) });
-    }
-    if (!verification.verified) {
-      audit(req, 'auth.register.fail', { ok: false, name: c.name, msg: 'not-verified' });
-      return json(res, 400, { error: 'not verified' });
-    }
-    const { credential } = verification.registrationInfo;
-    if (db.creds.find(x => x.id === credential.id)) {
-      audit(req, 'auth.register.fail', { ok: false, name: c.name, msg: 'credential-exists' });
-      return json(res, 409, { error: 'credential already registered' });
-    }
-    const user = { id: c.uid, name: c.name, created: new Date().toISOString() };
-    db.users.push(user);
-    db.creds.push({
-      id: credential.id, userId: user.id,
-      publicKey: Buffer.from(credential.publicKey).toString('base64url'),
-      counter: credential.counter || 0,
-      transports: body.credential?.response?.transports || []
-    });
-    saveDb();
-    audit(req, 'auth.register.ok', { user });
-    json(res, 200, { user: { id: user.id, name: user.name } }, { 'Set-Cookie': sessionCookie(user) });
-  },
-
-  'POST /api/login/options': async (req, res) => {
-    const options = await generateAuthenticationOptions({
-      rpID: RP_ID, userVerification: 'preferred', allowCredentials: []
-    });
-    const cid = putChallenge({ challenge: options.challenge });
-    json(res, 200, { cid, options });
-  },
-
-  'POST /api/login/verify': async (req, res) => {
-    const body = await readBody(req);
-    const c = takeChallenge(body.cid);
-    if (!c) {
-      audit(req, 'auth.login.fail', { ok: false, msg: 'challenge-expired' });
-      return json(res, 400, { error: 'challenge expired — try again' });
-    }
-    const cred = db.creds.find(x => x.id === body.credential?.id);
-    if (!cred) {
-      // No credential id goes in the log: it is a stable handle for one passkey, and recording it
-      // would let anyone correlate an unknown device across attempts. Nothing here identifies
-      // the caller beyond the timestamp (and the network, if AUDIT_IP is on).
-      audit(req, 'auth.login.fail', { ok: false, msg: 'unknown-credential' });
-      return json(res, 404, { error: 'unknown passkey — create a profile first' });
-    }
-    let verification;
-    try {
-      verification = await verifyAuthenticationResponse({
-        response: body.credential,
-        expectedChallenge: c.challenge,
-        expectedOrigin: ORIGIN,
-        expectedRPID: RP_ID,
-        requireUserVerification: false,
-        credential: {
-          id: cred.id,
-          publicKey: b64uToBuf(cred.publicKey),
-          counter: cred.counter,
-          transports: cred.transports
-        }
-      });
-    } catch (e) {
-      audit(req, 'auth.login.fail', { ok: false, user: db.users.find(u => u.id === cred.userId), uid: cred.userId, msg: 'verify-error' });
-      return json(res, 400, { error: verifyError(e, { rpId: RP_ID, origin: ORIGIN }) });
-    }
-    if (!verification.verified) {
-      audit(req, 'auth.login.fail', { ok: false, user: db.users.find(u => u.id === cred.userId), uid: cred.userId, msg: 'not-verified' });
-      return json(res, 400, { error: 'not verified' });
-    }
-    cred.counter = verification.authenticationInfo.newCounter;
-    saveDb();
-    const user = db.users.find(u => u.id === cred.userId);
-    if (!user) {
-      audit(req, 'auth.login.fail', { ok: false, uid: cred.userId, msg: 'user-missing' });
-      return json(res, 500, { error: 'user missing' });
-    }
-    if (user.disabled) {
-      audit(req, 'auth.login.fail', { ok: false, user, msg: 'account-disabled' });
-      return json(res, 403, { error: 'this account has been disabled' });
-    }
-    audit(req, 'auth.login.ok', { user });
-    json(res, 200, { user: { id: user.id, name: user.name } }, { 'Set-Cookie': sessionCookie(user) });
-  },
-
   // Reads the session purely so the sign-out can be recorded; the cookie is cleared either way.
   // A logout with no valid cookie is a no-op and isn't worth an entry.
   'POST /api/logout': async (req, res) => {
@@ -806,47 +631,14 @@ const routes = {
   // "Sign out everywhere" — bumps this user's session version, which invalidates every cookie
   // ever issued for the account, on every device, including a copy someone else walked off with.
   // The caller's own cookie is cleared here too, so the browser doing it doesn't sit on a token
-  // it no longer accepts. Passkeys are untouched: signing back in works immediately.
+  // it no longer accepts. Signing back in afterwards works immediately.
   'POST /api/logout/all': async (req, res) => {
     const user = readSession(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     user.sv = sessionVersion(user) + 1;
-    // An unredeemed pairing code is a session-in-waiting for this account; it goes too.
-    for (const [k, v] of pairings) if (v.uid === user.id) pairings.delete(k);
     saveDb();
     audit(req, 'auth.logout.all', { user });
     json(res, 200, { ok: true }, { 'Set-Cookie': clearCookie });
-  },
-
-  // Mobile app pairing: called from an already signed-in browser tab (Settings → "Pair the
-  // mobile app") to mint a short code the phone can redeem below.
-  'POST /api/pair/create': async (req, res) => {
-    const user = readSession(req);
-    if (!user) return json(res, 401, { error: 'not signed in' });
-    const code = makePairCode();
-    pairings.set(code, { uid: user.id, exp: Date.now() + 5 * 60000 });
-    audit(req, 'auth.pair.create', { user });
-    json(res, 200, { code });
-  },
-
-  // Called from the mobile app itself with the code shown in the browser. No session required —
-  // the code IS the credential, one-shot and 5-minute-lived like a WebAuthn challenge.
-  'POST /api/pair/redeem': async (req, res) => {
-    const body = await readBody(req);
-    const code = text(body.code).trim().toUpperCase();
-    const p = pairings.get(code);
-    if (p) pairings.delete(code);
-    if (!p || p.exp < Date.now()) {
-      audit(req, 'auth.pair.fail', { ok: false, msg: 'code-invalid' });
-      return json(res, 400, { error: 'invalid or expired code' });
-    }
-    const user = db.users.find(u => u.id === p.uid);
-    if (!user || user.disabled) {
-      audit(req, 'auth.pair.fail', { ok: false, uid: p.uid, msg: 'user-unavailable' });
-      return json(res, 400, { error: 'invalid or expired code' });
-    }
-    audit(req, 'auth.pair.ok', { user });
-    json(res, 200, { token: makeSession(user), user: { id: user.id, name: user.name } });
   },
 
   // `rev` is the server's own count of writes to this profile (also stored inside the document as
@@ -1030,9 +822,8 @@ startWarmup();
 
 http.createServer(async (req, res) => {
   // Same-origin (the deployed nginx-proxied web app) never triggers CORS, so this only matters
-  // for the paired mobile app calling in from its own WebView origin. It carries no cookie
-  // (auth is the Authorization header instead), so Allow-Credentials is deliberately never set —
-  // reflecting the origin here can't expose the cookie session to anyone.
+  // for a cross-origin caller. Allow-Credentials is deliberately never set — reflecting the
+  // origin here can't expose the cookie session to anyone.
   const origin = req.headers.origin;
   if (origin) { res.setHeader('Access-Control-Allow-Origin', origin); res.setHeader('Vary', 'Origin'); }
   if (req.method === 'OPTIONS') {
@@ -1067,4 +858,4 @@ http.createServer(async (req, res) => {
     console.error(key, e);
     if (!res.headersSent) json(res, 500, { error: 'server error' });
   }
-}).listen(PORT, () => console.log(`gym-api on :${PORT} (rpID=${RP_ID}, origin=${ORIGIN})`));
+}).listen(PORT, () => console.log(`gytask-api on :${PORT} (origin=${ORIGIN})`));

@@ -1,8 +1,8 @@
-// @vitest-environment happy-dom
+﻿// @vitest-environment happy-dom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('../lib/api.js', () => ({ api: vi.fn(), setRemoteAuth: vi.fn() }))
+vi.mock('../lib/api.js', () => ({ api: vi.fn() }))
 
 import { DEF, useStore } from './useStore.js'
 
@@ -18,7 +18,7 @@ afterEach(() => {
   useStore.setState({ S: clone(DEF), user: null, ready: false })
 })
 
-// gymCards is plain profile data — it rides the same update()/persist() path as everything else,
+// gymCards is plain profile data â€” it rides the same update()/persist() path as everything else,
 // with no backend or schema change. These pin the contract the check-in view relies on: a fresh
 // profile starts empty, and adding/removing a card mutates and persists like any other field.
 
@@ -36,7 +36,7 @@ describe('gymCards state', () => {
     expect(cards).toHaveLength(1)
     expect(cards[0]).toMatchObject({ id: 'c1', label: 'FitZone', value: 'ABC123', fmt: 'qrcode' })
 
-    // persist() writes the whole state under the app's storage key — the card must be in it.
+    // persist() writes the whole state under the app's storage key â€” the card must be in it.
     const saved = JSON.parse(localStorage.getItem('gym_state_v1'))
     expect(saved.gymCards).toHaveLength(1)
     expect(saved.gymCards[0].value).toBe('ABC123')
@@ -70,7 +70,7 @@ describe('gymCards state', () => {
 
 // lastGymCardId remembers which card the check-in screen last settled on, so it reopens there.
 // It is plain profile data on the same update()/persist() path; these pin the contracts the view
-// relies on — a fresh default, add points it at the new card, edit-in-place touches only that
+// relies on â€” a fresh default, add points it at the new card, edit-in-place touches only that
 // card, and removing the remembered card falls back to the first survivor (or null when none).
 describe('lastGymCardId', () => {
   it('defaults to null on a fresh profile', () => {
@@ -121,7 +121,7 @@ describe('lastGymCardId', () => {
   })
 })
 
-// Editing a card (rename / re-scan) updates that entry in place — same id, same slot, other cards
+// Editing a card (rename / re-scan) updates that entry in place â€” same id, same slot, other cards
 // untouched. Mirrors CardSheet's edit branch, which finds the card by id and overwrites its label
 // and value only.
 describe('editing a card in place', () => {
@@ -145,7 +145,7 @@ describe('editing a card in place', () => {
 })
 
 // The Settings switch. On by default; an older profile that predates the key must read as on
-// too, and off only hides the feature — the cards themselves survive the round trip.
+// too, and off only hides the feature â€” the cards themselves survive the round trip.
 describe('checkIn switch', () => {
   it('is on for a fresh profile', () => {
     expect(useStore.getState().S.checkIn).toBe(true)

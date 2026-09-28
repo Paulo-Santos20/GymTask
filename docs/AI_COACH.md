@@ -1,11 +1,27 @@
 # The AI Coach
 
 An optional AI that **designs** a training plan and **revises it from what you actually log**,
-running on your own server under your own provider account, off until an admin turns it on.
+running on your own server under your own provider account, off until it is switched on.
+
+> **GymTask fork notes (upstream text below is mostly historical):**
+> - **Grok (xAI) is a provider here** — `api/coach/core/providers.js` row `grok` →
+>   `https://api.x.ai`, default model `grok-3-mini`, adapter in
+>   `api/coach/core/adapters/grok.js`. The phone app also lists it (`lib/coach-local.js`
+>   `ADAPTERS`).
+> - **The Coach also runs as a Firebase Cloud Function** — `functions/index.js` exports `coach`
+>   (`POST …/coach`, body `{system, prompt}` or `{kind, payload}`, answers
+>   `{ok, model, text, answer}`), keyed by the server-side `XAI_API_KEY` env (never in the
+>   bundle). See `functions/README.md` for the client contract.
+> - **There is no admin dashboard in this fork**, so every "Settings → Admin → AI Coach" /
+>   "admin card" instruction below describes the upstream flow, not this repo. What still holds:
+>   the server exposes the Coach to clients only when it is configured (the `/api/config`
+>   `coach` flag), and the client hides all Coach UI otherwise.
+> - There are no passkeys here: where the text below says "passkey … material" in the payload
+>   exclusion list, read "credential material" (`api/coach/core/payload.js`).
 
 > This document grows with the feature, which lands across a sequence of PRs. Anything described
 > here that has not reached your instance yet is visibly absent rather than broken — the Coach
-> only appears at all once an admin has enabled it and a runtime can be reached.
+> only appears at all once it is enabled and a runtime can be reached.
 
 ---
 
@@ -19,6 +35,7 @@ rest of this document applies to you.
 | **Anthropic API** | plain HTTPS to `api.anthropic.com` | an API key | default |
 | **OpenAI API** | plain HTTPS to `api.openai.com` | an API key | default |
 | **Google Gemini** | plain HTTPS to `generativelanguage.googleapis.com` | an API key | default |
+| **Grok (xAI)** | plain HTTPS to `api.x.ai` (`/v1/chat/completions`), default model `grok-3-mini` | an API key (`XAI_API_KEY`, server-side only) | default, or the `coach` Cloud Function |
 | **OpenAI-compatible endpoint** | plain HTTPS to a URL you give it — Ollama, LM Studio, vLLM, OpenRouter, a gateway of your own | an API key, optional | default |
 | **Claude (Anthropic)** | the Claude Agent SDK, inside the container | a `claude setup-token` | `coach` |
 | **Codex (OpenAI)** | the Codex CLI, inside the container | Codex's own device sign-in | `coach` |
@@ -37,7 +54,7 @@ configuration.
 Nothing here is an environment variable or a restart — the whole point of the admin card is that
 enabling the Coach is a decision you make in the app.
 
-### With an API key (Anthropic, OpenAI, Gemini, compatible)
+### With an API key (Anthropic, OpenAI, Gemini, Grok, compatible)
 
 **1. Get a key** from the provider's own console. For a compatible endpoint, get the URL it
 answers on instead, and a key only if it wants one.
@@ -79,7 +96,7 @@ come back from trying Gemini, and each chip shows a mark when it holds one.
 
 The model field is never a guess: **List models** asks the endpoint what it actually serves.
 For an Ollama box that means the admin decides what exists — `ollama pull` anything the
-hardware can hold and it appears in the picker on the next refresh; nothing in openGym pins
+hardware can hold and it appears in the picker on the next refresh; nothing in GymTask pins
 you to a blessed list. The choice is remembered **per provider**, so trying a cloud model for
 a week and coming back to the local one restores exactly what was set before.
 
@@ -118,7 +135,7 @@ API_TARGET=coach docker compose up -d --build api
 claude setup-token
 ```
 
-Complete its normal browser sign-in and copy the token it prints. openGym never opens or handles
+Complete its normal browser sign-in and copy the token it prints. GymTask never opens or handles
 that flow — it only ever receives the finished token. (Claude also accepts an Anthropic API key
 here, under the same chip; the setup token is the route for a Claude subscription.)
 
@@ -192,7 +209,7 @@ No job runs. That is a refusal, not a warning, on purpose — a warning moves th
 whoever clicks past it, and the decision is about spending somebody else's personal
 subscription. It is the same posture the payload allowlist takes.
 
-**The instance owner is responsible for their provider's terms.** openGym does not interpret
+**The instance owner is responsible for their provider's terms.** GymTask does not interpret
 them on a self-hoster's behalf; it makes the shape that doesn't need the interpretation
 available, and refuses the shape that does.
 
@@ -221,7 +238,7 @@ A review reads a training block, not a training career: the window is capped at 
 sessions**. Your profile is identified by a stable pseudonym that is never the user id and never
 reversible.
 
-Excluded on purpose and permanently: **display name and user id, passkey and credential
+Excluded on purpose and permanently: **display name and user id, credential
 material, push subscriptions, invite data, theme and appearance settings, and every other
 profile's everything.**
 
@@ -399,20 +416,15 @@ in a device sync or in a user's own JSON export.
 
 ## On the phone
 
-The App-Store build has no server of its own, so the Coach there is a choice made in
-**Settings → AI Coach**, and until it is made nothing AI-related is loaded at all:
-
-- **Use my self-hosted openGym.** Pair the phone with your instance (the same pairing flow as
-  syncing — **Settings → Pair the mobile app** on the site, then the address and code on the
-  phone). A paired phone is an ordinary profile: the Coach runs on your server with whatever
-  provider the admin configured, under the rules above, and nothing on the phone changes.
-- **Bring my own API key.** The phone calls Anthropic, OpenAI, Gemini or a compatible endpoint
-  directly, with a key you paste. It runs the same payload allowlist, the same validator and
-  the same single repair round as the server, in the app. The key is kept in the platform's
-  secure storage — Keychain on iOS, the Keystore-backed store on Android — and never in the
-  app's state, so it cannot ride along in a backup, an export or a sync. You pay: the screen
-  says which host each request goes to and what leaves the device before you choose, and a
-  local daily cap stands in for the one an admin would have set.
+The installed PWA uses the same Coach as on desktop. With a self-hosted instance
+the Coach runs on your server under the rules above; or bring your own API key and
+the phone calls Anthropic, OpenAI, Gemini or a compatible endpoint directly, with
+a key you paste. It runs the same payload allowlist, the same validator and
+the same single repair round as the server, in the app. The key is kept in this
+browser's local storage, never in the app's state, so it cannot ride along in a
+backup, an export or a sync. You pay: the screen
+says which host each request goes to and what leaves the device before you choose, and a
+local daily cap stands in for the one an admin would have set.
 
 ## Off is really off
 

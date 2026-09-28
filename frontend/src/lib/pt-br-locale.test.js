@@ -26,7 +26,7 @@ describe('Brazilian Portuguese locale', () => {
       .sort(byCodeUnit)
     const fingerprint = createHash('sha256').update(JSON.stringify(inherited)).digest('hex')
 
-    expect(Object.keys(PT_BR_OVERRIDES)).toHaveLength(710)
+    expect(Object.keys(PT_BR_OVERRIDES)).toHaveLength(699)
     expect(inherited).toHaveLength(657)
     // If this fails, review the changed keys and wording before accepting a new hash. From
     // frontend/: node scripts/pt-br-inheritance-fingerprint.mjs --list
@@ -43,7 +43,6 @@ describe('Brazilian Portuguese locale', () => {
     expect(ptBR['Delete workout']).toBe('Excluir treino')
     expect(ptBR.Superset).toBe('Superset')
     expect(ptBR['Guest mode — data lives only in this browser.']).toContain('visitante')
-    expect(ptBR['Sign in with passkey']).toContain('chave de acesso')
     expect(ptBR.band).toBe('elástico')
     expect(ptBR['resistance band']).toBe('faixa elástica')
     expect(ptBR.soleus).toBe('sóleo')

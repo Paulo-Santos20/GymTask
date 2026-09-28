@@ -1,4 +1,4 @@
-# opengym.duarte-santos.ch
+# GymTask website
 
 Source of the project website — plain hand-written HTML/CSS/JS, no build step,
 served by nginx.
@@ -10,17 +10,16 @@ Not in this folder (added at deploy time):
   `banner.png`, and `social.jpg` (1200×630, the og:image on every page)
 - `icon-180.png` / `icon-512.png` — copied from `../frontend/public/` (the same
   icons the PWA uses, so the browser tab, home screen and app all match)
-- `openGym.apk` — the signed release build (see `../docs/MOBILE.md`)
 - `demo/` — the browser-only demo build of the app, embedded in the `#demo` section and
   reachable on its own at `/demo/`. Built from `../frontend` with `VITE_DEMO=1` and the
-  jsDelivr media bases (see the `pages` job in `../.gitlab-ci.yml`), so the ~140 MB
+  jsDelivr media bases (see the `pages` job in `../.github/workflows/pages.yml`), so the ~140 MB
   of exercise media stays out of it. It has to live on this host: the site frames it, and
   `X-Frame-Options: SAMEORIGIN` would block it from anywhere else.
 
 Navigation is a topic rail (`.side`): one title/subtitle list of everything on the
 site, a fixed column beside the page from 1300 px up and the hamburger sheet below
 that, with a scrollspy lighting the section under the reader. The top bar keeps
-only the brand, GitHub, Discord and the download button.
+only the brand, GitHub and the download button.
 
 `site.js` carries five independent pieces, each one failing soft so the page is
 complete without any of them: the topic-rail sheet, its scrollspy, the scroll

@@ -13,8 +13,8 @@
 // What is different from the server, and on purpose:
 //   - the user pays. There is no cfg.caps to lean on, so a local daily cap is not optional.
 //   - the pseudonym is drawn at random once and kept, rather than derived from a secret.
-//   - a proposal waits in the device file, not in S, so it survives an app kill without
-//     riding into a backup or a sync.
+//   - a proposal waits in the device entry (lib/coach-device.js), not in S, so it rides into no
+//     backup and no sync.
 import * as payloadLib from '../../../api/coach/core/payload.js'
 import { runPipeline } from '../../../api/coach/core/pipeline.js'
 import { HTTP_PROVIDERS, baseUrlFor } from '../../../api/coach/core/providers.js'
@@ -22,14 +22,14 @@ import anthropic from '../../../api/coach/core/adapters/anthropic.js'
 import openai from '../../../api/coach/core/adapters/openai.js'
 import gemini from '../../../api/coach/core/adapters/gemini.js'
 import compatible from '../../../api/coach/core/adapters/compatible.js'
-import { nativeFetch } from './capacitor-fetch.js'
+import grok from '../../../api/coach/core/adapters/grok.js'
 import { getApiKey } from './coach-secrets.js'
 import { loadCoachDevice, saveCoachDevice } from './coach-device.js'
 import { planHash } from './coach.js'
 import { todayISO } from './format.js'
 import { t } from './i18n.js'
 
-export const ADAPTERS = { anthropic, openai, gemini, compatible }
+export const ADAPTERS = { anthropic, openai, gemini, compatible, grok }
 export const LOCAL_DAILY_CAP = 10
 // Five minutes is right for a cloud API and wrong for a model on somebody's laptop; the
 // OpenAI-compatible endpoint is the one that may be local, so it gets the long budget.
@@ -115,7 +115,7 @@ export async function localDisclosure() {
 export async function localModels(settings, key) {
   const adapter = ADAPTERS[settings.provider]
   if (!adapter) return { ok: false, error: 'unknown provider', models: [] }
-  return adapter.models(cfgOf(settings), envOf(settings, key), { fetch: nativeFetch, timeoutMs: 20000 })
+  return adapter.models(cfgOf(settings), envOf(settings, key), { timeoutMs: 20000 })
 }
 
 const hostOf = url => { try { return new URL(url).host } catch { return url || '' } }
@@ -147,7 +147,7 @@ async function run(S, kind, opts, d, adapter) {
   const attempt = await runPipeline({
     adapter, cfg: cfgOf(d), kind, payload,
     model: d.model || HTTP_PROVIDERS[d.provider].defaultModel, timeoutMs: timeoutFor(d.provider),
-    invokeOpts: { env: envOf(d, key), fetch: nativeFetch }
+    invokeOpts: { env: envOf(d, key) }
   })
   if (!attempt.ok) {
     // There is no admin card on a phone, so the reason has to reach the person holding it:

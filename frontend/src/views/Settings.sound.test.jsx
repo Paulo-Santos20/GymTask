@@ -1,4 +1,4 @@
-// @vitest-environment happy-dom
+﻿// @vitest-environment happy-dom
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => {
       state.S = next
     },
     replaceState: vi.fn(), setUser: vi.fn(), pullState: vi.fn(), pushState: vi.fn(),
-    signOut: vi.fn(), signOutAll: vi.fn(), resetDemo: vi.fn(), disconnectServer: vi.fn(),
+    signOut: vi.fn(), signOutAll: vi.fn(), resetDemo: vi.fn(),
   })
   return state
 })
@@ -35,12 +35,10 @@ vi.mock('../store/useUI.js', () => {
 })
 vi.mock('react-router-dom', () => ({ useNavigate: () => () => {} }))
 vi.mock('../lib/api.js', () => ({
-  api: vi.fn(), webauthnOK: () => false, passkeyLogin: vi.fn(), passkeyRegister: vi.fn(), IS_ANDROID: false,
+  api: vi.fn(), IS_ANDROID: false,
 }))
 vi.mock('../lib/push.js', () => ({ pushSupported: () => false, enablePush: vi.fn(), disablePush: vi.fn(), sendTestPush: vi.fn() }))
 vi.mock('../lib/wakelock.js', () => ({ wakeLockSupported: () => false }))
-vi.mock('../lib/mobile.js', () => ({ MOBILE: false, isAndroid: () => Promise.resolve(false), shareExport: vi.fn(), syncReminder: vi.fn() }))
-vi.mock('./MobileOnboarding.jsx', () => ({ ConnectSheet: () => null }))
 vi.mock('../sheets.jsx', () => ({
   starterPlanSheet: vi.fn(), confirmSheet: vi.fn(), importFromApp: vi.fn(),
   importFromHevy: vi.fn(), equipmentProfileSheet: vi.fn(),
@@ -78,7 +76,7 @@ const mount = () => act(() => root.render(<Settings />))
 const rowTitled = title => [...host.querySelectorAll('.lrow')].find(r => r.querySelector('.lrow-t')?.textContent === title)
 const switchIn = row => row.querySelector('[role="switch"]') || row.querySelector('input[type="checkbox"]') || row.querySelector('button')
 
-describe('Settings — play sounds when the phone is on silent', () => {
+describe('Settings â€” play sounds when the phone is on silent', () => {
   it('is offered on a browser with an audio session (iOS), under Sounds, with the music trade-off spelled out', () => {
     mount()
     const row = rowTitled('Play sounds when the phone is on silent')
@@ -116,7 +114,7 @@ describe('Settings — play sounds when the phone is on silent', () => {
   })
 })
 
-describe('Settings — Sounds switch unlocks audio from the tap', () => {
+describe('Settings â€” Sounds switch unlocks audio from the tap', () => {
   it('turning Sounds on unlocks; turning it off does not', () => {
     mocks.S.sound = false
     mount()

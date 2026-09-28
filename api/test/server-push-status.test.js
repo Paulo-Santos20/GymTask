@@ -38,7 +38,7 @@ async function startServer(t, subs = []) {
   const port = await freePort();
   const child = spawn(process.execPath, ['server.js'], {
     cwd: API, stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, ORIGIN: 'http://localhost:8080', RP_ID: 'localhost' }
+    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, ORIGIN: 'http://localhost:8080' }
   });
   const h = { api: `http://127.0.0.1:${port}`, dataDir, log: '' };
   child.stdout.on('data', d => h.log += d);

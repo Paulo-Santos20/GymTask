@@ -86,4 +86,4 @@ if (firebaseConfigured && (await isSupported())) {
 }
 ```
 
-4. Permissions: the browser prompt (`Notification.requestPermission()`); HTTPS or `localhost` required (already true for the PWA and passkeys). `getToken()` needs the service worker registered; the topic name `gytask-daily` must match the server exactly. Unsubscribe later with `unsubscribeFromTopic(messaging, 'gytask-daily')` and `deleteToken(messaging)`.
+4. Permissions: the browser prompt (`Notification.requestPermission()`); HTTPS or `localhost` required. `getToken()` needs the service worker registered; the topic name `gytask-daily` must match the server exactly. Unsubscribe later with `unsubscribeFromTopic(messaging, 'gytask-daily')` and `deleteToken(messaging)`.

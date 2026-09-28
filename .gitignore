@@ -2,7 +2,7 @@
 media/img/
 media/gif/
 
-# Runtime data — users, passkeys, per-user state, session secret
+# Runtime data — users, per-user state, session secret
 data/
 
 # Local config

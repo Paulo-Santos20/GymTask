@@ -23,7 +23,7 @@ O GymTask é a evolução do openGym para uso pessoal:
 
 Mantidos do upstream: treinos guiados, motor de progressão, 1RM, recuperação muscular,
 biblioteca de ~1.324 exercícios, importadores (FitNotes/Strong/Hevy/Apple Health),
-shell Capacitor (Android/iOS), MCP server, PWA instalável.
+MCP server, PWA instalável. (O shell Capacitor Android/iOS foi removido — decisão PWA-only.)
 
 ## 2. Arquitetura
 
@@ -85,7 +85,7 @@ nunca chamam `initializeApp` diretamente.
 - `store/nutritionStore.js` — log de refeições por data, persistência `gym_nutrition_v1`
 - UI: `views/Nutrition.jsx` (278 linhas) + `nutrition.css` — navegação de data, resumo calorias/macros,
   undo, add-food (busca local + externa), seletor de porção, formulário TDEE; rota `/nutrition` wired no `App.jsx`
-- i18n: 42 keys em `pt.js` + `PT_BR_OVERRIDES` (censo 668→**710**, inherited 657, fingerprint intacto)
+- i18n: 42 keys em `pt.js` + `PT_BR_OVERRIDES` (censo **699** overrides, inherited 657, fingerprint intacto)
 
 ## 3. Configuração / variáveis de ambiente
 
@@ -113,43 +113,64 @@ NUTRITIONIX_APP_KEY=...
 | ② | Firestore no fluxo de estado | ✅ concluído | `lib/api.js` intercepta `/api/data*`; semântica 409/rev espelhada; fallback HTTP/local |
 | ③ | Módulo Nutrition | ✅ concluído | `tdee/foods/foodApis/nutritionStore` + testes, `Nutrition.jsx` (278 ln), rota `/nutrition`, 42 keys i18n |
 | ④ | Coach Grok + Cloud Functions | ✅ concluído | `api/coach/core/adapters/grok.js`, row em `providers.js`, `functions/` (coach, nutritionProxy, pushDailyReminder FCM) |
-| ⑤ | Rebrand + strip (admin/convites/idiomas) | 🟡 ~95% (agente **cancelado** a pedido do usuário na fase final) | ✅ 12 locales, `instr/*`, `Admin.jsx`, `audit.js`, testes admin, README, `App.jsx`, `server.js`, manifest/sw, mobile strings, docker-compose. ⚠️ **Restam**: `website/` (60+ refs), `mcp/`, `.env.example` seção admin, `scripts/fetch-media.sh`, sweep final de verificação |
-| — | Build + testes centrais | ✅ **verde** | `npm run build` exit 0; `npm test` **1584/1584** (126 arquivos), 00:38 |
-| — | Deploy Vercel/PWA | 🟡 configs prontas | `vercel.json` + `docs/DEPLOY_VERCEL.md` criados; deploy real = credenciais |
-| — | Firebase deploy config | 🟡 configs prontas | `firebase.json` (nodejs22), `.firebaserc` (placeholder `GYTASK-PROJECT-ID-TBD`), `firestore.rules` |
+| ⑤ | Rebrand + strip (admin/convites/idiomas) | 🟡 ~99% (sweep final aguarda 2 agentes) | ✅ 12 locales, `instr/*`, `Admin.jsx`, `audit.js`, testes admin, `App.jsx`, `server.js`, manifest/sw, mobile strings, docker-compose, `website/` + `mcp/` (rebrand feito, `OPENGYM_*` mantidos por decisão), CI (GitLab/Gitea/mirror/docker-publish removidos), `.env.example` (seção passkey → ORIGIN/CORS), `scripts/fetch-media.sh` (0 refs), `scripts/build-api-docs.mjs` rebrandado + `website/api.html` regenerado, docs `.md` reescritos (`bg_d2e34ae5`), `website/docs.html`/`about.html`/`llms.txt` limpos (`bg_b6c0603d`), `docs/*` PWA-only (`bg_2a401c07`, `docs/MOBILE.md` apagado), dangles (`CONTRIBUTING.md`, `SECURITY.md`, `docs/AI_COACH.md`), `assets/banner.svg`/`banner.png` rebrandados (GymTask, "e-mail login · own your data · PWA · AGPL"). ⚠️ **Restam**: frontend PWA-only (`bg_7a715c51` — gates de código ✅: android/ios/cap config False, greps capacitor/MOBILE/pair exit 1, package.json limpo; falta vitest+build), resíduos não-frontend (`bg_5dbd7edc` — ~70%: capacitor em .github/functions = 0, RP_ID/functions/passkey-functions ok; restam credential.test.js + mcp ×2 + renovate.json + suites), sweep final `grep -i "passkey\|webauthn\|capacitor\|opengym"` |
+| — | Passkey removido (frontend + api) | ✅ concluído | rotas WebAuthn/pairing removidas de `server.js`, `@simplewebauthn` fora de `package.json`, `RP_ID`/`RP_NAME` deletados, exports em `api.js` removidos, testes passkey removidos (−3), `openapi.yaml` limpo (`tags: [Data]`→`[data]`), 0 refs em `frontend/src` + `api` |
+| — | Rotas `/api/pair/*` removidas | ✅ concluído | `pair/create`+`pair/redeem` (único caller era o shell nativo) fora de `server.js`; `api/test/server-pairing.test.js` deletado (api **177/159/18**, delta = −1 teste, mesmas 18 falhas pré-existentes); grep `pair` = 0 em `server.js`/`openapi.yaml`/`website/api.html`/`docs/{API,SELF_HOSTING*}.md`; `node --check server.js` exit 0; `sign()`/`SESSION_DAYS` órfãos mantidos (débito §6) |
+| — | Grok BYOK no frontend | ✅ concluído | `grok` importado e em `ADAPTERS` (`lib/coach-local.js`) |
+| — | Card Nutrition no Home | ✅ concluído | link `/nutrition` em `views/Home.jsx`; rota existia desde o módulo |
+| — | Rebrand do prompt do Coach + URLs upstream no `openapi` | ✅ concluído | `system-prompt.js`, `prompts/common.md` (+ `prompts.js` regenerado), `functions/index.js` → "GymTask Coach"; assertion `jobs.test.js:458` ajustada; comentários `config.js:19`/`node-fetch.js:10`; `openapi.yaml` (browse/contact/derived → fork) + `website/api.html` regenerado (16 endpoints); `build-coach-assets.mjs` normaliza CRLF (o `--check` do CI é byte-compare, agora estável entre plataformas); `scripts/` (hevy-id-map comments, tempdir `gytask-pt-br-`). Verificado: jobs 1/1, adapters-http 19/19, `--check` verde, greps `openGym Coach`/`inside openGym` = 0. Mantidos por contrato: `opengym_plan: 1`, salt HKDF `opengym-coach-v1`, UA `opengym-coach/` |
+| — | Build + testes centrais | ✅ **verde** (contagens finais pós-PWA-only a confirmar) | `npm run build` exit 0; `npm test` **1581/1581** (126 arquivos, pós-remoção de 3 testes passkey; recontar após `bg_7a715c51`); `mcp` 58/58; `api` **159/177** com 18 falhas **pré-existentes** (pós-remoção de `server-pairing.test.js`, delta −1; baseline HEAD = 35 falhas, causas: CRLF do checkout Windows em `prompts.test.js` + `routes.test.js:70`) |
+| — | Deploy Vercel/PWA | 🟡 configs prontas | `vercel.json` + `docs/DEPLOY_VERCEL.md` criados; envs prontas em `data/deploy-env.txt` (gitignored) |
+| — | Firebase deploy config | ✅ em produção | `firebase.json` (nodejs22), `.firebaserc` → **`gymtask-ce4b6`** (placeholder trocado 2026-09-28), `firestore.rules` **deployed** (`firebase deploy --only firestore:rules` exit 0, rules released) |
 | — | FCM push | ✅ código pronto | `pushDailyReminder` FCM topic `gytask-daily` + `functions/README.md` |
-| — | Credenciais reais | ⬜ pendente | Firebase/xAI/Nutritionix a fornecer pelo usuário |
+| — | Credenciais reais | 🟡 Firebase ✅ / xAI+Nutritionix ⬜ | Firebase chegou 2026-09-28: web config staged em `data/firebase-web.env`, service account em `data/service-account.json` (ambos gitignored); verificado via API: token OAuth OK, Firestore `(default)` existe, **e-mail/senha já habilitado**, authorizedDomains = localhost + firebaseapp + web.app (falta o domínio Vercel pós-deploy); `frontend/.env` ainda não criado (segura baseline do vitest — copiar pós-agent frontend); **falta**: `XAI_API_KEY`, `NUTRITIONIX_APP_ID/KEY`, `VITE_FIREBASE_VAPID_KEY` |
 
 ## 5. O que falta ser feito (checklist)
 
-### Imediato (amanhã — retomar daqui)
-1. **Fechar o rebrand (~5% restante)**: `website/` (60+ refs de marca), `mcp/` (README/descrições
-   de tools — decisão: identificadores de env `OPENGYM_*` mantidos), `.env.example` (seção morta
-   `ADMIN_UIDS`/`INVITE_ONLY` + prosa de admin), `scripts/fetch-media.sh`, varredura final
-   `grep -ri opengym` classificando comentário vs user-facing. O agente foi cancelado no sweep
-   final; relatório não entregue — refazer sweep manual.
-2. **Passkey residual** — remover restos: exports `webauthnOK`/`passkeyRegister`/`passkeyLogin`/
-   `BIO`/`VAULT` em `api.js`, referências em `Settings.jsx`/`demo.js`, rotas em `api/server.js`,
-   chaves de locale (`'Sign in with passkey'`) e testes associados.
-3. **Grok no frontend (BYOK local)**: registrar adapter em `coach-local.js`
-   (`ADAPTERS` hoje = anthropic/openai/gemini/compatible — escolher Grok falha com aviso gracioso).
-4. **Entrada de Nutrition na UI** — hoje a rota `/nutrition` existe mas não há link no TabBar/Home
-   (TabBar tem 5 itens; decidir acesso: card Home, substituir item, ou menu Settings).
+### Imediato (retomar daqui)
+1. **Fechar o rebrand (sweep final)** — concluídos: `website/` (marca + `api.html` regenerado),
+   `mcp/` (só `OPENGYM_*` + atribuição), `.env.example`, `scripts/fetch-media.sh`, CI
+   (GitLab/Gitea/mirror/docker-publish apagados), issue templates, FUNDING, Docker/compose,
+   reescrita de `README.md`/`ROADMAP.md`/`CLAUDE.md`/`CONTRIBUTING.md`/`SECURITY.md`/`docs/*.md`
+   (`bg_d2e34ae5`), conteúdo passkey de `website/docs.html`/`about.html`/`llms.txt` (`bg_b6c0603d`),
+   `docs/*` PWA-only + `docs/MOBILE.md` apagado (`bg_2a401c07`), banner `assets/banner.svg`/`banner.png`,
+   `api/openapi.yaml` + `website/api.html` (URLs upstream→fork), prompt do Coach → "GymTask Coach"
+   (`system-prompt.js`/`prompts/*.md`/`functions/index.js`), `scripts/` (hevy-id-map, tempdir).
+   ~~2 agents PWA-only~~ ✅ **CONCLUÍDOS**: frontend (`bg_7a715c51`, 48min) — `android/`/`ios/`/
+   `capacitor.config.json` deletados, libs mobile/back/remote/update/CoachSetup/MobileOnboarding
+   fora, `package.json`/lock limpos; resíduos (`bg_5dbd7edc`, timeout 42min, ~90% + resto manual)
+   — `renovate.json` DELETADO, comentários `mcp/README.md`/`mcp/src/state.js`/`credential.test.js`
+   limpos. Greps `passkey|webauthn|RP_ID|capacitor` fora de `frontend/`+docs = **0**.
+   Sweep `opengym` classificado: só atribuição AGPL + identificadores KEEP (`OPENGYM_*`,
+   `opengym_plan`, salt HKDF, UA `opengym-coach/`) + menções históricas em docs.
+2. ~~**Passkey residual**~~ ✅ — removido por completo (frontend + api + spec + testes −3;
+   `openapi.yaml` tags `data` corrigido, `website/api.html` regenerado limpo: 0 passkey/WebAuthn).
+3. ~~**Grok no frontend (BYOK local)**~~ ✅ — `grok` em `ADAPTERS` (`lib/coach-local.js`).
+4. ~~**Entrada de Nutrition na UI**~~ ✅ — card/link `/nutrition` no `Home.jsx` (rota já existia).
+5. ~~**Rotas `/api/pair/*`**~~ ✅ — removidas (único caller era o shell nativo); testes/docs/spec limpos.
 
 ### Deploy (requer credenciais — §5.1)
-5. **Credenciais**: Firebase Console (projeto, E-mail/senha, app Web → 6 `VITE_FIREBASE_*`),
-   xAI `XAI_API_KEY`, Nutritionix `NUTRITIONIX_APP_ID/KEY`.
+5. **Credenciais**: ~~Firebase~~ ✅ recebido (projeto `gymtask-ce4b6`, e-mail/senha ativo,
+   Firestore `(default)` criado, rules no ar); **falta** xAI `XAI_API_KEY`,
+   Nutritionix `NUTRITIONIX_APP_ID/KEY`, `VITE_FIREBASE_VAPID_KEY` (push).
 6. **Vercel**: apontar repo com root `frontend/`, build `npm run build`, envs `VITE_*` +
-   `VITE_NUTRITION_PROXY_URL` → URL da function `nutritionProxy`.
-7. **Firebase**: trocar `GYMT-PROJECT-ID-TBD` no `.firebaserc`, `firebase deploy --only functions,firestore:rules`.
-8. **README/docs do repo**: `README.md`, `ROADMAP.md`, `CLAUDE.md`, `docs/*` ainda descrevem
-   openGym/Docker/GitLab — reescrever para GymTask (Vercel/Firebase) ou arquivar.
+   `VITE_NUTRITION_PROXY_URL` → URL da function `nutritionProxy` (bloco pronto em
+   `data/deploy-env.txt`); depois adicionar o domínio Vercel em Authentication →
+   Authorized domains.
+7. **Firebase**: ~~trocar placeholder no `.firebaserc`~~ ✅ (`gymtask-ce4b6`);
+   ~~`firestore.rules` deploy~~ ✅ (no ar). **Falta**: `firebase deploy --only functions`
+   (espera `XAI_API_KEY`/`NUTRITIONIX_*` em `functions/.env`).
+8. ~~**README/docs do repo**~~ ✅ — reescritos para GymTask (Vercel/Firebase) por `bg_d2e34ae5`
+   (`README.md`, `ROADMAP.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `SECURITY.md`, `docs/*.md`).
 9. **`api/openapi.yaml`**: surface do coach inteira ausente da spec (documentar coach + URLs das functions).
 
 ### Credenciais (todo 15 — pedir ao usuário antes do deploy)
-- Firebase Console: criar projeto, ativar E-mail/senha, app Web → 6 `VITE_FIREBASE_*`
-- xAI: chave `XAI_API_KEY` (**paga** — ver aviso abaixo)
-- Nutritionix: `NUTRITIONIX_APP_ID` + `NUTRITIONIX_APP_KEY` (plano gratuito)
+- ~~Firebase Console: criar projeto, ativar E-mail/senha, app Web → 6 `VITE_FIREBASE_*`~~ ✅
+  (2026-09-28: projeto `gymtask-ce4b6`, e-mail/senha confirmado via API, web config +
+  service account staged em `data/` gitignored, rules deployed)
+- xAI: chave `XAI_API_KEY` (**paga** — ver aviso abaixo) — ⬜ pendente
+- Nutritionix: `NUTRITIONIX_APP_ID` + `NUTRITIONIX_APP_KEY` (plano gratuito) — ⬜ pendente
+- VAPID: `VITE_FIREBASE_VAPID_KEY` (Firebase Console → Cloud Messaging → Web Push certificate) — ⬜ pendente
 
 ## 6. Avisos e débitos técnicos conhecidos
 
@@ -160,13 +181,22 @@ NUTRITIONIX_APP_KEY=...
   síncrono do servidor — aceito, documentado no código.
 - A função `coach` em `functions/` é autocontida (duplica 3 linhas de prompt): Firebase empacota
   só `functions/` no deploy e `api/` é ESM — débito sinalizado no código.
-- `pt-br-locale.test.js` faz censo de chaves (**710** overrides / 657 herdados) — qualquer agente
+- `pt-br-locale.test.js` faz censo de chaves (**699** overrides / 657 herdados) — qualquer agente
   que adicione/remova chaves deve recomputar; fingerprint `scripts/pt-br-inheritance-fingerprint.mjs`
-  é o guardião (bump atual: 668→710, hash inalterado pois as 42 keys novas são overrides).
+  é o guardião (hash inalterado: as chaves removidas no strip passkey eram overrides, não herdadas).
 - Testes apagados pelo strip: `e2e-apikey.test.js`, `server-admin-delete.test.js`,
   `server-admin-state.test.js` (+ `Admin*.test.js`, `audit.test.js`) — comportamento removido
   junto, handlers órfãos em `server.js` devem ser flagrados/limpos pelo agente de rebrand.
 - Strings em inglês fora do pacote de locale (`'Live demo…'`, `'Start the demo'`) — pré-existentes.
+- **`sign()` (server.js) e `SESSION_DAYS` ficaram órfãos** com a remoção de `/api/pair/*` — mantidos
+  de propósito: removê-los exigiria reescrever os docs de sessão em `openapi.yaml`/`.env.example`/
+  `docs/SELF_HOSTING*.md`/`website/api.html`, e a história de auth HTTP pós-passkey ainda está em
+  aberto (ninguém mais emite `Set-Cookie` de sessão; só `clearCookie`). Flagado como open item.
+- **`assets/screenshots/*.png` (5) e `assets/social.jpg` estão com a UI antiga em inglês e a marca
+  openGym** (header "openGym", social card "sideload the Android APK" — contradiz a decisão
+  PWA-only). São as imagens do README e do site (`build-images.sh` copia). Re-capturar com
+  Playwright sobre o dev server **depois** que `bg_7a715c51` fechar o frontend, e recompor o
+  social card. Enquanto isso: README/site mostram UI antiga.
 
 ## 7. Comandos
 
@@ -188,8 +218,9 @@ cd functions && npm install
 ## 8. Ideias futuras (melhorias)
 
 ### Nutrição
-- **Scanner de código de barras** nos alimentos — os deps já existem
-  (`@capacitor-mlkit/barcode-scanning` + `jsqr`) e hoje só são usados pelo importador de treinos.
+- **Scanner de código de barras nos alimentos** — o decoder web `jsqr` + renderer `lean-qr` já
+  existem no projeto (`@capacitor-mlkit` saiu com a decisão PWA-only; o scan usa `BarcodeDetector`
+  nativo quando existe, jsQR como fallback).
 - **Sugestão automática de refeições**: distribuir calorias/macro restantes do dia nas próximas
   refeições, com pratos prontos do banco TBCA.
 - **Fotos de refeição** → estimativa de macros (OCR / API de visão).
@@ -206,7 +237,7 @@ cd functions && npm install
 - **Deload automático** e periodização mais rica no motor de progressão.
 - **Widgets** (Android/iOS) do treino do dia.
 - **Integração Google Fit / Apple Health** de escrita (hoje só import).
-- **Modo social**: compartilhar prints de evolução / PRs (upstream já tem share via Capacitor).
+- **Modo social**: compartilhar prints de evolução / PRs (share via Web Share API — o share Capacitor do upstream saiu com o PWA-only).
 - **Vídeo/looping dos exercícios** (dataset CDN já parametrizado por `VITE_IMG_BASE/VITE_GIF_BASE`).
 
 ### Infra
@@ -217,6 +248,17 @@ cd functions && npm install
 
 ---
 
-*Última atualização: 2026-09-29 — 4 de 5 frentes concluídas (Auth, Firestore, Grok/Functions,
-Nutrition); rebrand ~95% (cancelado no sweep final, ver §5.1); **build exit 0 + 1584/1584 testes
-verdes**; configs Vercel/Firebase prontas; deploy aguarda credenciais.*
+*Última atualização: 2026-09-28 — **checkpoint p/ continuar noutro PC**. ✅ PWA-only completo
+(android/ios/capacitor/`MOBILE`/pair-sheet fora) + resíduo passkey/RP_ID/capacitor zerado fora
+de frontend+docs + rebrand sweep classificado. **Verdes**: frontend vitest **1527/1527 (121 arq)**
+(−54 testes/−5 arq = suites das libs móveis removidas; census locale 710→699, −11 chaves passkey
+órfãas ×2, teste 4/4), `npm run build` **exit 0**, mcp **58/58**, api **159 pass/18 fail**
+(baseline CRLF, intacto). 🔴 **Falta (ordem)**: 1) copiar `data/firebase-web.env` → `frontend/.env`
+(gitignored — **não vai no push**, refazer no outro PC); 2) §5.9 openapi surface do coach (spec
+não editada; rotas mapeadas em `api/coach/routes.js` — 16, admin filtradas em `server.js:801`;
+functions `coach`/`nutritionProxy` em `functions/index.js`); 3) screenshots/social recapturar
+(UI antiga openGym); 4) `scripts/pt-br-inheritance-fingerprint.mjs` sumiu do disco (recuperar:
+`git checkout -- scripts/` — não foi deletado por decisão, verificar `git status`); 5) deploy
+Vercel + `firebase deploy --only functions` (espera `XAI_API_KEY`/`NUTRITIONIX_*`); 6) débitos §6
+(`sign()`/`SESSION_DAYS` órfãos, chave APK órfã `pt.js:~1185`). Firebase `gymtask-ce4b6` ao vivo
+(rules deployed, e-mail/senha ativo); `data/*` staged gitignored.*

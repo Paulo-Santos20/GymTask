@@ -1,36 +1,34 @@
 <!DOCTYPE html>
 <!-- GENERATED FILE - do not edit by hand.
-     Built by scripts/build-api-docs.mjs from api/openapi.yaml (openGym API v1.3.8).
+     Built by scripts/build-api-docs.mjs from api/openapi.yaml (GymTask API v1.3.8).
      Regenerate with: node scripts/build-api-docs.mjs -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>API — openGym</title>
-<meta name="description" content="The complete openGym HTTP API, documented as an OpenAPI spec: passkey auth, state sync, push notifications, pairing and admin routes.">
+<title>API — GymTask</title>
+<meta name="description" content="The complete GymTask HTTP API, documented as an OpenAPI spec: sessions, state sync and push notifications.">
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="index,follow,max-image-preview:large">
-<link rel="preconnect" href="https://stats.duarte-santos.ch">
-<meta property="og:title" content="openGym API reference">
-<meta property="og:description" content="The complete openGym HTTP API as an OpenAPI spec: passkey auth, state sync, push notifications, pairing and admin routes.">
-<meta property="og:image" content="https://opengym.duarte-santos.ch/img/social.jpg">
+<meta property="og:title" content="GymTask API reference">
+<meta property="og:description" content="The complete GymTask HTTP API as an OpenAPI spec: sessions, state sync and push notifications.">
+<meta property="og:image" content="https://gytask.example.com/img/social.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="openGym — your training, your data, your server. Two phones showing the home and workout screens.">
-<meta property="og:url" content="https://opengym.duarte-santos.ch/api.html">
+<meta property="og:image:alt" content="GymTask — your training, your data, your server. Two phones showing the home and workout screens.">
+<meta property="og:url" content="https://gytask.example.com/api.html">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="openGym">
+<meta property="og:site_name" content="GymTask">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="openGym API reference">
-<meta name="twitter:image" content="https://opengym.duarte-santos.ch/img/social.jpg">
-<link rel="canonical" href="https://opengym.duarte-santos.ch/api.html">
+<meta name="twitter:title" content="GymTask API reference">
+<meta name="twitter:image" content="https://gytask.example.com/img/social.jpg">
+<link rel="canonical" href="https://gytask.example.com/api.html">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <link rel="icon" type="image/png" sizes="180x180" href="icon-180.png">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="stylesheet" href="styles.css?v=19">
 <script>document.documentElement.className += ' js'</script>
-<!-- Umami web analytics for opengym.duarte-santos.ch (self-hosted, cookieless). -->
-<script defer src="https://stats.duarte-santos.ch/script.js" data-website-id="db36019e-50f4-453c-9c56-d0588aefe233"></script>
+<!-- Umami web analytics for gytask.example.com (self-hosted, cookieless). -->
 <style>
 /* ------------------------------------------------------------- API reference
    Generated page — the reference itself is static HTML in the site's design.
@@ -97,8 +95,8 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
 .ep[open] > summary .ep-chev { transform: rotate(225deg); }
 .ep-sum { grid-column: 2 / -1; color: var(--fg-3); font-size: 13.5px; line-height: 1.45; }
 .ep-body { border-top: 1px solid var(--hair-soft); padding: 16px 16px 18px; }
-/* WebAuthn type names run to 34 characters. On a phone they are wider than the
-   card, so every prose block in here is allowed to break inside a word. */
+/* Long type names run wider than the card on a phone, so every prose
+   block in here is allowed to break inside a word. */
 .ep-body > p, .ep-body > ul li, .ov p, .ov li, .p-desc, .api-sec .sub, .ep-auth,
 .ep-path code, .sch-name code, .p-name, .p-type { overflow-wrap: break-word; }
 .ep-body > p { color: var(--fg-2); font-size: 14.5px; line-height: 1.65; margin: 0 0 10px; max-width: 74ch; }
@@ -158,7 +156,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
 <nav><div class="wrap nav-in">
   <a class="brand" href="/">
     <img src="icon-180.png" alt="" width="24" height="24">
-    openGym
+    GymTask
   </a>
   <div class="nav-quick">
     <a class="ql site" href="/#features">Features</a>
@@ -167,9 +165,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <a class="ql site" href="/docs.html">Docs</a>
     <a class="ql site" href="/api.html">API</a>
     <a class="ql site" href="/about.html">About</a>
-    <a class="ql" href="https://github.com/DuarteSantos8/openGym" rel="noopener">GitHub <span data-gh="stars"></span></a>
-    <a class="ql" href="https://discord.gg/e62jY6fwVb" rel="noopener">Discord <span data-dc="members"></span></a>
-    <a class="ql coffee" href="https://buymeacoffee.com/duartesantos" rel="noopener" aria-label="Buy me a coffee"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.216 6.415l-.132-.666c-.119-.598-.388-1.163-1.001-1.379-.197-.069-.42-.098-.57-.241-.152-.143-.196-.366-.231-.572-.065-.378-.125-.756-.192-1.133-.057-.325-.102-.69-.25-.987-.195-.4-.597-.634-.996-.788a5.723 5.723 0 00-.626-.194c-1-.263-2.05-.36-3.077-.416a25.834 25.834 0 00-3.7.062c-.915.083-1.88.184-2.75.5-.318.116-.646.256-.888.501-.297.302-.393.77-.177 1.146.154.267.415.456.692.58.36.162.737.284 1.123.366 1.075.238 2.189.331 3.287.37 1.218.05 2.437.01 3.65-.118.299-.033.598-.073.896-.119.352-.054.578-.513.474-.834-.124-.383-.457-.531-.834-.473-.466.074-.96.108-1.382.146-1.177.08-2.358.082-3.536.006a22.228 22.228 0 01-1.157-.107c-.086-.01-.18-.025-.258-.036-.243-.036-.484-.08-.724-.13-.111-.027-.111-.185 0-.212h.005c.277-.06.557-.108.838-.147h.002c.131-.009.263-.032.394-.048a25.076 25.076 0 013.426-.12c.674.019 1.347.067 2.017.144l.228.031c.267.04.533.088.798.145.392.085.895.113 1.07.542.055.137.08.288.111.431l.319 1.484a.237.237 0 01-.199.284h-.003c-.037.006-.075.01-.112.015a36.704 36.704 0 01-4.743.295 37.059 37.059 0 01-4.699-.304c-.14-.017-.293-.042-.417-.06-.326-.048-.649-.108-.973-.161-.393-.065-.768-.032-1.123.161-.29.16-.527.404-.675.701-.154.316-.199.66-.267 1-.069.34-.176.707-.135 1.056.087.753.613 1.365 1.37 1.502a39.69 39.69 0 0011.343.376.483.483 0 01.535.53l-.071.697-1.018 9.907c-.041.41-.047.832-.125 1.237-.122.637-.553 1.028-1.182 1.171-.577.131-1.165.2-1.756.205-.656.004-1.31-.025-1.966-.022-.699.004-1.556-.06-2.095-.58-.475-.458-.54-1.174-.605-1.793l-.731-7.013-.322-3.094c-.037-.351-.286-.695-.678-.678-.336.015-.718.3-.678.679l.228 2.185.949 9.112c.147 1.344 1.174 2.068 2.446 2.272.742.12 1.503.144 2.257.156.966.016 1.942.053 2.892-.122 1.408-.258 2.465-1.198 2.616-2.657.34-3.332.683-6.663 1.024-9.995l.215-2.087a.484.484 0 01.39-.426c.402-.078.787-.212 1.074-.518.455-.488.546-1.124.385-1.766zm-1.478.772c-.145.137-.363.201-.578.233-2.416.359-4.866.54-7.308.46-1.748-.06-3.477-.254-5.207-.498-.17-.024-.353-.055-.47-.18-.22-.236-.111-.71-.054-.995.052-.26.152-.609.463-.646.484-.057 1.046.148 1.526.22.577.088 1.156.159 1.737.212 2.48.226 5.002.19 7.472-.14.45-.06.899-.13 1.345-.21.399-.072.84-.206 1.08.206.166.281.188.657.162.974a.544.544 0 01-.169.364zm-6.159 3.9c-.862.37-1.84.788-3.109.788a5.884 5.884 0 01-1.569-.217l.877 9.004c.065.78.717 1.38 1.5 1.38 0 0 1.243.065 1.658.065.447 0 1.786-.065 1.786-.065.783 0 1.434-.6 1.499-1.38l.94-9.95a3.996 3.996 0 00-1.322-.238c-.826 0-1.491.284-2.26.613z"/></svg><span>Buy me a coffee!</span></a>
+    <a class="ql" href="https://github.com/Paulo-Santos20/GymTask" rel="noopener">GitHub <span data-gh="stars"></span></a>
     <a class="cta" href="/#download">Download</a>
   </div>
   <button class="nav-toggle" id="navtoggle" aria-expanded="false" aria-controls="sitemenu" aria-label="Menu">
@@ -188,9 +184,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <a class="nl" href="/docs.html">Docs</a>
     <a class="nl" href="/api.html">API</a>
     <a class="nl" href="/about.html">About</a>
-    <a class="nl" href="https://github.com/DuarteSantos8/openGym" rel="noopener">GitHub <span data-gh="stars"></span></a>
-    <a class="nl" href="https://discord.gg/e62jY6fwVb" rel="noopener">Discord <span data-dc="members"></span></a>
-    <a class="nl coffee" href="https://buymeacoffee.com/duartesantos" rel="noopener">Buy me a coffee! <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.216 6.415l-.132-.666c-.119-.598-.388-1.163-1.001-1.379-.197-.069-.42-.098-.57-.241-.152-.143-.196-.366-.231-.572-.065-.378-.125-.756-.192-1.133-.057-.325-.102-.69-.25-.987-.195-.4-.597-.634-.996-.788a5.723 5.723 0 00-.626-.194c-1-.263-2.05-.36-3.077-.416a25.834 25.834 0 00-3.7.062c-.915.083-1.88.184-2.75.5-.318.116-.646.256-.888.501-.297.302-.393.77-.177 1.146.154.267.415.456.692.58.36.162.737.284 1.123.366 1.075.238 2.189.331 3.287.37 1.218.05 2.437.01 3.65-.118.299-.033.598-.073.896-.119.352-.054.578-.513.474-.834-.124-.383-.457-.531-.834-.473-.466.074-.96.108-1.382.146-1.177.08-2.358.082-3.536.006a22.228 22.228 0 01-1.157-.107c-.086-.01-.18-.025-.258-.036-.243-.036-.484-.08-.724-.13-.111-.027-.111-.185 0-.212h.005c.277-.06.557-.108.838-.147h.002c.131-.009.263-.032.394-.048a25.076 25.076 0 013.426-.12c.674.019 1.347.067 2.017.144l.228.031c.267.04.533.088.798.145.392.085.895.113 1.07.542.055.137.08.288.111.431l.319 1.484a.237.237 0 01-.199.284h-.003c-.037.006-.075.01-.112.015a36.704 36.704 0 01-4.743.295 37.059 37.059 0 01-4.699-.304c-.14-.017-.293-.042-.417-.06-.326-.048-.649-.108-.973-.161-.393-.065-.768-.032-1.123.161-.29.16-.527.404-.675.701-.154.316-.199.66-.267 1-.069.34-.176.707-.135 1.056.087.753.613 1.365 1.37 1.502a39.69 39.69 0 0011.343.376.483.483 0 01.535.53l-.071.697-1.018 9.907c-.041.41-.047.832-.125 1.237-.122.637-.553 1.028-1.182 1.171-.577.131-1.165.2-1.756.205-.656.004-1.31-.025-1.966-.022-.699.004-1.556-.06-2.095-.58-.475-.458-.54-1.174-.605-1.793l-.731-7.013-.322-3.094c-.037-.351-.286-.695-.678-.678-.336.015-.718.3-.678.679l.228 2.185.949 9.112c.147 1.344 1.174 2.068 2.446 2.272.742.12 1.503.144 2.257.156.966.016 1.942.053 2.892-.122 1.408-.258 2.465-1.198 2.616-2.657.34-3.332.683-6.663 1.024-9.995l.215-2.087a.484.484 0 01.39-.426c.402-.078.787-.212 1.074-.518.455-.488.546-1.124.385-1.766zm-1.478.772c-.145.137-.363.201-.578.233-2.416.359-4.866.54-7.308.46-1.748-.06-3.477-.254-5.207-.498-.17-.024-.353-.055-.47-.18-.22-.236-.111-.71-.054-.995.052-.26.152-.609.463-.646.484-.057 1.046.148 1.526.22.577.088 1.156.159 1.737.212 2.48.226 5.002.19 7.472-.14.45-.06.899-.13 1.345-.21.399-.072.84-.206 1.08.206.166.281.188.657.162.974a.544.544 0 01-.169.364zm-6.159 3.9c-.862.37-1.84.788-3.109.788a5.884 5.884 0 01-1.569-.217l.877 9.004c.065.78.717 1.38 1.5 1.38 0 0 1.243.065 1.658.065.447 0 1.786-.065 1.786-.065.783 0 1.434-.6 1.499-1.38l.94-9.95a3.996 3.996 0 00-1.322-.238c-.826 0-1.491.284-2.26.613z"/></svg></a>
+    <a class="nl" href="https://github.com/Paulo-Santos20/GymTask" rel="noopener">GitHub <span data-gh="stars"></span></a>
   </div>
 </div>
 
@@ -211,8 +205,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <p class="side-label">On this page</p>
   <a class="side-link" href="#overview"><b>Overview</b><span>Auth model, sessions, conventions</span></a>
   <a class="side-link" href="#meta"><b>Meta</b><span>Health &amp; public config</span></a>
-  <a class="side-link" href="#auth"><b>Auth</b><span>Passkeys &amp; sessions</span></a>
-  <a class="side-link" href="#pairing"><b>Pairing</b><span>Connect the mobile app</span></a>
+  <a class="side-link" href="#auth"><b>Auth</b><span>Sessions &amp; sign-out</span></a>
   <a class="side-link" href="#data"><b>Data</b><span>State sync</span></a>
   <a class="side-link" href="#push"><b>Push</b><span>Notifications &amp; rest timer</span></a>
   <a class="side-link" href="#activity"><b>Activity</b><span>Live presence</span></a>
@@ -226,10 +219,10 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
 
 <main id="main" class="api-main">
   <h1>API</h1>
-  <p class="lead">Every route the openGym backend serves — passkey auth, state sync,
-     push, pairing, admin — as one hand-written
+  <p class="lead">Every route the GymTask backend serves — sessions, state sync
+     and push — as one hand-written
      OpenAPI&nbsp;spec. The same file lives
-     <a href="https://github.com/DuarteSantos8/openGym/blob/main/api/openapi.yaml" rel="noopener">in the repository</a>
+     <a href="https://github.com/Paulo-Santos20/GymTask/blob/main/api/openapi.yaml" rel="noopener">in the repository</a>
      at <code>api/openapi.yaml</code>, next to the one server file it documents.</p>
   <div class="actions api-actions">
     <a class="btn" href="openapi.yaml" download>
@@ -238,23 +231,23 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
   <p class="api-facts">
     <span>OpenAPI 3.1.0</span>
-    <span>openGym v1.3.8</span>
-    <span>30 endpoints</span>
+    <span>GymTask v1.3.8</span>
+    <span>16 endpoints</span>
     <span>AGPL-3.0-or-later</span>
   </p>
 
   <section class="api-sec" id="overview">
     <h2>Overview</h2>
-    <p class="sub">Passkey (WebAuthn) auth + per-user state storage for openGym. One Node file, no framework, JSON-file
+    <p class="sub">Session auth + per-user state storage for GymTask. One Node file, no framework, JSON-file
        storage, HMAC-signed session cookies.</p>
     <div class="srv">
-  <div class="srv-row"><code>/</code><span>Same origin as the openGym web app (the normal deployment)</span></div>
-  <div class="srv-row"><code>https://opengym.example.com</code><span>Your self-hosted instance</span></div>
+  <div class="srv-row"><code>/</code><span>Same origin as the GymTask web app (the normal deployment)</span></div>
+  <div class="srv-row"><code>https://gytask.example.com</code><span>Your self-hosted instance</span></div>
     </div>
     <div class="ov-grid">
   <div class="ov">
     <h3>Authentication</h3>
-<p>Sign-in is <b>passkey only</b> (WebAuthn, via <code>@simplewebauthn/server</code>). A successful <code>register/verify</code> or <code>login/verify</code> sets the session cookie; every authenticated route then works with that cookie. The paired mobile app has no shared cookie jar, so it redeems a short pairing code (<code>/api/pair/redeem</code>) for the <i>same</i> signed token and sends it as <code>Authorization: Bearer &lt;token&gt;</code> instead.</p>
+<p>Sign-in is handled <b>client-side</b> (Firebase email/password in the app); this API exposes no credential-verification route. Authenticated routes work with the HMAC-signed session cookie.</p>
   </div>
   <div class="ov">
     <h3>Sessions</h3>
@@ -262,15 +255,15 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
   <div class="ov">
     <h3>CSRF</h3>
-<p>State-changing browser requests must come from the app's own origin. The server checks <code>Sec-Fetch-Site</code> (falling back to <code>Origin</code> vs the configured <code>ORIGIN</code>); a mismatch is refused with <code>403 {&quot;error&quot;:&quot;cross-origin request refused&quot;}</code> on any non-GET route. Exempt: the WebAuthn and <code>pair/redeem</code> routes (each carries its own one-shot credential in the body) and any request authenticated with a Bearer token.</p>
+<p>State-changing browser requests must come from the app's own origin. The server checks <code>Sec-Fetch-Site</code> (falling back to <code>Origin</code> vs the configured <code>ORIGIN</code>); a mismatch is refused with <code>403 {&quot;error&quot;:&quot;cross-origin request refused&quot;}</code> on any non-GET route. Exempt: any request authenticated with a Bearer token.</p>
   </div>
   <div class="ov">
     <h3>Environment-dependent behavior</h3>
-<ul><li><code>INVITE_ONLY=1</code> — registration requires a valid invite code (minted by an admin).</li><li><code>ALLOW_GUEST=0</code> — hides the client-side &quot;continue without account&quot; mode; the server merely reports the flag via <code>GET /api/config</code> (guest mode never talks to this API at all).</li><li><code>ADMIN_UIDS=&lt;uid&gt;,&lt;uid&gt;</code> — user ids treated as admins (a <code>&quot;admin&quot;: true</code> flag on the user record in <code>db.json</code> works too). Admins get the <code>/api/admin/*</code> routes.</li><li><code>AUDIT_LOG</code> (default on), <code>AUDIT_MAX</code> (default 5000 events), <code>AUDIT_DAYS</code> (default 90), <code>AUDIT_IP</code> (<code>off</code> | <code>net</code> | <code>full</code>, default off) — shape the audit log served by <code>GET /api/admin/audit</code>.</li></ul>
+<ul><li><code>ALLOW_GUEST=0</code> — hides the client-side &quot;continue without account&quot; mode; the server merely reports the flag via <code>GET /api/config</code> (guest mode never talks to this API at all).</li><li><code>AUDIT_LOG</code> (default on), <code>AUDIT_MAX</code> (default 5000 events), <code>AUDIT_DAYS</code> (default 90), <code>AUDIT_IP</code> (<code>off</code> | <code>net</code> | <code>full</code>, default off) — shape the audit log written to <code>./data/audit.log</code>.</li></ul>
   </div>
   <div class="ov">
     <h3>Conventions</h3>
-<ul><li>Every response body is JSON with <code>Cache-Control: no-store</code>.</li><li>Errors are always <code>{&quot;error&quot;: &quot;&lt;human-readable message&gt;&quot;}</code>.</li><li>Unknown method+path pairs return <code>404 {&quot;error&quot;:&quot;not found&quot;}</code>; an unhandled exception returns <code>500 {&quot;error&quot;:&quot;server error&quot;}</code>.</li><li>Request bodies are parsed as JSON regardless of Content-Type. A body that does not parse, or parses to anything but an object (<code>null</code>, a string, an array), is <code>400 {&quot;error&quot;:&quot;invalid json&quot;}</code> on every route that reads one; an empty body counts as <code>{}</code>. A body over 5 MiB is <code>413 {&quot;error&quot;:&quot;body too large&quot;}</code>; the rest of the upload is discarded so the answer reaches the client.</li><li>CORS: the request's <code>Origin</code> is reflected in <code>Access-Control-Allow-Origin</code> <b>without</b> <code>Allow-Credentials</code> — cross-origin callers can only ever authenticate with a Bearer token, never with the cookie.</li></ul>
+<ul><li>Every response body is JSON with <code>Cache-Control: no-store</code>.</li><li>Errors are always <code>{&quot;error&quot;: &quot;&lt;human-readable message&gt;&quot;}</code>.</li><li>Unknown method+path combinations return <code>404 {&quot;error&quot;:&quot;not found&quot;}</code>; an unhandled exception returns <code>500 {&quot;error&quot;:&quot;server error&quot;}</code>.</li><li>Request bodies are parsed as JSON regardless of Content-Type. A body that does not parse, or parses to anything but an object (<code>null</code>, a string, an array), is <code>400 {&quot;error&quot;:&quot;invalid json&quot;}</code> on every route that reads one; an empty body counts as <code>{}</code>. A body over 5 MiB is <code>413 {&quot;error&quot;:&quot;body too large&quot;}</code>; the rest of the upload is discarded so the answer reaches the client.</li><li>CORS: the request's <code>Origin</code> is reflected in <code>Access-Control-Allow-Origin</code> <b>without</b> <code>Allow-Credentials</code> — cross-origin callers can only ever authenticate with a Bearer token, never with the cookie.</li></ul>
   </div>
     </div>
   </section>
@@ -315,7 +308,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">Public instance configuration</span>
   </summary>
   <div class="ep-body">
-<p>The flags the login screen needs before anyone is signed in. Both reflect environment variables on the server (<code>INVITE_ONLY</code>, <code>ALLOW_GUEST</code>).</p>
+<p>The flags the login screen needs before anyone is signed in. <code>invite_only</code> is kept for older clients and is always false; <code>allow_guest</code> reflects the <code>ALLOW_GUEST</code> environment variable on the server.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public — no authentication required.</span></p>
 
 
@@ -333,7 +326,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
 
 <section class="api-sec" id="auth">
   <h2>Auth</h2>
-  <p class="sub">Passkey (WebAuthn) registration and login, sessions</p>
+  <p class="sub">Session resolution and sign-out (sign-in itself is client-side)</p>
   <div class="eps">
 
 <details class="ep" id="op-getMe">
@@ -345,7 +338,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </summary>
   <div class="ep-body">
 <p>Resolves the current session to a user.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code>.</span></p>
 
 
     <p class="ep-h">Responses</p>
@@ -357,168 +350,6 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow rrow">
     <span class="r-code s4">401</span>
     <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
-  </div>
-    </div>
-  </div>
-</details>
-
-<details class="ep" id="op-registerOptions">
-  <summary>
-    <span class="m post">POST</span>
-    <span class="ep-path"><code>/api/register/options</code><span class="ep-chip public">public</span></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">Start passkey registration (WebAuthn ceremony, step 1)</span>
-  </summary>
-  <div class="ep-body">
-<p>Returns <code>PublicKeyCredentialCreationOptions</code> (from <code>@simplewebauthn/server</code>'s <code>generateRegistrationOptions</code>) plus a challenge id <code>cid</code>. The client passes <code>options</code> to <code>navigator.credentials.create()</code> (or <code>@simplewebauthn/browser</code>'s <code>startRegistration</code>) and sends the result to <code>/api/register/verify</code> together with the <code>cid</code>. Challenges are one-shot and expire after 5 minutes.</p>
-<p>CSRF-exempt (the challenge is the credential). No session required.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public — no authentication required.</span></p>
-
-<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
-  <div class="prow">
-    <span class="p-name">name<em class="p-req" title="required">required</em></span>
-    <span class="p-type">string <span class="p-hint">(&le; 40 chars)</span></span>
-    <span class="p-desc">Display name for the new profile (trimmed, max 40 chars).</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">code</span>
-    <span class="p-type">string</span>
-    <span class="p-desc">Invite code — required (and validated) only when the instance runs with INVITE_ONLY. Compared case-insensitively.</span>
-  </div>
-</div>
-<pre><code>{
-  &quot;name&quot;: &quot;Ada&quot;,
-  &quot;code&quot;: &quot;3F9C21A07B54D688&quot;
-}</code></pre>
-    <p class="ep-h">Responses</p>
-    <div class="ptab">
-  <div class="prow rrow">
-    <span class="r-code s2">200</span>
-    <span class="p-desc">Ceremony options.<span class="r-sig">{ cid: string, options: <a href="#schema-WebAuthnRegistrationOptions">WebAuthnRegistrationOptions</a> }</span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">400</span>
-    <span class="p-desc"><code>name</code> missing/empty.<span class="r-sig"><code>{&quot;error&quot;:&quot;name required&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">403</span>
-    <span class="p-desc">Instance is invite-only and the code is missing, used, or revoked.<span class="r-sig"><code>{&quot;error&quot;:&quot;a valid invite code is required&quot;}</code></span></span>
-  </div>
-    </div>
-  </div>
-</details>
-
-<details class="ep" id="op-registerVerify">
-  <summary>
-    <span class="m post">POST</span>
-    <span class="ep-path"><code>/api/register/verify</code><span class="ep-chip public">public</span></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">Finish passkey registration (WebAuthn ceremony, step 2)</span>
-  </summary>
-  <div class="ep-body">
-<p>Verifies the authenticator's attestation response against the stored challenge (<code>verifyRegistrationResponse</code>), creates the user + credential, and signs the caller in (sets the session cookie). On an invite-only instance the invite is re-checked and burned here. CSRF-exempt.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public — no authentication required.</span></p>
-
-<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
-  <div class="prow">
-    <span class="p-name">cid<em class="p-req" title="required">required</em></span>
-    <span class="p-type">string</span>
-    <span class="p-desc">The challenge id from /api/register/options.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">credential<em class="p-req" title="required">required</em></span>
-    <span class="p-type"><a href="#schema-WebAuthnRegistrationCredential">WebAuthnRegistrationCredential</a></span>
-    <span class="p-desc"></span>
-  </div>
-</div>
-    <p class="ep-h">Responses</p>
-    <div class="ptab">
-  <div class="prow rrow">
-    <span class="r-code s2">200</span>
-    <span class="p-desc">Registered and signed in. The session cookie is set.<span class="r-sig">{ user: <a href="#schema-SessionUser">SessionUser</a> } &middot; sets <code>Set-Cookie</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">400</span>
-    <span class="p-desc">Challenge expired/replayed, or the attestation did not verify (wrong origin/RP ID, malformed response…). The message is human-readable.<span class="r-sig"><code>{&quot;error&quot;:&quot;challenge expired — try again&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">403</span>
-    <span class="p-desc">Invite-only and the code became invalid since step 1.<span class="r-sig"><code>{&quot;error&quot;:&quot;invite code is no longer valid — ask for a new one&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">409</span>
-    <span class="p-desc">This credential id is already registered.<span class="r-sig"><code>{&quot;error&quot;:&quot;credential already registered&quot;}</code></span></span>
-  </div>
-    </div>
-  </div>
-</details>
-
-<details class="ep" id="op-loginOptions">
-  <summary>
-    <span class="m post">POST</span>
-    <span class="ep-path"><code>/api/login/options</code><span class="ep-chip public">public</span></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">Start passkey login (WebAuthn ceremony, step 1)</span>
-  </summary>
-  <div class="ep-body">
-<p>Returns <code>PublicKeyCredentialRequestOptions</code> (<code>generateAuthenticationOptions</code> with an empty <code>allowCredentials</code> — discoverable credentials / resident keys are required at registration, so the browser offers the user their passkeys itself) plus a one-shot challenge id <code>cid</code>. CSRF-exempt. Takes no request body.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public — no authentication required.</span></p>
-
-
-    <p class="ep-h">Responses</p>
-    <div class="ptab">
-  <div class="prow rrow">
-    <span class="r-code s2">200</span>
-    <span class="p-desc">Ceremony options.<span class="r-sig">{ cid: string, options: <a href="#schema-WebAuthnAuthenticationOptions">WebAuthnAuthenticationOptions</a> }</span></span>
-  </div>
-    </div>
-  </div>
-</details>
-
-<details class="ep" id="op-loginVerify">
-  <summary>
-    <span class="m post">POST</span>
-    <span class="ep-path"><code>/api/login/verify</code><span class="ep-chip public">public</span></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">Finish passkey login (WebAuthn ceremony, step 2)</span>
-  </summary>
-  <div class="ep-body">
-<p>Verifies the assertion (<code>verifyAuthenticationResponse</code>), updates the signature counter, and signs the caller in (sets the session cookie). CSRF-exempt.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public — no authentication required.</span></p>
-
-<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
-  <div class="prow">
-    <span class="p-name">cid<em class="p-req" title="required">required</em></span>
-    <span class="p-type">string</span>
-    <span class="p-desc">The challenge id from /api/login/options.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">credential<em class="p-req" title="required">required</em></span>
-    <span class="p-type"><a href="#schema-WebAuthnAuthenticationCredential">WebAuthnAuthenticationCredential</a></span>
-    <span class="p-desc"></span>
-  </div>
-</div>
-    <p class="ep-h">Responses</p>
-    <div class="ptab">
-  <div class="prow rrow">
-    <span class="r-code s2">200</span>
-    <span class="p-desc">Signed in. The session cookie is set.<span class="r-sig">{ user: <a href="#schema-SessionUser">SessionUser</a> } &middot; sets <code>Set-Cookie</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">400</span>
-    <span class="p-desc">Challenge expired/replayed, or the assertion did not verify.<span class="r-sig"><code>{&quot;error&quot;:&quot;not verified&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">403</span>
-    <span class="p-desc">The account has been disabled by an admin.<span class="r-sig"><code>{&quot;error&quot;:&quot;this account has been disabled&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">404</span>
-    <span class="p-desc">The passkey's credential id is unknown to this instance.<span class="r-sig"><code>{&quot;error&quot;:&quot;unknown passkey — create a profile first&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s5">500</span>
-    <span class="p-desc">Credential exists but its user record is missing (corrupt db).<span class="r-sig"><code>{&quot;error&quot;:&quot;user missing&quot;}</code></span></span>
   </div>
     </div>
   </div>
@@ -554,8 +385,8 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">Sign out everywhere</span>
   </summary>
   <div class="ep-body">
-<p>Bumps the account's session version, which invalidates <b>every</b> cookie and Bearer token ever issued for it — on every device, including a copy someone walked off with. Passkeys are untouched; signing back in works immediately. Also clears the caller's own cookie. Unredeemed pairing codes for the account are voided too.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+<p>Bumps the account's session version, which invalidates <b>every</b> cookie and Bearer token ever issued for it — on every device, including a copy someone walked off with. Signing back in works immediately. Also clears the caller's own cookie.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code>.</span></p>
 
 
     <p class="ep-h">Responses</p>
@@ -567,74 +398,6 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow rrow">
     <span class="r-code s4">401</span>
     <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
-  </div>
-    </div>
-  </div>
-</details>
-  </div>
-</section>
-
-<section class="api-sec" id="pairing">
-  <h2>Pairing</h2>
-  <p class="sub">Mobile-app pairing (code from a signed-in browser tab)</p>
-  <div class="eps">
-
-<details class="ep" id="op-pairCreate">
-  <summary>
-    <span class="m post">POST</span>
-    <span class="ep-path"><code>/api/pair/create</code></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">Mint a pairing code for the mobile app</span>
-  </summary>
-  <div class="ep-body">
-<p>Called from an already signed-in browser tab (Settings → &quot;Pair the mobile app&quot;). Returns an 8-character code (alphabet without 0/O/1/I) the phone redeems within 5 minutes via /api/pair/redeem. One-shot.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
-
-
-    <p class="ep-h">Responses</p>
-    <div class="ptab">
-  <div class="prow rrow">
-    <span class="r-code s2">200</span>
-    <span class="p-desc">A fresh pairing code.<span class="r-sig">{ code: string }</span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">401</span>
-    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
-  </div>
-    </div>
-  </div>
-</details>
-
-<details class="ep" id="op-pairRedeem">
-  <summary>
-    <span class="m post">POST</span>
-    <span class="ep-path"><code>/api/pair/redeem</code><span class="ep-chip public">public</span></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">Redeem a pairing code for a Bearer token</span>
-  </summary>
-  <div class="ep-body">
-<p>Called from the mobile app with the code shown in the browser. No session required — the code <i>is</i> the credential (one-shot, 5-minute TTL). Returns the same HMAC-signed session token the cookie would carry; the app sends it as <code>Authorization: Bearer &lt;token&gt;</code> from then on. CSRF-exempt.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public — no authentication required.</span></p>
-
-<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
-  <div class="prow">
-    <span class="p-name">code<em class="p-req" title="required">required</em></span>
-    <span class="p-type">string</span>
-    <span class="p-desc">The pairing code (case-insensitive).</span>
-  </div>
-</div>
-<pre><code>{
-  &quot;code&quot;: &quot;K7WQ2MZP&quot;
-}</code></pre>
-    <p class="ep-h">Responses</p>
-    <div class="ptab">
-  <div class="prow rrow">
-    <span class="r-code s2">200</span>
-    <span class="p-desc">Paired.<span class="r-sig">{ token: string, user: <a href="#schema-SessionUser">SessionUser</a> }</span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">400</span>
-    <span class="p-desc">Code unknown, already used, expired — or the account behind it is gone or disabled (deliberately the same message for all of these).<span class="r-sig"><code>{&quot;error&quot;:&quot;invalid or expired code&quot;}</code></span></span>
   </div>
     </div>
   </div>
@@ -656,7 +419,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </summary>
   <div class="ep-body">
 <p>Returns the caller's entire app state as one JSON blob, or <code>{&quot;state&quot;: null}</code> if nothing has been synced yet, together with <code>rev</code>, the server's revision of that document (0 when there is none). A client keeps the <code>rev</code> it last read or wrote and sends it back as <code>baseRev</code> on the next push, which lets the server refuse a write over a document the client never saw (see the 409 on PUT).</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code>.</span></p>
 
 
     <p class="ep-h">Responses</p>
@@ -683,7 +446,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="ep-body">
 <p>Replaces the stored state wholesale (atomic write; there is no merge on the server). The <code>active</code> field — an in-progress workout — is stripped before saving: a running session belongs to the device running it. Body limit 5 MiB.</p>
 <p>With <code>baseRev</code> the write is conditional: it goes through only when <code>baseRev</code> equals the document's current revision, and answers 409 with the current document otherwise — the client merges the two and pushes again with the revision it was given. Without <code>baseRev</code> the write is unconditional (clients from before revisions, and deliberate replaces such as a backup import). The server stamps the new revision into the document as <code>_rev</code>; a <code>_rev</code> sent by the client is ignored.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code>.</span></p>
 
 <p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
   <div class="prow">
@@ -714,6 +477,32 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow rrow">
     <span class="r-code s4">409</span>
     <span class="p-desc"><code>baseRev</code> is not the current revision — another client wrote since this one last read. Carries the current document so the client can merge and retry.</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-undefined">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/data/rev</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Current revision of the caller's profile state</span>
+  </summary>
+  <div class="ep-body">
+<p>The <code>rev</code> that <code>GET /api/data</code> would return, without the document. Signed-in clients poll this while open and on every return to the foreground and fetch the document only when the number changed.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code>.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The current revision (0 when the profile has no state yet).<span class="r-sig">{ rev: integer }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
   </div>
     </div>
   </div>
@@ -757,7 +546,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </summary>
   <div class="ep-body">
 <p>Stores the browser's <code>PushSubscription</code> for this account. Only <code>endpoint</code> and the two protocol keys are kept. The endpoint must be a public <code>https://</code> URL — private/loopback/link-local addresses are refused (here and again at send time, against DNS rebinding). At most 20 subscriptions per user; the oldest are dropped first. Re-subscribing an existing endpoint replaces it and keeps its original <code>created</code> — the client re-sends its subscription on every signed-in boot, so a row the instance lost comes back on its own.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code>.</span></p>
 
 <p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
   <div class="prow">
@@ -798,7 +587,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </summary>
   <div class="ep-body">
 <p>Whether the caller's account has a stored subscription with exactly this <code>endpoint</code>. The browser's <code>PushManager.getSubscription()</code> says nothing about the server's side — a row pruned after a dead send (404/410/403) leaves the browser subscribed to nowhere — so the client asks here before showing the notifications switch as on, and re-registers when the answer is no.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code>.</span></p>
 <p class="ep-h">Query parameters</p><div class="ptab">
   <div class="prow">
     <span class="p-name">endpoint<em class="p-req" title="required">required</em></span>
@@ -830,7 +619,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </summary>
   <div class="ep-body">
 <p>Removes the caller's subscription with the given endpoint. Idempotent.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code>.</span></p>
 
 <p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
   <div class="prow">
@@ -862,7 +651,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </summary>
   <div class="ep-body">
 <p>Sends a test push to all of the caller's subscriptions (localized with the <code>lang</code> in their synced state). Returns 200 even if delivery to individual endpoints fails — dead endpoints (404/410, and 403 for a subscription made against a VAPID key the instance no longer has) are pruned as a side effect.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code>.</span></p>
 
 
     <p class="ep-h">Responses</p>
@@ -888,7 +677,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </summary>
   <div class="ep-body">
 <p>Schedules one push after <code>seconds</code> (a number or numeric string ≥ 1, clamped to 3600). One pending timer per device — <code>deviceId</code>, the same token the subscription was registered with; a new call from the same device replaces it, and the push goes only to that device's subscriptions. Without a <code>deviceId</code> there is one timer per account and the push goes to every subscription, as before. The client schedules this on rest start/extend and cancels on skip or on-screen completion — the push only actually fires when the tab was backgrounded/suspended and never got to cancel it. Timers live in memory: an API restart drops them.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code>.</span></p>
 
 <p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
   <div class="prow">
@@ -933,7 +722,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </summary>
   <div class="ep-body">
 <p>Cancels the caller's scheduled rest-timer push, if any. With a <code>deviceId</code> only that device's timer; without one, every pending timer of the account. Idempotent.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code>.</span></p>
 
 <p class="ep-h">Request body <span class="p-hint">(JSON)</span> <span class="p-hint">(optional)</span></p><div class="ptab">
   <div class="prow">
@@ -971,8 +760,8 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">Live-workout presence heartbeat</span>
   </summary>
   <div class="ep-body">
-<p>The client pings this every ~20 s while a workout is on screen; the admin dashboard reads who is training right now. Purely ephemeral, in-memory, never persisted; entries expire ~70 s after the last ping. <code>{&quot;active&quot;: false}</code> drops the caller's entry immediately.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+<p>The client pings this every ~20 s while a workout is on screen. Purely ephemeral, in-memory, never persisted; entries expire ~70 s after the last ping. <code>{&quot;active&quot;: false}</code> drops the caller's entry immediately.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code>.</span></p>
 
 <p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
   <div class="prow">
@@ -1038,313 +827,9 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
 
 <section class="api-sec" id="admin">
   <h2>Admin</h2>
-  <p class="sub">Admin dashboard — requires an admin session (<code>ADMIN_UIDS</code> or <code>admin:true</code>)</p>
+  <p class="sub"></p>
   <div class="eps">
 
-<details class="ep" id="op-adminUsers">
-  <summary>
-    <span class="m get">GET</span>
-    <span class="ep-path"><code>/api/admin/users</code><span class="ep-chip admin">admin</span></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">List all users</span>
-  </summary>
-  <div class="ep-body">
-<p>One row per user with workout counts, last sync, push status and live presence. <code>workouts</code> counts only the entries the drill-down can show. Admin only.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Admin only — a signed-in session whose user is an admin (<code>ADMIN_UIDS</code> or <code>admin:true</code>), as the session cookie or a Bearer token.</span></p>
-
-
-    <p class="ep-h">Responses</p>
-    <div class="ptab">
-  <div class="prow rrow">
-    <span class="r-code s2">200</span>
-    <span class="p-desc">All users.<span class="r-sig">{ users: <a href="#schema-AdminUserRow">AdminUserRow</a>[], invite_only: boolean, now: number }</span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">401</span>
-    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">403</span>
-    <span class="p-desc">Signed in, but not an admin. The attempt is recorded in the audit log.<span class="r-sig"><code>{&quot;error&quot;:&quot;forbidden&quot;}</code></span></span>
-  </div>
-    </div>
-  </div>
-</details>
-
-<details class="ep" id="op-adminUser">
-  <summary>
-    <span class="m get">GET</span>
-    <span class="ep-path"><code>/api/admin/user</code><span class="ep-chip admin">admin</span></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">One user in detail</span>
-  </summary>
-  <div class="ep-body">
-<p>Drill-down — full workout history (newest first) and body-weight log for one user. Admin only. Anything in <code>routines</code>, <code>bodyweight</code> or <code>workouts</code> that is not an object is left out, and a list that is not an array reads as empty: PUT /api/data drops those entries now, but a state file written before it did still has them and this route has to answer for it.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Admin only — a signed-in session whose user is an admin (<code>ADMIN_UIDS</code> or <code>admin:true</code>), as the session cookie or a Bearer token.</span></p>
-<p class="ep-h">Query parameters</p><div class="ptab">
-  <div class="prow">
-    <span class="p-name">id<em class="p-req" title="required">required</em></span>
-    <span class="p-type">string</span>
-    <span class="p-desc">The user id.</span>
-  </div>
-</div>
-
-    <p class="ep-h">Responses</p>
-    <div class="ptab">
-  <div class="prow rrow">
-    <span class="r-code s2">200</span>
-    <span class="p-desc">The user's detail.<span class="r-sig"><a href="#schema-AdminUserDetail">AdminUserDetail</a></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">401</span>
-    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">403</span>
-    <span class="p-desc">Signed in, but not an admin. The attempt is recorded in the audit log.<span class="r-sig"><code>{&quot;error&quot;:&quot;forbidden&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">404</span>
-    <span class="p-desc">No user with that id.<span class="r-sig"><code>{&quot;error&quot;:&quot;no such user&quot;}</code></span></span>
-  </div>
-    </div>
-  </div>
-</details>
-
-<details class="ep" id="op-adminUserDisable">
-  <summary>
-    <span class="m post">POST</span>
-    <span class="ep-path"><code>/api/admin/user/disable</code><span class="ep-chip admin">admin</span></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">Disable or re-enable a user</span>
-  </summary>
-  <div class="ep-body">
-<p>Sets the <code>disabled</code> flag. A disabled account is locked out everywhere at once (every existing session stops resolving) and dropped from live presence. Admins cannot be disabled. Audited.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Admin only — a signed-in session whose user is an admin (<code>ADMIN_UIDS</code> or <code>admin:true</code>), as the session cookie or a Bearer token.</span></p>
-
-<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
-  <div class="prow">
-    <span class="p-name">id<em class="p-req" title="required">required</em></span>
-    <span class="p-type">string</span>
-    <span class="p-desc">The user id.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">disabled<em class="p-req" title="required">required</em></span>
-    <span class="p-type">boolean</span>
-    <span class="p-desc"></span>
-  </div>
-</div>
-    <p class="ep-h">Responses</p>
-    <div class="ptab">
-  <div class="prow rrow">
-    <span class="r-code s2">200</span>
-    <span class="p-desc">Flag updated.<span class="r-sig">{ ok: always true, id: string, disabled: boolean }</span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">400</span>
-    <span class="p-desc">Target is an admin.<span class="r-sig"><code>{&quot;error&quot;:&quot;cannot disable an admin&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">401</span>
-    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">403</span>
-    <span class="p-desc">Signed in, but not an admin. The attempt is recorded in the audit log.<span class="r-sig"><code>{&quot;error&quot;:&quot;forbidden&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">404</span>
-    <span class="p-desc">No user with that id.<span class="r-sig"><code>{&quot;error&quot;:&quot;no such user&quot;}</code></span></span>
-  </div>
-    </div>
-  </div>
-</details>
-
-<details class="ep" id="op-adminInvites">
-  <summary>
-    <span class="m get">GET</span>
-    <span class="ep-path"><code>/api/admin/invites</code><span class="ep-chip admin">admin</span></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">List invite codes</span>
-  </summary>
-  <div class="ep-body">
-<p>All invite codes, with the redeeming user's name resolved for display.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Admin only — a signed-in session whose user is an admin (<code>ADMIN_UIDS</code> or <code>admin:true</code>), as the session cookie or a Bearer token.</span></p>
-
-
-    <p class="ep-h">Responses</p>
-    <div class="ptab">
-  <div class="prow rrow">
-    <span class="r-code s2">200</span>
-    <span class="p-desc">All invites.<span class="r-sig">{ invites: <a href="#schema-Invite">Invite</a>[], invite_only: boolean }</span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">401</span>
-    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">403</span>
-    <span class="p-desc">Signed in, but not an admin. The attempt is recorded in the audit log.<span class="r-sig"><code>{&quot;error&quot;:&quot;forbidden&quot;}</code></span></span>
-  </div>
-    </div>
-  </div>
-</details>
-
-<details class="ep" id="op-adminInviteNew">
-  <summary>
-    <span class="m post">POST</span>
-    <span class="ep-path"><code>/api/admin/invites/new</code><span class="ep-chip admin">admin</span></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">Mint an invite code</span>
-  </summary>
-  <div class="ep-body">
-<p>Creates a fresh single-use invite code (16 hex chars = 64 bits — the code itself is the thing that isn't worth guessing; rate limiting is the reverse proxy's job). Audited.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Admin only — a signed-in session whose user is an admin (<code>ADMIN_UIDS</code> or <code>admin:true</code>), as the session cookie or a Bearer token.</span></p>
-
-<p class="ep-h">Request body <span class="p-hint">(JSON)</span> <span class="p-hint">(optional)</span></p><div class="ptab">
-  <div class="prow">
-    <span class="p-name">note</span>
-    <span class="p-type">string <span class="p-hint">(&le; 60 chars)</span></span>
-    <span class="p-desc">Free-form label (&quot;for Alex&quot;).</span>
-  </div>
-</div>
-    <p class="ep-h">Responses</p>
-    <div class="ptab">
-  <div class="prow rrow">
-    <span class="r-code s2">200</span>
-    <span class="p-desc">The new invite.<span class="r-sig">{ invite: <a href="#schema-Invite">Invite</a> }</span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">401</span>
-    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">403</span>
-    <span class="p-desc">Signed in, but not an admin. The attempt is recorded in the audit log.<span class="r-sig"><code>{&quot;error&quot;:&quot;forbidden&quot;}</code></span></span>
-  </div>
-    </div>
-  </div>
-</details>
-
-<details class="ep" id="op-adminInviteRevoke">
-  <summary>
-    <span class="m post">POST</span>
-    <span class="ep-path"><code>/api/admin/invites/revoke</code><span class="ep-chip admin">admin</span></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">Revoke an unused invite code</span>
-  </summary>
-  <div class="ep-body">
-<p>Deletes an unused code. A code that was already redeemed cannot be revoked.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Admin only — a signed-in session whose user is an admin (<code>ADMIN_UIDS</code> or <code>admin:true</code>), as the session cookie or a Bearer token.</span></p>
-
-<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
-  <div class="prow">
-    <span class="p-name">code<em class="p-req" title="required">required</em></span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-</div>
-    <p class="ep-h">Responses</p>
-    <div class="ptab">
-  <div class="prow rrow">
-    <span class="r-code s2">200</span>
-    <span class="p-desc">Revoked.<span class="r-sig"><a href="#schema-Ok">Ok</a></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">400</span>
-    <span class="p-desc">The code was already used.<span class="r-sig"><code>{&quot;error&quot;:&quot;already used — cannot revoke&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">401</span>
-    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">403</span>
-    <span class="p-desc">Signed in, but not an admin. The attempt is recorded in the audit log.<span class="r-sig"><code>{&quot;error&quot;:&quot;forbidden&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">404</span>
-    <span class="p-desc">No such code.<span class="r-sig"><code>{&quot;error&quot;:&quot;no such code&quot;}</code></span></span>
-  </div>
-    </div>
-  </div>
-</details>
-
-<details class="ep" id="op-adminAudit">
-  <summary>
-    <span class="m get">GET</span>
-    <span class="ep-path"><code>/api/admin/audit</code><span class="ep-chip admin">admin</span></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">Read the activity log</span>
-  </summary>
-  <div class="ep-body">
-<p>The audit log (sign-ins, failed attempts, admin actions), newest first, paged by event id (<code>before</code> cursor — offset paging would repeat rows as new events land). Retention (<code>AUDIT_MAX</code> events / <code>AUDIT_DAYS</code> days) is applied on read as well as on the hourly compaction. When <code>AUDIT_LOG</code> is off the route still answers, with <code>enabled: false</code> and whatever was logged before.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Admin only — a signed-in session whose user is an admin (<code>ADMIN_UIDS</code> or <code>admin:true</code>), as the session cookie or a Bearer token.</span></p>
-<p class="ep-h">Query parameters</p><div class="ptab">
-  <div class="prow">
-    <span class="p-name">limit</span>
-    <span class="p-type">integer <span class="p-hint">(1&ndash;200, default 100)</span></span>
-    <span class="p-desc">Page size.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">before</span>
-    <span class="p-type">integer</span>
-    <span class="p-desc">Only events with id &lt; before (cursor from <code>nextBefore</code>).</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">cat</span>
-    <span class="p-type">&quot;auth&quot; | &quot;admin&quot; | &quot;fail&quot;</span>
-    <span class="p-desc">Filter — <code>fail</code> keeps only failed events; any other value keeps events whose name starts with <code>&lt;cat&gt;.</code> (in practice <code>auth</code> or <code>admin</code>).</span>
-  </div>
-</div>
-
-    <p class="ep-h">Responses</p>
-    <div class="ptab">
-  <div class="prow rrow">
-    <span class="r-code s2">200</span>
-    <span class="p-desc">One page of the log.<span class="r-sig">{ events: <a href="#schema-AuditEvent">AuditEvent</a>[], total: integer, nextBefore: integer | null, enabled: boolean, ip_mode: &quot;off&quot; | &quot;net&quot; | &quot;full&quot;, retention: object, now: number }</span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">401</span>
-    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">403</span>
-    <span class="p-desc">Signed in, but not an admin. The attempt is recorded in the audit log.<span class="r-sig"><code>{&quot;error&quot;:&quot;forbidden&quot;}</code></span></span>
-  </div>
-    </div>
-  </div>
-</details>
-
-<details class="ep" id="op-adminAuditClear">
-  <summary>
-    <span class="m post">POST</span>
-    <span class="ep-path"><code>/api/admin/audit/clear</code><span class="ep-chip admin">admin</span></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">Clear the activity log</span>
-  </summary>
-  <div class="ep-body">
-<p>Deletes the log file. The clear is itself the first event of the fresh log, and event ids are never reset — a wipe always leaves a visible id gap.</p>
-    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Admin only — a signed-in session whose user is an admin (<code>ADMIN_UIDS</code> or <code>admin:true</code>), as the session cookie or a Bearer token.</span></p>
-
-
-    <p class="ep-h">Responses</p>
-    <div class="ptab">
-  <div class="prow rrow">
-    <span class="r-code s2">200</span>
-    <span class="p-desc">Cleared.<span class="r-sig"><a href="#schema-Ok">Ok</a></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">401</span>
-    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
-  </div>
-  <div class="prow rrow">
-    <span class="r-code s4">403</span>
-    <span class="p-desc">Signed in, but not an admin. The attempt is recorded in the audit log.<span class="r-sig"><code>{&quot;error&quot;:&quot;forbidden&quot;}</code></span></span>
-  </div>
-    </div>
-  </div>
-</details>
   </div>
 </section>
 
@@ -1395,7 +880,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <summary>
     <span class="sch-name"><code>SessionUser</code></span>
     <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">The caller's identity, as returned by /api/me and the sign-in routes.</span>
+    <span class="ep-sum">The caller's identity, as returned by /api/me.</span>
   </summary>
   <div class="ep-body">
 
@@ -1410,223 +895,6 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="p-type">string</span>
     <span class="p-desc"></span>
   </div>
-  <div class="prow">
-    <span class="p-name">admin</span>
-    <span class="p-type">boolean</span>
-    <span class="p-desc"></span>
-  </div>
-</div>
-  </div>
-</details>
-
-<details class="ep sch" id="schema-WebAuthnRegistrationOptions">
-  <summary>
-    <span class="sch-name"><code>WebAuthnRegistrationOptions</code></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">PublicKeyCredentialCreationOptionsJSON — pass to <code>startRegistration()</code> (@simplewebauthn/browser) or decode for <code>navigator.credentials.create()</code>.</span>
-  </summary>
-  <div class="ep-body">
-<p>Resident keys are required; attestation is <code>none</code>.</p>
-<div class="ptab">
-  <div class="prow">
-    <span class="p-name">challenge</span>
-    <span class="p-type">string</span>
-    <span class="p-desc">base64url</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">rp</span>
-    <span class="p-type">object</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">rp.name</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">rp.id</span>
-    <span class="p-type">string</span>
-    <span class="p-desc">The RP_ID the instance is configured with.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">user</span>
-    <span class="p-type">object</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">user.id</span>
-    <span class="p-type">string</span>
-    <span class="p-desc">base64url user handle</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">user.name</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">user.displayName</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">pubKeyCredParams</span>
-    <span class="p-type">object[]</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">authenticatorSelection</span>
-    <span class="p-type">object</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">authenticatorSelection.residentKey</span>
-    <span class="p-type">always &quot;required&quot;</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">authenticatorSelection.userVerification</span>
-    <span class="p-type">always &quot;preferred&quot;</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">attestation</span>
-    <span class="p-type">always &quot;none&quot;</span>
-    <span class="p-desc"></span>
-  </div>
-</div>
-  </div>
-</details>
-
-<details class="ep sch" id="schema-WebAuthnRegistrationCredential">
-  <summary>
-    <span class="sch-name"><code>WebAuthnRegistrationCredential</code></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">RegistrationResponseJSON — the value <code>startRegistration()</code> resolves with (the created credential plus the authenticator's attestation response), sent back verbatim.</span>
-  </summary>
-  <div class="ep-body">
-
-<div class="ptab">
-  <div class="prow">
-    <span class="p-name">id</span>
-    <span class="p-type">string</span>
-    <span class="p-desc">base64url credential id</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">rawId</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">type</span>
-    <span class="p-type">always &quot;public-key&quot;</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">response</span>
-    <span class="p-type">object</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">response.clientDataJSON</span>
-    <span class="p-type">string</span>
-    <span class="p-desc">base64url</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">response.attestationObject</span>
-    <span class="p-type">string</span>
-    <span class="p-desc">base64url</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">response.transports</span>
-    <span class="p-type">string[]</span>
-    <span class="p-desc">e.g. [&quot;internal&quot;, &quot;hybrid&quot;] — stored for later logins.</span>
-  </div>
-</div>
-  </div>
-</details>
-
-<details class="ep sch" id="schema-WebAuthnAuthenticationOptions">
-  <summary>
-    <span class="sch-name"><code>WebAuthnAuthenticationOptions</code></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">PublicKeyCredentialRequestOptionsJSON — pass to <code>startAuthentication()</code>.</span>
-  </summary>
-  <div class="ep-body">
-<p><code>allowCredentials</code> is empty: the browser offers the user's discoverable passkeys itself.</p>
-<div class="ptab">
-  <div class="prow">
-    <span class="p-name">challenge</span>
-    <span class="p-type">string</span>
-    <span class="p-desc">base64url</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">rpId</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">userVerification</span>
-    <span class="p-type">always &quot;preferred&quot;</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">allowCredentials</span>
-    <span class="p-type">object[]</span>
-    <span class="p-desc">Always empty.</span>
-  </div>
-</div>
-  </div>
-</details>
-
-<details class="ep sch" id="schema-WebAuthnAuthenticationCredential">
-  <summary>
-    <span class="sch-name"><code>WebAuthnAuthenticationCredential</code></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">AuthenticationResponseJSON — the value <code>startAuthentication()</code> resolves with, sent back verbatim.</span>
-  </summary>
-  <div class="ep-body">
-
-<div class="ptab">
-  <div class="prow">
-    <span class="p-name">id</span>
-    <span class="p-type">string</span>
-    <span class="p-desc">base64url credential id</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">rawId</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">type</span>
-    <span class="p-type">always &quot;public-key&quot;</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">response</span>
-    <span class="p-type">object</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">response.clientDataJSON</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">response.authenticatorData</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">response.signature</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">response.userHandle</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
 </div>
   </div>
 </details>
@@ -1638,7 +906,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">The whole app state as one blob.</span>
   </summary>
   <div class="ep-body">
-<p>The server treats it as opaque (it only strips <code>active</code> on save and reads a few fields for reminders and the admin dashboard) — the schema below is <b>representative, not enforced</b> (except <code>workouts</code> and <code>routines</code>, which must be arrays (or null) when present), and grows with the app. Concurrent writes are caught by the server's revision (<code>_rev</code>, see PUT /api/data); the client merges the two documents and decides by <code>_ts</code> which side's settings win.</p>
+<p>The server treats it as opaque (it only strips <code>active</code> on save and reads a few fields for reminders) — the schema below is <b>representative, not enforced</b> (except <code>workouts</code> and <code>routines</code>, which must be arrays (or null) when present), and grows with the app. Concurrent writes are caught by the server's revision (<code>_rev</code>, see PUT /api/data); the client merges the two documents and decides by <code>_ts</code> which side's settings win.</p>
 <div class="ptab">
   <div class="prow">
     <span class="p-name">_ts</span>
@@ -1945,338 +1213,16 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
 </div>
   </div>
 </details>
-
-<details class="ep sch" id="schema-AdminUserRow">
-  <summary>
-    <span class="sch-name"><code>AdminUserRow</code></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum"></span>
-  </summary>
-  <div class="ep-body">
-
-<div class="ptab">
-  <div class="prow">
-    <span class="p-name">id</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">name</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">created</span>
-    <span class="p-type">string | null</span>
-    <span class="p-desc">ISO timestamp.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">disabled</span>
-    <span class="p-type">boolean</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">admin</span>
-    <span class="p-type">boolean</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">invitedBy</span>
-    <span class="p-type">string | null</span>
-    <span class="p-desc">The invite code this account was created with.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">workouts</span>
-    <span class="p-type">integer</span>
-    <span class="p-desc">Total logged workouts.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">lastWorkout</span>
-    <span class="p-type">string | null</span>
-    <span class="p-desc">ISO day of the newest workout.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">lastSync</span>
-    <span class="p-type">number | null</span>
-    <span class="p-desc">The state's <code>_ts</code> (ms).</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">hasPush</span>
-    <span class="p-type">boolean</span>
-    <span class="p-desc">Has at least one push subscription.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">live</span>
-    <span class="p-type"><a href="#schema-Presence">Presence</a> | null</span>
-    <span class="p-desc">Currently training, or null.</span>
-  </div>
-</div>
-  </div>
-</details>
-
-<details class="ep sch" id="schema-Presence">
-  <summary>
-    <span class="sch-name"><code>Presence</code></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">Live-workout snapshot (from /api/activity heartbeats).</span>
-  </summary>
-  <div class="ep-body">
-
-<div class="ptab">
-  <div class="prow">
-    <span class="p-name">name</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">exIdx</span>
-    <span class="p-type">integer</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">exTotal</span>
-    <span class="p-type">integer</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">setsDone</span>
-    <span class="p-type">integer</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">setsTotal</span>
-    <span class="p-type">integer</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">startedAt</span>
-    <span class="p-type">number</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">updatedAt</span>
-    <span class="p-type">number</span>
-    <span class="p-desc"></span>
-  </div>
-</div>
-  </div>
-</details>
-
-<details class="ep sch" id="schema-AdminUserDetail">
-  <summary>
-    <span class="sch-name"><code>AdminUserDetail</code></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum"></span>
-  </summary>
-  <div class="ep-body">
-
-<div class="ptab">
-  <div class="prow">
-    <span class="p-name">user</span>
-    <span class="p-type">object</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">user.id</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">user.name</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">user.created</span>
-    <span class="p-type">string | null</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">user.disabled</span>
-    <span class="p-type">boolean</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">user.admin</span>
-    <span class="p-type">boolean</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">user.invitedBy</span>
-    <span class="p-type">string | null</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">unit</span>
-    <span class="p-type">&quot;kg&quot; | &quot;lb&quot;</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">lastSync</span>
-    <span class="p-type">number | null</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">routines</span>
-    <span class="p-type">object[]</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">routines[].id</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">routines[].name</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">routines[].emoji</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">routines[].count</span>
-    <span class="p-type">integer</span>
-    <span class="p-desc">Number of exercises.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">bodyweight</span>
-    <span class="p-type"><a href="#schema-BodyweightEntry">BodyweightEntry</a>[]</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">workouts</span>
-    <span class="p-type"><a href="#schema-Workout">Workout</a>[]</span>
-    <span class="p-desc">Full history, newest first.</span>
-  </div>
-</div>
-  </div>
-</details>
-
-<details class="ep sch" id="schema-Invite">
-  <summary>
-    <span class="sch-name"><code>Invite</code></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum"></span>
-  </summary>
-  <div class="ep-body">
-
-<div class="ptab">
-  <div class="prow">
-    <span class="p-name">code</span>
-    <span class="p-type">string</span>
-    <span class="p-desc">16 hex chars.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">note</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">createdBy</span>
-    <span class="p-type">string</span>
-    <span class="p-desc">Admin user id.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">created</span>
-    <span class="p-type">string</span>
-    <span class="p-desc">ISO timestamp.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">usedBy</span>
-    <span class="p-type">string | null</span>
-    <span class="p-desc">User id that redeemed the code (absent/null while unused).</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">usedAt</span>
-    <span class="p-type">string</span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">usedByName</span>
-    <span class="p-type">string | null</span>
-    <span class="p-desc">Resolved display name (only in GET /api/admin/invites).</span>
-  </div>
-</div>
-  </div>
-</details>
-
-<details class="ep sch" id="schema-AuditEvent">
-  <summary>
-    <span class="sch-name"><code>AuditEvent</code></span>
-    <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">One line of the audit log.</span>
-  </summary>
-  <div class="ep-body">
-
-<div class="ptab">
-  <div class="prow">
-    <span class="p-name">id<em class="p-req" title="required">required</em></span>
-    <span class="p-type">integer</span>
-    <span class="p-desc">Monotonic, never reset — a cleared log leaves a visible id gap.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">ts<em class="p-req" title="required">required</em></span>
-    <span class="p-type">number</span>
-    <span class="p-desc">ms since epoch.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">ev<em class="p-req" title="required">required</em></span>
-    <span class="p-type">string</span>
-    <span class="p-desc">Event name. Currently one of: <code>auth.register.ok|fail|denied</code>, <code>auth.login.ok|fail</code>, <code>auth.logout</code>, <code>auth.logout.all</code>, <code>auth.pair.create|ok|fail</code>, <code>admin.denied</code>, <code>admin.user.disable|enable</code>, <code>admin.invite.create|revoke</code>, <code>admin.audit.clear</code>.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">ok<em class="p-req" title="required">required</em></span>
-    <span class="p-type">boolean</span>
-    <span class="p-desc">false for failed/denied attempts.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">uid</span>
-    <span class="p-type">string</span>
-    <span class="p-desc">Acting (or affected) user id.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">name</span>
-    <span class="p-type">string</span>
-    <span class="p-desc">Acting user's name (max 40 chars).</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">tgt</span>
-    <span class="p-type">string</span>
-    <span class="p-desc">Target user id (admin actions).</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">tname</span>
-    <span class="p-type">string</span>
-    <span class="p-desc">Target user's name.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">msg</span>
-    <span class="p-type">string</span>
-    <span class="p-desc">Short detail — a failure reason code, or the invite code involved. Rejected invite guesses and unknown credential ids are deliberately never recorded.</span>
-  </div>
-  <div class="prow">
-    <span class="p-name">ip</span>
-    <span class="p-type">string</span>
-    <span class="p-desc">Only when AUDIT_IP is on — the full address (<code>full</code>) or just the network, /24 or /48 (<code>net</code>).</span>
-  </div>
-</div>
-  </div>
-</details>
     </div>
   </section>
 </main>
 
 <footer><div class="wrap foot">
-  <span class="c">openGym · AGPL-3.0 · © 2026 <a href="https://duarte-santos.ch" rel="noopener">Duarte Santos</a></span>
+  <span class="c">GymTask · derived from <a href="https://github.com/DuarteSantos8/openGym" rel="noopener">openGym</a> · AGPL-3.0 · © 2026 <a href="https://duarte-santos.ch" rel="noopener">Duarte Santos</a></span>
   <div class="links">
     <a href="docs.html">Docs</a>
     <a href="about.html">About</a>
-    <a href="https://github.com/DuarteSantos8/openGym" rel="noopener">GitHub</a>
-    <a href="https://gitlab.com/DuarteSantos8/opengym" rel="noopener">GitLab mirror</a>
-    <a href="https://discord.gg/e62jY6fwVb" rel="noopener">Discord</a>
+    <a href="https://github.com/Paulo-Santos20/GymTask" rel="noopener">GitHub</a>
     <a href="/#download">Download</a>
   </div>
 </div></footer>

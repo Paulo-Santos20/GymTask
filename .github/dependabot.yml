@@ -1,16 +1,13 @@
 # Dependency updates, deliberately quiet.
 #
-# openGym is dependency-light on purpose: the frontend is React + Router + Zustand, and api/
-# has two runtime dependencies. A default Dependabot setup would still open a PR per package
+# GymTask is dependency-light on purpose: the frontend is React + Router + Zustand, and api/
+# has a single runtime dependency. A default Dependabot setup would still open a PR per package
 # per week, which on a solo project means the alerts stop being read — the opposite of what
 # this is for. So: monthly, everything in an ecosystem grouped into a single PR, and a low
 # cap on open PRs. Security advisories are unaffected by any of this; GitHub raises those
 # regardless of schedule.
 #
-# Only manifests that actually exist here are listed. Deliberately NOT covered:
-#   - gradle (frontend/android) and cocoapods (frontend/ios) — Capacitor generates those shells
-#     and pins the native versions to the @capacitor/* npm packages. Bumping them independently
-#     desyncs the two and breaks the mobile build; they follow the npm update instead.
+# Only manifests that actually exist here are listed.
 version: 2
 
 updates:
@@ -27,22 +24,13 @@ updates:
       frontend:
         patterns: ['*']
         update-types: ['minor', 'patch']
-      # Majors get their own PR. The first grouped run bundled a Capacitor 7 → 8 migration in
-      # with six siblings, where it read as housekeeping — and CI would have gone green on it,
-      # because the test workflow builds the web app and never touches the mobile flavour. A
-      # major that lands alone is at least obviously a decision.
+      # Majors get their own PR. A major that lands alone is at least obviously a decision.
       frontend-major:
         patterns: ['*']
         update-types: ['major']
     ignore:
-      # Capacitor 8 needs Node >= 22 (its own `engines` field) and the build host is on 20, and
-      # `frontend/android` + `frontend/ios` are committed, so a major also means migrating the
-      # native projects — Gradle/AGP, the Podfile. That is a deliberate piece of work, not a
-      # dependency bump. Drop this ignore once the build host is on Node 22 and you want it.
-      - dependency-name: '@capacitor/*'
-        update-types: ['version-update:semver-major']
 
-  # Backend — api/package.json (@simplewebauthn/server, web-push)
+  # Backend — api/package.json (web-push)
   - package-ecosystem: npm
     directory: /api
     schedule:
@@ -52,8 +40,7 @@ updates:
       api:
         patterns: ['*']
         update-types: ['minor', 'patch']
-      # Two dependencies, but one of them verifies passkeys — a major there is worth reading on
-      # its own rather than alongside anything else.
+      # Majors get their own PR rather than riding along with the routine bumps.
       api-major:
         patterns: ['*']
         update-types: ['major']
@@ -95,7 +82,7 @@ updates:
         patterns: ['*']
         update-types: ['minor', 'patch']
       # Action majors are usually a runner or Node-version change and usually harmless — but
-      # these workflows publish the ghcr images and deploy the live demo, so the blast radius
+      # these workflows build the images and deploy the live demo, so the blast radius
       # is real. Separate PR, so a failure has an obvious cause.
       actions-major:
         patterns: ['*']

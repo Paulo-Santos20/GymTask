@@ -16,7 +16,7 @@
                  somebody's personal subscription is being spent by people who are not the
                  subscriber.
 
-   openGym does not interpret any provider's terms on a self-hoster's behalf. It just makes
+   GymTask does not interpret any provider's terms on a self-hoster's behalf. It just makes
    the shape that doesn't need the interpretation available, and refuses the shape that does:
    in instance mode a *personal* credential (a Claude Code setup token, an OAuth login) binds
    to the first profile that uses it, and any other profile is refused rather than warned. A
@@ -315,7 +315,7 @@ export function publicConfig() {
 
 /**
  * The environment a job's provider process gets. Deliberately built from nothing rather than
- * filtered from process.env: the child must not inherit RP_ID, ADMIN_UIDS, VAPID material or
+ * filtered from process.env: the child must not inherit ADMIN_UIDS, VAPID material or
  * anything else this server happens to hold. The credential is passed in already resolved, so
  * this function never decides whose account is being spent.
  */

@@ -33,7 +33,7 @@ test('payload never carries identity, credentials or device data', () => {
 
   assert.ok(!json.includes('user-abc-123'), 'the uid must never appear');
   assert.equal(p.meta.profile.length, 16, 'an opaque handle stands in for the uid');
-  for (const forbidden of ['theme', 'accent', 'gifSize', 'reminder', 'Europe/Lisbon', 'passkey', 'credential', 'subscription', 'invite']) {
+  for (const forbidden of ['theme', 'accent', 'gifSize', 'reminder', 'Europe/Lisbon', 'credential', 'subscription', 'invite']) {
     assert.ok(!json.includes(forbidden), `payload leaked ${forbidden}`);
   }
 });

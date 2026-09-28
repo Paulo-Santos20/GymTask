@@ -1,17 +1,12 @@
-// Behaviour for the openGym site: the header's navigation sheet, the contents
+// Behaviour for the GymTask site: the header's navigation sheet, the contents
 // drawer and its scrollspy, the scroll reveals, the demo frame, and the two things
 // that come from the GitHub API (repo counts, release timeline).
 // Every one of them fails soft — the page is complete without any of this running.
 
-const GH_REPO = 'https://api.github.com/repos/DuarteSantos8/openGym'
+const GH_REPO = 'https://api.github.com/repos/Paulo-Santos20/GymTask'
 
-// Discord publishes an invite's guild counts to anyone who asks for the invite with
-// ?with_counts=1 — no bot token, no widget to enable, and the API reflects the caller's
-// Origin, so the browser is allowed to read it. The code is the permanent invite in the
-// nav; if that invite is ever revoked this returns 404 and the count simply stays blank.
-const DC_INVITE = 'https://discord.com/api/v10/invites/e62jY6fwVb?with_counts=1'
-// The two network lookups below are decoration; they wait until the page is idle so they
-// never compete with the stylesheet, the hero image or the demo frame.
+// The network lookup below is decoration; it waits until the page is idle so it
+// never competes with the stylesheet, the hero image or the demo frame.
 const whenIdle = (fn) => ('requestIdleCallback' in window ? requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 1200))
 
 /* ------------------------------------------------------- one panel controller
@@ -213,7 +208,7 @@ function panel({ opener, panelEl, flag, closeBtn }) {
     slot.dataset.mounted = '1'
     const f = document.createElement('iframe')
     f.src = slot.dataset.demo
-    f.title = 'openGym live demo'
+    f.title = 'GymTask live demo'
     f.loading = 'lazy'
     f.style.cssText = 'width:100%;height:100%;border:0;display:block;border-radius:34px;background:#000'
     slot.appendChild(f)
@@ -229,12 +224,8 @@ function panel({ opener, panelEl, flag, closeBtn }) {
 })()
 
 /* ------------------------------------------------------- repo counts (nav + specs)
-   Back on api.github.com since 2026-09-11 — GitHub is the home of the project again and
-   GitLab only mirrors it. Unauthenticated, 60 requests an hour per IP, which the
-   sessionStorage cache keeps us well under.
-
-   The cache keys carry a _gh2 suffix: a visitor with a still-warm entry from the GitLab
-   weeks would otherwise be read with the old field names and show NaN. */
+   api.github.com, unauthenticated: 60 requests an hour per IP, which the
+   sessionStorage cache keeps us well under. */
 ;whenIdle(async () => {
   const set = (id, v) => document.querySelectorAll('[data-gh="' + id + '"]').forEach(el => { el.textContent = v })
   try {
@@ -256,31 +247,6 @@ function panel({ opener, panelEl, flag, closeBtn }) {
     // Leave the placeholder standing rather than writing an empty box.
     if (d.open_issues_count !== '' && d.open_issues_count != null) set('issues-n', d.open_issues_count)
   } catch (e) { /* offline / rate-limited — leave placeholders */ }
-})
-
-/* --------------------------------------------------- Discord members (nav + specs)
-   Same shape as the repo counts above, and just as optional: the placeholder next to
-   the Discord link is empty, so a blocked or rate-limited request leaves the link
-   reading exactly as it did before anyone counted anything. */
-;whenIdle(async () => {
-  const set = (id, v) => document.querySelectorAll('[data-dc="' + id + '"]').forEach(el => { el.textContent = v })
-  try {
-    let n = null
-    const cached = sessionStorage.getItem('discord_members')
-    if (cached) n = JSON.parse(cached)
-    else {
-      const r = await fetch(DC_INVITE)
-      if (!r.ok) return
-      const j = await r.json()
-      n = j.approximate_member_count
-      if (typeof n !== 'number') return
-      sessionStorage.setItem('discord_members', JSON.stringify(n))
-    }
-    // Grouped like the other four-figure numbers on the page (1,324 exercises).
-    const fmt = n.toLocaleString('en-US')
-    set('members', fmt)
-    set('members-n', fmt)
-  } catch (e) { /* offline / blocked — the link keeps its plain label */ }
 })
 
 /* -------------------------------------------------------------- about timeline

@@ -7,7 +7,7 @@
  * precisely for it. So the job runner hands the HTTP adapters this fetch instead, with the
  * transport timeouts derived from the job timeout rather than from undici's idea of patience.
  *
- * Node-only by design: the phone's transport is capacitor-fetch.js, and the core adapters
+ * Node-only by design: the browser has its own global fetch, and the core adapters
  * take whichever fetch they are given. */
 // undici's own fetch alongside its Agent, so the dispatcher option is honoured by the same
 // undici version on every Node the image or a dev box happens to run.

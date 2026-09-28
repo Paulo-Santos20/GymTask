@@ -1,43 +1,48 @@
-# Contributing to openGym
+# Contributing to GymTask
 
-Thanks for taking a look! openGym is intentionally small and dependency-light, and the goal is
-to keep it that way — easy to read, easy to self-host.
+Thanks for taking a look! GymTask is intentionally small and dependency-light, and the goal is
+to keep it that way — easy to read, easy to deploy.
+
+> GymTask is a derivative of openGym (https://github.com/DuarteSantos8/openGym), AGPL-3.0 licence kept.
 
 ## Project layout
 
 ```
-frontend/  React + Vite app (src/views, src/components, src/store, src/lib). Builds to static files.
-           android/ + ios/ are the Capacitor shells for the standalone mobile app (docs/MOBILE.md).
-api/       backend — server.js (Node, no framework), one dependency (@simplewebauthn/server).
-web/       multi-stage Dockerfile (builds frontend → nginx) + nginx.conf (serves app, proxies /api).
+frontend/  React 19 + Vite app (src/views, src/components, src/store, src/lib). PWA-only: no
+           native shells — install via Add to Home Screen. Static build → Vercel.
+api/       backend — server.js (Node, no framework), used for local dev and as HTTP fallback.
+functions/ Firebase Cloud Functions (CJS): coach, nutritionProxy, pushDailyReminder.
 media/     exercise img/gif (gitignored, fetched at runtime).
-docs/      self-hosting guide.
+docs/      deploy and feature guides (DEPLOY_VERCEL.md is the primary deploy doc).
 mcp/       optional Model Context Protocol server — read-only stdio bridge for LLM apps
-           (Claude Desktop, Cursor, …) to query a user's workouts/1RM/muscle balance. Not in
-           the Docker build; only runs when an LLM client spawns it. See mcp/README.md.
+           (Claude Desktop, Cursor, …) to query a user's workouts/1RM/muscle balance. Only runs
+           when an LLM client spawns it. See mcp/README.md.
 ```
+
+The project spec lives in [GYMTASK.md](GYMTASK.md) — read it before changing auth, state sync,
+Coach or Nutrition code.
 
 ## Running for development
 
 ```bash
-cp .env.example .env
-docker compose up -d --build      # api + web + media on :8080
-# frontend hot reload:
-cd frontend && npm install && npm run dev
-# training logic (progression rules, 1RM, how a session is read back):
+cd frontend && npm install && npm run dev    # frontend hot reload, works with zero config
+# training + nutrition logic (progression rules, 1RM, session read-back, TDEE, foods):
 cd frontend && npm test
 ```
+
+Deploy target is **Vercel (static frontend) + Firebase (auth/db/functions)** — see
+[docs/DEPLOY_VERCEL.md](docs/DEPLOY_VERCEL.md). The `docker-compose.yml` / `web/` stack is
+legacy from upstream, not the deploy target.
 
 ## Guidelines
 
 - **Keep it dependency-light.** The frontend uses React + Router + Zustand and nothing else;
-  new deps (front or back) are a hard sell. `api/` has two (`@simplewebauthn/server` for passkeys,
-  `web-push` for notifications) — keep it near that.
+  new deps (front or back) are a hard sell.
 - **Match the style.** Small components, clear names, comments only where the "why" isn't obvious.
   State lives in the Zustand store (`src/store`); pure helpers in `src/lib`.
 - **Don't commit** the exercise media (`media/`) or `data/` — they're gitignored.
 - **Test the flow** you touched — click through the affected screens (and the workout flow) in a
-  browser before opening a merge request.
+  browser before opening a pull request.
 - **Training logic gets a unit test.** Anything deciding what you lift next, or reading a logged
   session back, belongs in a pure helper in `src/lib` with tests beside it (`npm test`). These
   rules are easy to get subtly wrong and nearly impossible to verify by clicking — the
@@ -45,52 +50,22 @@ cd frontend && npm test
 
 ## What CI does with your pull request
 
-A pull request runs the three test suites (frontend, MCP, api) through GitHub Actions and
-builds and boots both api image targets. The APK and the published images come from the CI
-on the GitLab mirror, which builds them from `main` after the merge; if your change needs an
-APK to be judged, say so in the PR and a maintainer runs that build.
-
-Merge requests that are still open on the GitLab mirror keep working as before. Every MR runs the three test suites (frontend, MCP, api), with the results and the coverage
-of your diff shown in the MR itself, plus a build of the web image and the api image when you
-touched their inputs. The frontend job also prints how much your change adds to the gzipped
-bundle compared with main. The APK and the published images are manual jobs there (on
-`main` both build on every push).
-
-One gitlab.com quirk: an MR from a fork runs its pipeline in *your* fork, which usually has
-no runners enabled — so it would show "no pipeline" forever. For that reason the project
-starts the pipeline on its own runners for you: automatically if you have had an MR merged
-here before, otherwise a maintainer presses "Run pipeline" after a first look at the diff
-(the MR gets the `ci-approval-needed` label until then). Changes to `.gitlab-ci.yml` or
-`scripts/ci/` always go through that manual step.
+A pull request runs the frontend, MCP and api test suites through GitHub Actions
+(`.github/workflows/test.yml`, Node 22). **Tests must pass (`cd frontend && npm test`)**
+before merge.
 
 ## Good first issues
 
-- Additional starter plans (upper/lower, full-body, 5×5…)
-- More languages for the exercise instructions (the dataset ships several)
-- Percentage / training-max programming (5/3/1-style) on top of the progression engine in
-  `src/lib/progression.js` — the policy interface is already there
+- Nutrition extras (barcode scan, meal suggestions, recipes)
+- More starter plans
 - Accessibility passes on the workout and chart screens
 
 ## Where to ask what
 
 | You have | Goes to |
 | --- | --- |
-| A quick question, or you'd rather just chat | [The Discord](https://discord.gg/e62jY6fwVb) |
-| A question, or self-hosting that won't behave | [An issue labelled `question`](https://github.com/DuarteSantos8/openGym/issues) |
-| An idea you're not sure about yet | [An issue labelled `idea`](https://github.com/DuarteSantos8/openGym/issues) |
-| A reproducible bug | [Issues](https://github.com/DuarteSantos8/openGym/issues) |
-| A change you've already built | [A pull request](https://github.com/DuarteSantos8/openGym/pulls) |
-
-Questions and ideas are issues too (one tracker is enough) — just labelled, so nobody
-mistakes a question for agreed-on work. An answered question is worth more than the same answer
-in a chat log: the next person searching "passkey login fails behind my reverse proxy" finds it.
-That is the one thing the Discord can't do, so if an answer there turns out to be worth keeping,
-it belongs in an issue afterwards.
-
-## Reporting bugs
-
-Open an issue with: what you did, what you expected, what happened, and your browser/OS. If it's
-about login/passkeys, include your `RP_ID`/`ORIGIN` (not the `data/` contents) — most login
-issues are an origin mismatch.
+| A question or an idea you're not sure about yet | [An issue](https://github.com/Paulo-Santos20/GymTask/issues) |
+| A reproducible bug | [Issues](https://github.com/Paulo-Santos20/GymTask/issues) |
+| A change you've already built | [A pull request](https://github.com/Paulo-Santos20/GymTask/pulls) |
 
 By contributing you agree your work is licensed under the project's [GNU AGPL v3.0](LICENSE).

@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in openGym is broken or not working as expected
+description: Something in GymTask is broken or not working as expected
 labels: ["bug"]
 body:
   - type: textarea
@@ -32,9 +32,10 @@ body:
   - type: dropdown
     id: setup
     attributes:
-      label: How are you running openGym?
+      label: How are you running GymTask?
       options:
         - Self-hosted (docker compose)
+        - Vercel + Firebase
         - Frontend dev server (npm run dev)
         - Other / not sure
     validations:
@@ -49,12 +50,12 @@ body:
       required: true
 
   - type: checkboxes
-    id: passkey
+    id: login
     attributes:
-      label: Is this about login / passkeys?
+      label: Is this about login?
       description: >
-        Most login issues are an `RP_ID`/`ORIGIN` mismatch — check your `.env` against the
-        domain you're accessing openGym from before reporting. See the
-        [self-hosting guide](../../docs/SELF_HOSTING.md).
+        Sign-in is Firebase e-mail/senha. If the API rejects requests, check your
+        `ORIGIN` in `.env` against the domain you're accessing GymTask from before
+        reporting. See the [self-hosting guide](../../docs/SELF_HOSTING.md).
       options:
-        - label: Yes, this is a login/passkey issue and I've already checked RP_ID/ORIGIN
+        - label: Yes, this is a login issue and I've already checked ORIGIN

@@ -47,7 +47,7 @@ ticket's resolution comment are the migration checklist; the load-bearing groups
 | **S1** `S.week[d]` value | scalar id → `string[]` | 44 sites: 17 new-shape writers, plural-helper conversions, 11 array-tolerant reads, 4 array-tolerant writes (remove-from-list + delete-when-empty). `S.dayPlan` **excluded** — stays scalar. |
 | **S2** `s.active.routineId` | → `routineIds: []` + per-entry `rid` | 24 sites: `beginWorkout` / `beginBackfill` writers, 9 per-entry `rid` reads (swap, progression settings, add-exercise), the 6-site `startFlow` caller cluster. |
 | **S3** `w.routineId` | → `routineIds: []` + `routineId` mirror | 6 sites. Only `WorkoutRow`'s glyph reads it, and the mirror covers that. `buildCompletedWorkout` is the sole writer. Nothing aggregates saved workouts by routine. |
-| **S4** `effectiveRoutineId` / `effectiveRoutine` / `nextTrainingDay` | plural primaries + thin singular wrappers | 10 call sites (2 internal to `history.js`, 8 across `sheets.jsx`, `mobile.js`, `TabBar.jsx`, `Workout.jsx`, `Home.jsx`). |
+| **S4** `effectiveRoutineId` / `effectiveRoutine` / `nextTrainingDay` | plural primaries + thin singular wrappers | 9 call sites (2 internal to `history.js`, 7 across `sheets.jsx`, `TabBar.jsx`, `Workout.jsx`, `Home.jsx`; the former `mobile.js` call sites went away with the PWA-only decision). |
 
 **Gotchas the implementation must not trip on** (full list in ENG-10): empty-array
 truthiness (`[]` is truthy — writers must `delete` the key, never store `[]`); `=== id`
@@ -227,10 +227,11 @@ export const effectiveRoutine   = (S, iso) => effectiveRoutines(S, iso)[0] ?? nu
 
 **Call-site conversions** (switch to the plural helper, iterate a list where they rendered
 one): `sheets.jsx` `DayOverride` (`:1508-1524`) and `Calendar` (`:1620-1621`);
-`lib/mobile.js` `buildReminderNotifications` (`:111` — notification body joins names or
-counts); `views/Home.jsx` Today card (`:22`), week-strip dot (`:43`), `next` (`:25`);
+`views/Home.jsx` Today card (`:22`), week-strip dot (`:43`), `next` (`:25`);
 `components/TabBar.jsx:20`; `views/Workout.jsx` `StartChooser` (`:33-35` — replace the
 `r !== todayR` identity filter with an id-set exclusion); `views/Plan.jsx:52`.
+(The former `lib/mobile.js` `buildReminderNotifications` site went away with the PWA-only
+decision — reminders are now plain web notifications.)
 
 **`plannedPerWeek`** (`views/Home.jsx:52`) counts **days, not routines**:
 `Object.values(S.week).filter(ids => ids?.length).length`. A combined day = **1**, matching
