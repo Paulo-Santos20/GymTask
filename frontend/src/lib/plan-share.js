@@ -412,7 +412,7 @@ export function planPrintHTML(S, owner) {
   ${weekHTML(S)}
   <h3 class="block">${esc(t('Routines'))}</h3>
   ${body}
-  <footer>${esc(t('Made with GymTask'))} · opengym.duarte-santos.ch</footer>
+  <footer>${esc(t('Made with GymTask'))} · github.com/Paulo-Santos20/GymTask</footer>
 </div></body></html>`
 }
 

@@ -7,12 +7,10 @@ import { ACCENTS, setWeightDecimals } from './lib/format.js'
 import { setLang, useLang, getLang } from './lib/i18n.js'
 import { setPlayOnSilent } from './lib/sound.js'
 import { setNav } from './lib/nav.js'
-import { initBackButton } from './lib/back.js'
 import { useWakeLock } from './lib/wakelock.js'
 import { installViewportGuard } from './lib/viewport-guard.js'
 import { installChipDrag } from './lib/hchips.js'
 import { syncPushSubscription } from './lib/push.js'
-import { MOBILE } from './lib/mobile.js'
 import { startFlow } from './sheets.jsx'
 import Icon from './components/Icon.jsx'
 import TabBar from './components/TabBar.jsx'
@@ -23,7 +21,6 @@ import SyncBanner from './components/SyncBanner.jsx'
 import RestTimer from './components/RestTimer.jsx'
 import TimerFlash from './components/TimerFlash.jsx'
 import Login from './views/Login.jsx'
-import MobileOnboarding from './views/MobileOnboarding.jsx'
 import Home from './views/Home.jsx'
 import CheckIn from './views/CheckIn.jsx'
 import Plan from './views/Plan.jsx'
@@ -36,7 +33,6 @@ import Muscles from './views/Muscles.jsx'
 import Settings from './views/Settings.jsx'
 import CoachChat from './views/CoachChat.jsx'
 import CoachIntake from './views/CoachIntake.jsx'
-import CoachSetup from './views/CoachSetup.jsx'
 import Nutrition from './views/Nutrition.jsx'
 
 // last known scrollY per route, so back-navigation can put the page where it was
@@ -66,7 +62,6 @@ function Shell() {
   // so it is applied here on load and on change rather than at each beep.
   useEffect(() => { setPlayOnSilent(!!S.soundOnSilent) }, [S.soundOnSilent])
   const isGuest = useStore(s => s.isGuest())
-  const needsMobileOnboarding = useStore(s => s.needsMobileOnboarding)
   const langV = useLang()   // re-renders the whole shell when the language (pack) changes
   useEffect(() => { setNav(navigate) }, [navigate])
   useEffect(() => { applyPrefs(S.theme, S.accent) }, [S.theme, S.accent])
@@ -95,9 +90,9 @@ function Shell() {
   useEffect(() => installChipDrag(), [])
   // Once per signed-in boot, hand the server this browser's push subscription again (see
   // lib/push.js): a subscription the instance lost is back before the next reminder is due,
-  // with nobody having to visit Settings. Web only — the APK has no service worker.
+  // with nobody having to visit Settings.
   useEffect(() => {
-    if (MOBILE || !user || !ready) return
+    if (!user || !ready) return
     syncPushSubscription().catch(() => {})
   }, [user?.id, ready])
   useEffect(() => {
@@ -143,8 +138,8 @@ function Shell() {
           re-mounts the boundary, so the tab bar is always a way out */}
       <div id="app" className="vfade" key={loc.pathname}>
         <ErrorBoundary>
-          {authed && !needsMobileOnboarding && <SyncBanner />}
-          {!authed ? <Login /> : needsMobileOnboarding ? <MobileOnboarding /> : (
+          {authed && <SyncBanner />}
+          {!authed ? <Login /> : (
             <Routes>
               <Route path="/home" element={<Home />} />
               {/* Gym check-in — switched off in Settings, the route falls through to the
@@ -165,7 +160,9 @@ function Shell() {
               <Route path="/coach" element={<CoachChat />} />
               <Route path="/coach/intake" element={<CoachIntake />} />
               <Route path="/coach/proposal" element={<Navigate to="/coach" replace />} />
-              <Route path="/coach/setup" element={<CoachSetup />} />
+              {/* The setup screen is gone; the URL still lands where the web build always sent
+                  it (the screen redirected to Settings on every non-native mount). */}
+              <Route path="/coach/setup" element={<Navigate to="/settings" replace />} />
               <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>
           )}
@@ -184,11 +181,5 @@ function Shell() {
 export default function App() {
   const boot = useStore(s => s.boot)
   useEffect(() => { boot() }, [boot])
-  // Android system back — sheet, then page, then press-again-to-exit (see lib/back.js)
-  useEffect(() => {
-    let stop = null, gone = false
-    initBackButton().then(fn => { if (gone) fn(); else stop = fn })
-    return () => { gone = true; stop?.() }
-  }, [])
   return <HashRouter><Shell /></HashRouter>
 }

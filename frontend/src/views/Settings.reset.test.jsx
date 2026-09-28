@@ -1,4 +1,4 @@
-// @vitest-environment happy-dom
+﻿// @vitest-environment happy-dom
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -8,7 +8,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
 // "Reset everything" is one dialog with two truths. A guest's data lives in this browser only.
 // A signed-in profile pushes the empty state to the server like any other change, so the wipe
-// reaches every device that syncs with it — and the Coach's own files have to go too: the
+// reaches every device that syncs with it â€” and the Coach's own files have to go too: the
 // per-profile one on the server, and the device one when the Coach runs with the phone's own key.
 const mocks = vi.hoisted(() => {
   const state = { S: null, user: null, coachLocal: null }
@@ -27,7 +27,7 @@ const mocks = vi.hoisted(() => {
       state.S = next
     },
     replaceState: state.replaceState, setUser: vi.fn(), pullState: vi.fn(), pushState: vi.fn(),
-    signOut: vi.fn(), signOutAll: vi.fn(), resetDemo: vi.fn(), disconnectServer: vi.fn(),
+    signOut: vi.fn(), signOutAll: vi.fn(), resetDemo: vi.fn(),
   })
   return state
 })
@@ -44,13 +44,11 @@ vi.mock('../store/useUI.js', () => {
 })
 vi.mock('react-router-dom', () => ({ useNavigate: () => () => {} }))
 vi.mock('../lib/api.js', () => ({
-  api: (...a) => mocks.api(...a), webauthnOK: () => false, passkeyLogin: vi.fn(), passkeyRegister: vi.fn(), IS_ANDROID: false,
+  api: (...a) => mocks.api(...a), IS_ANDROID: false,
 }))
 vi.mock('../lib/push.js', () => ({ pushSupported: () => false, enablePush: vi.fn(), disablePush: vi.fn(), sendTestPush: vi.fn() }))
 vi.mock('../lib/wakelock.js', () => ({ wakeLockSupported: () => false }))
-vi.mock('../lib/mobile.js', () => ({ MOBILE: false, isAndroid: () => Promise.resolve(false), shareExport: vi.fn(), syncReminder: vi.fn() }))
 vi.mock('../lib/coach-api.js', () => ({ forgetCoach: (...a) => mocks.forgetCoach(...a) }))
-vi.mock('./MobileOnboarding.jsx', () => ({ ConnectSheet: () => null }))
 vi.mock('../sheets.jsx', () => ({
   starterPlanSheet: vi.fn(), confirmSheet: (...a) => mocks.confirmSheet(...a), importFromApp: vi.fn(),
   importFromHevy: vi.fn(), equipmentProfileSheet: vi.fn(), menuSheet: vi.fn(),
@@ -89,7 +87,7 @@ const openDialog = () => {
 }
 const serverForgetCalls = () => mocks.api.mock.calls.filter(([path]) => path === '/api/coach/forget')
 
-describe('Settings — reset everything', () => {
+describe('Settings â€” reset everything', () => {
   it('guest: says the wipe is local, resets to the defaults, never calls the Coach', () => {
     mount()
     const dialog = openDialog()

@@ -20,7 +20,6 @@ import { t } from '../lib/i18n.js'
 import { fmtDate, fmtNum, DAYS } from '../lib/format.js'
 import { exLine } from '../lib/history.js'
 import { DEMO } from '../lib/demo.js'
-import { MOBILE } from '../lib/mobile.js'
 import {
   coachAvailable, hasConsent, emptyCoach, appendChat, recordTiming, estimateMs, profileLines,
   markStale, applicable, applyChangeSet, applyCreatedPlan, recordDismissal, recordDebrief, logEntry,
@@ -49,9 +48,7 @@ export default function CoachChat() {
   const [busy, setBusy] = useState(false)
   const endRef = useRef(null)
   const prevJob = useRef(null)
-  const coachMode = coachLocal?.mode
-
-  const ok = coachAvailable(config, user, { demo: DEMO, mobile: MOBILE, coachMode })
+  const ok = coachAvailable(config, user, { demo: DEMO })
   const ready = ok && hasConsent(S) && !!S.coach?.profile
   // Not before the store has loaded: a cold start straight on #/coach would otherwise read an
   // empty state, decide there is no consent, and bounce a consenting user into the intake.
@@ -87,7 +84,7 @@ export default function CoachChat() {
 
   if (!ready) return null
   const coach = S.coach || emptyCoach()
-  const community = !!config?.coach?.community && !DEMO && !(MOBILE && coachMode === 'byok')
+  const community = !!config?.coach?.community && !DEMO
 
   const send = async () => {
     const msg = text.trim()

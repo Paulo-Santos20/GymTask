@@ -8,7 +8,6 @@ import { Button } from '../components/ui.jsx'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { glyphOf, DEFAULT_GLYPH } from '../lib/glyphs.js'
 import { DEMO } from '../lib/demo.js'
-import { MOBILE } from '../lib/mobile.js'
 import { coachAvailable } from '../lib/coach.js'
 
 export default function Plan() {
@@ -16,14 +15,13 @@ export default function Plan() {
   const S = useStore(s => s.S)
   const update = useStore(s => s.update)
   const config = useStore(s => s.config)
-  const coachMode = useStore(s => s.coachLocal?.mode)
   const user = useStore(s => s.user)
 
   /* The Coach's only entry point in the app. Its screens have existed since the UI landed and
      nothing linked to them, so the feature was reachable only by typing the URL — enabled,
      configured, and invisible. The same predicate every other Coach surface uses gates it, so
      an instance without the feature sees exactly the Plan screen it saw before. */
-  const showCoach = coachAvailable(config, user, { demo: DEMO, mobile: MOBILE, coachMode })
+  const showCoach = coachAvailable(config, user, { demo: DEMO })
 
   // Swap with the neighbour, the way the routine editor moves an exercise. `S.routines` is the
   // one order the whole app reads, so this is all there is to it (#142).

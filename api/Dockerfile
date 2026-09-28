@@ -18,12 +18,12 @@ ARG VERSION=dev
 ARG VCS_REF=dev
 ARG BUILD_DATE=unknown
 
-LABEL maintainer="Duarte Santos https://gitlab.com/DuarteSantos8" \
-    org.opencontainers.image.title="opengym-api" \
-    org.opencontainers.image.description="Backend for Self-hosted gym & body-weight tracker — plan routines, log workouts (supersets & cardio too), track your weight and progress, passkey login. Your data, your server." \
-    org.opencontainers.image.source="https://gitlab.com/DuarteSantos8/opengym" \
-    org.opencontainers.image.url="https://gitlab.com/DuarteSantos8/opengym/container_registry" \
-    org.opencontainers.image.documentation="https://gitlab.com/DuarteSantos8/opengym#readme" \
+LABEL maintainer="Paulo-Santos20 https://github.com/Paulo-Santos20" \
+    org.opencontainers.image.title="gytask-api" \
+    org.opencontainers.image.description="Backend for GymTask — plan routines, log workouts (supersets & cardio too), track your weight and progress. Derived from openGym. Your data, your server." \
+    org.opencontainers.image.source="https://github.com/Paulo-Santos20/GymTask" \
+    org.opencontainers.image.url="https://github.com/Paulo-Santos20/GymTask" \
+    org.opencontainers.image.documentation="https://github.com/Paulo-Santos20/GymTask#readme" \
     org.opencontainers.image.licenses="AGPL-3.0-or-later" \
     org.opencontainers.image.version=$VERSION \
     org.opencontainers.image.revision=$VCS_REF \
@@ -37,7 +37,7 @@ WORKDIR /app
 RUN apk upgrade --no-cache
 
 # The unprivileged user Coach jobs drop to. Its uid cannot read /data, which is the control that
-# keeps a provider runtime away from users, passkeys and the session secret.
+# keeps a provider runtime away from users, credentials and the session secret.
 #
 # Not optional, and not only for the real providers: canDropPrivileges() fails closed on Linux,
 # so in an image without this user *every* job is refused with "no `coach` user exists in this

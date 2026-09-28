@@ -1,4 +1,4 @@
-// @vitest-environment happy-dom
+﻿// @vitest-environment happy-dom
 // A weekday with one routine read "1 routines" (QA copy): the header formatted the count
 // with the plural key only, although both forms have been in every pack for a long time.
 import React, { act } from 'react'
@@ -27,7 +27,6 @@ vi.mock('../store/useStore.js', () => {
   return { useStore, DEF: { reminder: { time: '17:30' } }, hasData: () => false }
 })
 vi.mock('react-router-dom', () => ({ useNavigate: () => () => {} }))
-vi.mock('../lib/mobile.js', () => ({ MOBILE: false, isAndroid: () => Promise.resolve(false), shareExport: vi.fn(), syncReminder: vi.fn() }))
 vi.mock('../sheets.jsx', () => ({
   starterPlanSheet: vi.fn(), dayAssignSheet: vi.fn(), dayAddRoutineSheet: vi.fn(), planToolsSheet: vi.fn(),
 }))
@@ -50,7 +49,7 @@ afterEach(() => {
 const mount = () => act(() => root.render(<Plan />))
 const countOn = day => [...host.querySelectorAll('.item')].find(el => el.querySelector('.tt')?.textContent === day)?.querySelector('.small.dim')?.textContent
 
-describe('Plan — the day header counts its routines', () => {
+describe('Plan â€” the day header counts its routines', () => {
   it('uses the singular for one routine and the plural for more', () => {
     mocks.S.week = { 1: ['r1'], 2: ['r1', 'r2'] }
     mount()

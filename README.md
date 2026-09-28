@@ -4,33 +4,22 @@
 
 <br>
 
-**GymTask** — a self-hosted gym & body-weight tracker you actually own.**
+**GymTask** — seu treino, sua dieta e seu coach com IA, num app que você controla.**
 
-Plan your week, run guided workouts, track every set and your body weight over time —
-on your phone, synced across devices, behind your own passkey login.
-No account on someone else's server, no subscription, no ads. Just `docker compose up`.
+Planeje a semana, execute treinos guiados, registre cada série e seu peso corporal,
+acompanhe calorias e macros, e peça ao coach com IA para montar ou revisar seu plano.
+Tudo em português, instalável como app na tela inicial, com login por e-mail e senha
+e dados sincronizados na nuvem.
 
-<sub>GymTask é um derivado de openGym (https://github.com/DuarteSantos8/openGym), licença AGPL-3.0.</sub>
+<sub>GymTask é um derivado de openGym (https://github.com/DuarteSantos8/openGym), licença AGPL-3.0 mantida.</sub>
 
 <br>
 
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-a3e635?style=flat-square)](LICENSE)
-![Self-hosted](https://img.shields.io/badge/self--hosted-%F0%9F%8F%A0-60a5fa?style=flat-square)
 ![PWA](https://img.shields.io/badge/PWA-installable-a78bfa?style=flat-square)
 ![React](https://img.shields.io/badge/React-19-38bdf8?style=flat-square&logo=react&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white)
+![pt-BR](https://img.shields.io/badge/idioma-pt--BR-22c55e?style=flat-square)
 ![No tracking](https://img.shields.io/badge/telemetry-none-f472b6?style=flat-square)
-<br>
-[![Pipeline](https://gitlab.com/DuarteSantos8/opengym/badges/main/pipeline.svg?style=flat-square)](https://gitlab.com/DuarteSantos8/opengym/-/pipelines)
-[![Coverage](https://gitlab.com/DuarteSantos8/opengym/badges/main/coverage.svg?job=test:frontend&style=flat-square)](https://gitlab.com/DuarteSantos8/opengym/-/pipelines?ref=main)
-[![Release](https://img.shields.io/github/v/release/DuarteSantos8/openGym?style=flat-square)](https://github.com/DuarteSantos8/openGym/releases)
-![Last commit](https://img.shields.io/github/last-commit/DuarteSantos8/openGym?style=flat-square)
-[![GitHub stars](https://img.shields.io/github/stars/DuarteSantos8/openGym?style=flat-square&logo=github&logoColor=white)](https://github.com/DuarteSantos8/openGym/stargazers)
-[![Issues](https://img.shields.io/github/issues/DuarteSantos8/openGym?style=flat-square)](https://github.com/DuarteSantos8/openGym/issues)
-[![Tests](https://github.com/DuarteSantos8/openGym/actions/workflows/test.yml/badge.svg)](https://github.com/DuarteSantos8/openGym/actions/workflows/test.yml)
-[![Mirror](https://github.com/DuarteSantos8/openGym/actions/workflows/mirror.yml/badge.svg)](https://github.com/DuarteSantos8/openGym/actions/workflows/mirror.yml)
-[![Discord](https://img.shields.io/badge/Discord-join-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/e62jY6fwVb)
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-support-FFDD00?style=flat-square&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/duartesantos)
 
 </div>
 
@@ -39,251 +28,133 @@ No account on someone else's server, no subscription, no ads. Just `docker compo
 <div align="center">
 <table>
 <tr>
-<td align="center"><img src="assets/screenshots/home.png" alt="Home" width="230"><br><sub><b>Home</b> — today's workout & weight</sub></td>
-<td align="center"><img src="assets/screenshots/workout.png" alt="Workout" width="230"><br><sub><b>Guided workout</b> — animated demos & sets</sub></td>
-<td align="center"><img src="assets/screenshots/stats.png" alt="Stats" width="230"><br><sub><b>Stats</b> — heatmap, charts & PRs</sub></td>
+<td align="center"><img src="assets/screenshots/home.png" alt="Início" width="230"><br><sub><b>Início</b> — treino de hoje e peso</sub></td>
+<td align="center"><img src="assets/screenshots/workout.png" alt="Treino" width="230"><br><sub><b>Treino guiado</b> — demos animados e séries</sub></td>
+<td align="center"><img src="assets/screenshots/stats.png" alt="Estatísticas" width="230"><br><sub><b>Estatísticas</b> — mapa de calor, gráficos e PRs</sub></td>
 </tr>
 </table>
 </div>
 
 <div align="center">
 
-### [🌐 opengym.duarte-santos.ch](https://opengym.duarte-santos.ch) · [📦 Source on GitHub](https://github.com/DuarteSantos8/openGym) · [🦊 GitLab mirror](https://gitlab.com/DuarteSantos8/opengym)
-
-Screenshots, docs and the APK download live on the site.<br>
-<sub>Want to poke at it first? The <a href="https://opengym.duarte-santos.ch/demo/">in-browser
-demo</a> is the real app with example data — no account, nothing to install.</sub>
+### [📦 Código-fonte no GitHub](https://github.com/Paulo-Santos20/GymTask) · [🗺️ Roteiro](ROADMAP.md) · [🚀 Como publicar](docs/DEPLOY_VERCEL.md)
 
 </div>
 
-## Why
+## Por quê
 
-Most workout apps lock your data behind a login on their servers, nag you to upgrade, or
-disappear when the startup does. GymTask is the opposite: **it runs on your box, your data
-stays in a folder you control, and it's yours to fork.** It still feels modern — installable
-as a home-screen app, passkey sign-in, offline support, sync across your phone and laptop.
+A maioria dos apps de treino prende seus dados no servidor de outra empresa, cobra
+assinatura ou some quando a startup fecha. O GymTask é o oposto: **o frontend roda
+na Vercel, os dados ficam no seu projeto Firebase, e o código é seu para forkar.**
+E continua moderno: instalável como app, login por e-mail e senha, suporte offline,
+sincronização entre celular e computador — além de um módulo de nutrição e um coach
+com IA que o openGym original não tem.
 
-## Features
+## Funcionalidades
 
-- ⚖️ **Body-weight tracking** — interactive chart with a goal line you set, gains/losses colored by whether they move toward it
-- 🏋️ **Weekly plan** — a routine per weekday, over a library of **1,324 exercises** (searchable, with animated demos), browsable **by muscle** on a body map
-- ✨ **Four starter plans** — Push/Pull/Legs, Upper/Lower, Full Body, 5×5; loaded as ordinary routines you can edit, and a routine can be copied in one tap
-- 🗓️ **Reschedule any day** — sick, missed a session, or fewer gym days this week? Move a workout to another day without touching your weekly plan
-- 📅 **Your week starts where you say** — Monday or Sunday, in Settings. The weekly plan, the day strip on Home, the calendar and every "this week" total follow it, so the app reads the way the calendar on your wall does
-- 🧭 **A workout screen that gets out of the way** — one ⋯ menu per exercise (note, details, progression, bar weight, warm-up, superset, swap, move, remove), the set number as the set's own menu (drop set, rest-pause burst, remove), and a scrollable **list view** of the whole session with the header pinned. Four switches under Settings → Workout controls bring any of the old button rows back
-- 🌈 **Colour-coded RIR / RPE** — one tap logs how hard a set was, with a sentence per level ("one more rep in the tank"); the same colour whether you think in RIR or RPE, a free field for in-between values
-- 📖 **History without leaving the workout** — the exercise's last sessions and a progress line, from the ⋯ menu or the exercise details
-- ⭐ **Favourite exercises** — star what you use, it sorts first in the picker and the library
-- ▶️ **Guided workouts** — it knows what day it is and starts today's session; asks your body weight first, pre-fills your weights from last time, rest timer, PR detection, per-exercise weight tracking. On a rest day it doesn't just say "rest day" — it names when your next session is and what it is
-- 🙈 **Animations are your call** — the exercise demos can be full size, small, or hidden entirely during a workout. Hidden collapses the media rather than leaving a gap, for anyone who finds a looping GIF between sets more distracting than useful
-- ☀️ **The screen stays awake while you train** — no unlocking the phone and finding your place again between every set. On for as long as a workout is running, released the moment you finish it, and switchable off in Settings
-- 🔗 **Supersets** — plan them into a routine or pair two exercises *mid-session* with “make superset with previous/next”, then work through the group back-to-back with a single rest at the end of each round. Unpair at any time; a group of one dissolves itself
-- 🔥 **Warm-up sets** — mark the ramp-up rows as warm-ups and they stay out of the numbers that should not see them: no effect on your estimated 1RM, your progression, or the fatigue map, while still being there in the session where you need them. A weight change cascades down the rows that share their phase, not across the divide
-- ➖ **Change your mind mid-session** — add an exercise you decided to do, or remove one you didn't, without ending the workout. Removing a member of a superset asks which one
-- ⏱️ **Timed exercises** — planks, hangs, wall sits and loaded carries are logged by time, not reps, with a work timer that counts the set itself (separate from the rest timer) and logs the time you actually held. They can carry weight too
-- ⏲️ **Rest per exercise** — heavy triples and curls don't want the same break: give any exercise its own rest time and it overrides the global timer for that exercise (a superset rests once, taking the longest). Travels with shared plans
-- 🧘 **Planned deloads** — flag a routine as excluded from automatic progression: its sessions open with the routine's own target weights, stay in your history and statistics, and never become the baseline your next regular session progresses from
-- 📈 **Progression that follows a rule** — pick one per routine, override it per exercise: linear, **Greyskull LP** (AMRAP top set, double jumps, 10 % resets), double progression through a **visible rep range** (both bounds editable, per-side exercises step in twos), or adding time. Your weights are already right when the session opens, and every target says *why* it's that number. Missed reps never advance the load, stalls trigger a deload, and bodyweight exercises progress in reps instead
-- 💪 **Estimated 1RM** — per exercise, from your best eligible set (it names which one), with its own progress curve and a calculator for sets you haven't done. Won't guess above 12 reps
-- 🎯 **Effort per set, in your scale** — an optional third column rating how hard a set was, as **RIR** (reps left in the tank) or **RPE** (the same judgement on a 10-point scale). Off by default; each set keeps the scale it was logged with, and nothing else reads the value — your progression and 1RM are unaffected
-- 💪 **Bodyweight exercises, logged as bodyweight** — push-ups, pull-ups, dips and 300-odd others arrive knowing they carry no load, so there's no weight column and no working-weight prompt: one stepper, log the reps. Add a dip belt and it reads as an addition, and progression goes back to following the weight. Without one, reps climb — and past a ceiling you set, a set is added instead of a rep, up to the point where the honest advice is load or a harder variation
-- ↔️ **Reps per side** — for lunges, single-arm rows and the rest. You log the total, the app shows the split ("8 per side"), and the target steps in twos so it never lands on a number one side can't have
-- 🏋️ **Plate math for barbell work** — barbell, EZ, trap bar and Smith machine carry a bar weight (20 kg / 45 lb and friends, or your own per exercise), and the workout screen tells you what goes on each side: *Bar 20 kg · 30 kg per side*. You still log the total, so your history, progression and 1RM keep meaning exactly what they always did
-- 📝 **Log a past workout** — forgot your phone, trained on paper, or switched apps? Add a session after the fact from History: date, start time, duration, routine or freestyle, then the normal workout screen — weights, reps, RIR/RPE, timed sets and all. If that day already has a workout you choose: replace it, keep both, or cancel. Backfilled sessions never claim PRs against workouts that came later
-- 🎲 **Freestyle sessions** — train without a plan and pick exercises as you go. Each one arrives prefilled from the last time you did it — same sets, same reps and weight by position — so an unplanned session doesn't start by asking you to retype last week
-- 🏃 **Cardio** — log time + speed, not just weight × reps
-- 📤 **Share a plan** — send someone your routines and week schedule as a small file (no workouts, no weigh-ins), or print it as a clean PDF. Importing merges, so their plan is never overwritten
-- 🔧 **Filter by equipment** — narrow the library to what you actually own; the options adapt to what you've picked, so every combination on screen has results behind it
-- ✨ **Your own exercises** — a name and a body part is enough; they behave like built-in ones everywhere, with an optional description instead of an animation
-- 🟩 **Activity heatmap** — a GitHub-style year view, shaded by time spent training
-- 💪 **Muscle map, three ways** — a front-and-back body diagram you can read as **Balance** (where the volume went, over a week, a month or all time — naming the muscles you *haven't* trained), **Fatigue** (what is still recovering, weighted by how close each set was to your maximum, decaying smoothly rather than expiring at a window edge) or **Strength** (how long since you trained each muscle, and behind every one the exercises that built it with their estimated 1RM). It previews what a routine hits while you build it, and shows what you just trained when you finish. Male or female figure, your pick
-- 📳 **See the timer end, not just hear it** — an opt-in screen flash when a rest or work timer finishes, for loud gyms and headphones
-- 🔔 **Push notifications** — rest-timer alerts even with the app closed, plus an optional reminder on days you have a workout planned but haven't logged one — on the Android app scheduled per calendar date, so a day you already trained or rescheduled stays quiet. Opt in per profile; keys are generated on first run, nothing to configure
-- 🔑 **Passkeys, not passwords** — Face ID / Touch ID / fingerprint login; each profile keeps its own data, synced across devices. Sign-ins last 90 days by default (configurable), and “sign out everywhere” in Settings ends every session on every device at once
-- 🎨 **Designed, not assembled** — light/dark themes and 8 accent colors saved to your profile, over a hand-drawn icon set instead of emoji, so it looks the same on every phone
-- 🌍 **Brazilian Portuguese** — the entire interface in pt-BR, with exercise instructions localized to match and built-in exercise names shown bilingually
-- 📥 **Bring your history with you** — import from **FitNotes** (Android and iOS), **Strong** and **Hevy** (CSV or directly with a [Hevy Pro API key](https://hevy.com/settings?developer)), or body weight straight out of an **Apple Health** export. Exercise names are matched against the library and anything unrecognised becomes one of your own exercises, so nothing in the file is dropped
-- 📦 **Yours to keep** — one-tap JSON export/import, guest mode, **no telemetry**; switching kg ↔ lb offers to convert every stored number
-- 🤖 **Ask an AI about your training** (optional) — an [MCP server](mcp/README.md) lets a client like Claude Desktop or Cursor read your history in your own words: *"what did I bench last week?"*. Read-only, spawned locally by the client, nothing leaves your box. Not in the Docker build — if you don't use an AI assistant, it isn't there
-- 🧠 **An AI coach that writes your plan** (optional, off by default) — answer a handful of questions and it designs a week of routines; later it reads what you actually logged and proposes changes, each one with the evidence behind it. You approve every change and can undo it. It runs on **your** server under **your** provider account — Anthropic, OpenAI, Gemini or any OpenAI-compatible endpoint (Ollama on your LAN counts) with a pasted API key on the default image, or the Claude Agent SDK / Codex CLI on a separate build. The phone app can use your instance or its own key. See [docs/AI_COACH.md](docs/AI_COACH.md)
-- 📱 **Standalone Android app** — the whole tracker as a sideloadable APK: no account, no server, data on the phone, native workout reminders, and an **in-app update check** that downloads the next signed APK and verifies its checksum ([download](https://opengym.duarte-santos.ch))
+- 🏋️ **Treinos guiados** — o app sabe que dia é hoje e abre a sessão do dia; pergunta seu peso antes, preenche os pesos da última vez, cronômetro de descanso, detecção de PRs, peso por exercício
+- 📈 **Progressão que segue uma regra** — linear, **Greyskull LP**, dupla progressão com faixa de repetições visível, ou por tempo; pesos já certos ao abrir a sessão, cada meta dizendo *por que* é aquele número
+- 💪 **1RM estimado** — por exercício, a partir da sua melhor série válida, com curva de evolução e calculadora
+- 🗓️ **Plano semanal** — uma rotina por dia da semana, sobre uma biblioteca de **1.324 exercícios** (com busca, demos animados e mapa muscular)
+- 🔗 **Supersets, aquecimento, deload planejado, exercícios por tempo, cardio** — tudo contado do jeito certo nas estatísticas
+- 🥗 **Nutrição** — meta calórica e macros (TDEE por Mifflin-St Jeor), banco de ~200 alimentos BR com busca sem acento, busca externa (USDA / Open Food Facts / Nutritionix via proxy), diário por refeição com desfazer
+- 🧠 **Coach com IA (Grok)** — responde por chat, monta a semana de treinos e propõe ajustes a partir do que você registrou; cada mudança mostra a evidência e só entra com sua aprovação (com desfazer)
+- 📥 **Traga seu histórico** — importação de **FitNotes** (Android e iOS), **Strong**, **Hevy** (CSV ou direto com chave Hevy Pro) e peso corporal de export do **Apple Health**
+- 📱 **PWA instalável** — adicione à tela inicial no Android ou no iPhone; funciona offline, com login por e-mail e senha e sincronização quando o Firebase está configurado
+- 🟩 **Estatísticas** — mapa de calor de atividade, mapa muscular (volume, fadiga, força), gráficos e PRs
+- 🔔 **Lembretes** — notificação diária de treino via Firebase (tópico `gytask-daily`) e alertas de descanso
+- 📦 **Seus dados, seus mesmo** — exportação/importação JSON com um toque, modo visitante, **sem telemetria**; troca kg ↔ lb com conversão dos valores
+- 🤖 **MCP server** (opcional) — permite a um cliente como Claude Desktop ou Cursor ler seu histórico em suas palavras. Somente leitura, local, nada sai da sua máquina. Veja [mcp/README.md](mcp/README.md)
 
-## Quick start (self-host)
+## Começo rápido (deploy: Vercel + Firebase)
 
-You need [Docker](https://docs.docker.com/get-docker/) with Compose.
+O caminho oficial de publicação é **frontend estático na Vercel + Auth/Firestore/Functions no Firebase**. O guia completo está em **[docs/DEPLOY_VERCEL.md](docs/DEPLOY_VERCEL.md)**; o resumo:
+
+1. Crie um projeto no [Firebase Console](https://console.firebase.google.com/): ative **Authentication → E-mail/senha**, crie um app Web e anote as 6 chaves `VITE_FIREBASE_*`.
+2. Importe o repositório na [Vercel](https://vercel.com/new) com raiz em `frontend/` (`npm run build`), definindo as variáveis `VITE_FIREBASE_*` + `VITE_NUTRITION_PROXY_URL`.
+3. Adicione o domínio da Vercel em **Authentication → Authorized domains** no Firebase.
+4. (Opcional, para Coach e busca de alimentos) `firebase deploy --only functions` com `XAI_API_KEY` e as chaves Nutritionix — ver `functions/.env.example`.
+
+> Credenciais Firebase deste fork configuradas (projeto `gymtask-ce4b6`); faltam as chaves
+> xAI/Nutritionix para o Coach via function e a URL de produção ainda não está no ar.
+
+## Desenvolvimento local
+
+Sem Firebase configurado, tudo funciona localmente (localStorage + API local de fallback):
 
 ```bash
-git clone https://github.com/DuarteSantos8/openGym
-cd openGym
-cp .env.example .env
-docker compose pull   # grab prebuilt images (amd64 + arm64) — skip to build from source instead
-docker compose up -d
+cd frontend && npm install && npm run dev
 ```
 
-Open **http://localhost:8080**, tap **Create profile**, and you're in. First launch downloads
-the exercise media (~140 MB) once.
+```bash
+cd frontend && npm test    # lógica de treino e nutrição (vitest)
+```
 
-> **About that media:** it reaches GymTask through
-> [hasaneyldrm/exercises-dataset](https://github.com/hasaneyldrm/exercises-dataset), which
-> redistributes [ExerciseDB v1](https://exercisedb.dev/) — its metadata and instruction text are
-> MIT, but the images and animations are third-party content under *neither* that MIT license nor
-> GymTask's AGPL, and their ownership is currently disputed between Gym visual and ExerciseDB.
-> GymTask ships none of it: your instance downloads it from upstream. Reusing it yourself,
-> commercially or not, means clearing it with the rights holder — see [NOTICE.md](NOTICE.md).
-The prebuilt images are published twice, from the same tag: `registry.gitlab.com/duartesantos8/opengym/{api,web}`
-(what `docker-compose.yml` pulls) and `ghcr.io/duartesantos8/opengym-{api,web}` on GitHub — swap the
-`image:` lines if you prefer GHCR. Prefer building the images yourself instead of pulling from a
-registry? Drop the `pull` step and run `docker compose up -d --build` — you don't need Node or
-a build step locally either way.
+> **Sobre a mídia dos exercícios:** ela chega ao GymTask via
+> [hasaneyldrm/exercises-dataset](https://github.com/hasaneyldrm/exercises-dataset), que
+> redistribui o [ExerciseDB v1](https://exercisedb.dev/) — os metadados e textos de instrução são
+> MIT, mas as imagens e animações são conteúdo de terceiros coberto *nem* por essa licença MIT
+> *nem* pela AGPL do GymTask, e a titularidade está atualmente disputada entre a Gym visual e a ExerciseDB.
+> O GymTask não redistribui essa mídia: sua instância baixa do upstream. Reutilizá-la você mesmo,
+> comercialmente ou não, exige acertar com o detentor dos direitos — ver [NOTICE.md](NOTICE.md).
 
-> Want it reachable from your phone over the internet with passkeys? You'll need an HTTPS
-> domain — a two-line change in `.env`. See **[docs/SELF_HOSTING.md](docs/SELF_HOSTING.md)**.
-
-## Mobile app (no server at all)
-
-The same codebase also builds a **standalone mobile app** (Capacitor): no account, no sync,
-no backend — everything stays on the phone, with native workout-day reminders and share-sheet
-backups. Self-hosting gets you multi-device sync and profiles for friends & family; the
-mobile app is the install-and-done flavor.
-
-- **Android:** [**download the APK**](https://opengym.duarte-santos.ch) — or straight from
-  [GitLab's package registry](https://gitlab.com/DuarteSantos8/opengym/-/packages) or the
-  [GitHub release](https://github.com/DuarteSantos8/openGym/releases/latest), where every
-  build sits next to its `.sha256` — and sideload it; GymTask is deliberately not on the Play
-  Store. Or build it yourself: **[docs/MOBILE.md](docs/MOBILE.md)**.
-- **iPhone:** Apple doesn't allow installing apps outside the App Store, so there is no iOS
-  download. Self-host and add it to your home screen from Safari (it's a full PWA), or build
-  the native app onto your own device from Xcode — see **[docs/MOBILE.md](docs/MOBILE.md)**.
-
-## How it works
+## Como funciona
 
 ```
 ┌─────────────┐        ┌──────────────────────────────┐
-│  Your phone │──HTTPS─▶│  web  (nginx)                │
-│  / laptop   │        │   ├─ serves the built app    │
-└─────────────┘        │   └─ proxies /api ──────────┐│
-                       └──────────────────────────────┘│
-                                                        ▼
-                                        ┌──────────────────────────┐
-                                        │  api  (Node + WebAuthn)  │
-                                        │   └─ ./data (JSON files) │
-                                        └──────────────────────────┘
+│  Seu celular│──HTTPS─▶│  Vercel (frontend estático)  │
+│  / computador        └──────────────────────────────┘
+│         │ login e dados (SDK Firebase, direto no browser)
+│         ▼
+│  ┌──────────────────────────────┐   ┌───────────────────────────┐
+│  │  Firebase (Auth + Firestore │   │  Cloud Functions: coach,  │
+│  │  doc users/{uid}/state/app) │   │  nutritionProxy,          │
+│  └──────────────────────────────┘   │  pushDailyReminder        │
+└─────────────────────────────────────┘───────────────────────────┘
 ```
 
-- **frontend/** — React + Vite (React Router + Zustand), built to static files **inside Docker**
-- **api/** — Node with no framework, two dependencies (`@simplewebauthn/server` for passkeys, `web-push` for notifications), storing everything as plain JSON files under `./data`
-- **web/** — a multi-stage image that builds the frontend and serves it with nginx, proxying `/api` to the backend so it's all on **one origin** (passkeys require this)
+- **frontend/** — React 19 + Vite (React Router via HashRouter, Zustand), build estático publicado na Vercel
+- **Autenticação** — Firebase Auth e-mail/senha (`frontend/src/lib/firebase.js`, `views/Login.jsx`); sem `VITE_FIREBASE_*` configurado, o app roda em modo local/visitante
+- **Dados** — Firestore (`users/{uid}/state/app`) quando configurado; senão, `localStorage` + HTTP `/api/data` de fallback
+- **api/** — backend Node sem framework herdado do upstream, usado no dev local e como fallback; o Coach roda também via Cloud Functions em **functions/** (`coach`, `nutritionProxy`, `pushDailyReminder`)
+- A API HTTP de fallback está documentada em [`api/openapi.yaml`](api/openapi.yaml).
 
-The full HTTP API is documented as an OpenAPI spec in [`api/openapi.yaml`](api/openapi.yaml) — browsable at [opengym.duarte-santos.ch/api.html](https://opengym.duarte-santos.ch/api.html).
+## Seus dados
 
-## Your data
+Com Firebase configurado, ficam no **Firestore do seu projeto** (`users/{uid}/state/app`), com cache offline no aparelho. Sem Firebase, ficam no `localStorage` do navegador (`gym_state_v1`, nutrição em `gym_nutrition_v1`) e, no dev local com a API, em JSON no disco. **Exporte seu JSON em Configurações e você tem backup de tudo.** O app não tem telemetria.
 
-Lives in `./data` on your host: `db.json` (profiles + public passkeys), `state-<user>.json`
-(each user's plan, workouts, body weight, settings), `audit.log` (the activity log — sign-ins
-and account events, no IP addresses unless you ask for them) and `secret` (the session-cookie key).
-**Back up `./data` and you've backed up everything.** Passkey private keys never touch the
-server — they stay in your phone's secure hardware / your password manager.
+## Configuração
 
-## Configuration
+Tudo via variáveis de ambiente (ver `frontend/.env.example` e `functions/.env.example`):
 
-All via `.env` (see `.env.example`):
+| Variável | O que é |
+|---|---|
+| `VITE_FIREBASE_API_KEY` / `VITE_FIREBASE_AUTH_DOMAIN` / `VITE_FIREBASE_PROJECT_ID` / `VITE_FIREBASE_STORAGE_BUCKET` / `VITE_FIREBASE_MESSAGING_SENDER_ID` / `VITE_FIREBASE_APP_ID` | Credenciais do app Web Firebase (login + Firestore) |
+| `VITE_NUTRITION_PROXY_URL` | URL da function `nutritionProxy` (busca de alimentos Nutritionix sem expor a chave) |
+| `XAI_API_KEY` (+ `XAI_MODEL`, padrão `grok-3-mini`) | Chave xAI para o Coach (só no servidor/functions, nunca no bundle) |
+| `NUTRITIONIX_APP_ID` / `NUTRITIONIX_APP_KEY` | Chaves Nutritionix para o proxy (só no servidor/functions) |
 
-| Variable      | What it is                                           | Default                 |
-|---------------|------------------------------------------------------|-------------------------|
-| `RP_ID`       | Hostname passkeys are bound to                       | `localhost`             |
-| `ORIGIN`      | Full URL the app is served from                      | `http://localhost:8080` |
-| `WEB_PORT`    | Host port for the web UI                             | `8080`                  |
-| `NGINX_PORT`  | Port the web container listens on, inside the container | `80`                 |
-| `BACKEND`     | Name of the API service that `/api` is proxied to — change it if yours isn't called `api` | `api` |
-| `PORT`        | Port the API listens on; the web container proxies to the same value | `3000`  |
-| `RP_NAME`     | Name shown in the passkey prompt                     | `GymTask`               |
-| `SESSION_DAYS`| How long a sign-in lasts, in days                    | `90`                    |
-| `ALLOW_GUEST` | Offer "Continue without account" — set `0` to require a profile | *(on)*       |
-| `AUDIT_LOG`   | Record sign-ins and account events — set `0` to record nothing | *(on)*        |
-| `AUDIT_MAX`   | Events kept in the activity log; `0` for no limit    | `5000`                  |
-| `AUDIT_DAYS`  | Days kept in the activity log; `0` to keep until `AUDIT_MAX` | `90`            |
-| `AUDIT_IP`    | Record the caller's address: `off`, `net` (network only) or `full` | `off`     |
-| `VAPID_SUBJECT` | Contact URL sent with push notifications           | your `ORIGIN`           |
-| `API_TARGET`  | Which API image to build: `default` (no AI runtime — API-key providers still work) or `coach` (adds the Claude Agent SDK + Codex CLI) | `default`   |
-| `COACH_DISABLED` | Set to `1` to force the AI Coach off instance-wide, overriding the in-app setting | *(unset)* |
+A especificação do projeto (arquitetura, contrato Firebase, Coach, nutrição) vive em [GYMTASK.md](GYMTASK.md).
 
-Push notification keys are generated on first run and saved to `./data/vapid.json` — nothing to set.
-`DATA_DIR` is pinned to `/data` by `docker-compose.yml` and mapped to `./data` on the host; change the
-host side of that volume, not the variable.
+## Roteiro
 
-## Roadmap
+O plano vive em [ROADMAP.md](ROADMAP.md): fechar o rebrand restante, credenciais e deploy, e as ideias futuras (nutrição extra, streaming do coach, sync em tempo real).
 
-The plan lives in [ROADMAP.md](ROADMAP.md), and the
-[GitHub milestones](https://github.com/DuarteSantos8/openGym/milestones) hold the issues. **A release every
-two weeks**, each one small and themed: the promised items, editing finished workouts, the session queue,
-programmes and phases, the progression engine, cardio — then **v1.4.0, the foundation: storage moves to a
-database and search is rebuilt, the one compatibility break** — then accounts (password and OIDC login,
-trainer role, MCP write), the iOS app, the Android and health items, and what all of that unlocks
-(pictures for custom exercises, catalogue work, skins, social). Ideas and pull requests welcome.
+## Tecnologia
 
-## Tech
+React 19 + Vite (React Router, Zustand) · Firebase (Auth, Firestore, Cloud Functions) · Vercel ·
+dados de exercícios de [hasaneyldrm/exercises-dataset](https://github.com/hasaneyldrm/exercises-dataset)
+(metadados e instruções MIT; mídia © Gym visual — ver [Licença](#licença)).
 
-React 19 + Vite (React Router, Zustand) · Node (no framework) · nginx · Docker Compose ·
-WebAuthn · exercise data from [hasaneyldrm/exercises-dataset](https://github.com/hasaneyldrm/exercises-dataset)
-(MIT metadata and instructions; media © Gym visual — see [License](#license)).
-No database server, no cloud dependencies — the frontend builds inside Docker, so self-hosting
-stays a one-command `docker compose up`.
+A lógica de treino — regras de progressão, estimativa de 1RM, leitura de sessão registrada — e
+a de nutrição (TDEE, banco de alimentos) vivem em funções puras sob `frontend/src/lib/` com
+testes ao lado: `npm test` em `frontend/`.
 
-The training logic — progression rules, 1RM estimation, how a logged session is read back —
-lives in pure functions under `frontend/src/lib/` with tests next to them: `npm test` in
-`frontend/`. Vitest is a dev dependency; the app itself ships no runtime dependencies beyond
-React, the router and Zustand.
+## Contribuindo
 
-The optional AI Coach (`api/coach/`) is built the same way round: a by-name allowlist decides
-what may leave the server, and a closed-list validator decides what may come back — the model
-can touch routines and the weekly schedule, nothing else, and every change is applied on the
-client only after you approve it. The core of it — `api/coach/core/` — has no Node dependency,
-so the phone app runs the same validator the server does. The in-container AI runtimes live in a
-separate Docker build target; the API-key providers need none. See [docs/AI_COACH.md](docs/AI_COACH.md).
+Issues e PRs são bem-vindos no [repositório do fork](https://github.com/Paulo-Santos20/GymTask) — ver [CONTRIBUTING.md](CONTRIBUTING.md).
 
-The same pure helpers power an optional MCP server (`mcp/`) that lets an LLM client like
-Claude Desktop read your data over stdio — see [mcp/README.md](mcp/README.md). Opt-in, not
-in the Docker build.
-
-## Community
-
-- **[Discord](https://discord.gg/e62jY6fwVb)** — release announcements, self-hosting help and
-  the back-and-forth that would be a slow issue thread. Quickest way to get an answer.
-- **[Issues](https://github.com/DuarteSantos8/openGym/issues)** — bugs, questions, self-hosting
-  help and ideas. (Issues still open on the GitLab mirror are read too.) Label a question
-  `question` and an idea `idea`, and it gets treated as one rather than as agreed-on work. Use
-  an issue over the Discord for anything the next person should be able to find by searching.
-- **Login trouble?** Most of it is an `RP_ID`/`ORIGIN` mismatch — check
-  [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) before opening an issue.
-- **[Pull requests](https://github.com/DuarteSantos8/openGym/pulls)** — see
-  [CONTRIBUTING.md](CONTRIBUTING.md). Merge requests already open on the GitLab mirror are still
-  reviewed and land on `main` here; new work, please, as a pull request.
-
-> **GitHub is home; GitLab is a mirror.** `github.com/DuarteSantos8/openGym` was offline from
-> 2026-08-19 to 2026-09-10 while the account was suspended, and the project lived on GitLab in the
-> meantime. It is back, and [gitlab.com/DuarteSantos8/opengym](https://gitlab.com/DuarteSantos8/opengym)
-> is now kept in sync by a GitHub Actions workflow on every push to `main` and every `v*` tag —
-> nothing is pushed or merged there by hand. The mirror stays because its CI builds the release
-> artefacts: the signed APK, the multi-arch images (GitLab registry, mirrored to GHCR) and the SBOMs.
-> (gitea.com/DuarteSantos/openGym is a plain mirror.) In [CHANGELOG.md](CHANGELOG.md), `!NN` is a
-> GitLab merge request from those weeks; `#NN` refers to whichever tracker the report came through.
-
-## Contributing
-
-Issues and PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Good first issues: more starter
-plans, exercise-data languages, import from other trackers. **A ⭐ helps more people find it.**
-
-GymTask is free and stays free: AGPL, no subscription, no paid tier, nothing held back for
-sponsors. If it replaced a paid tracker for you and you want to chip in, there's a coffee button
-below (and a badge at the top) — a star, a bug report or a merge request is worth just as much.
-
-<a href="https://buymeacoffee.com/duartesantos" target="_blank">
-  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png"
-       alt="Buy Me A Coffee"
-       style="height: 60px !important;width: 217px !important;">
-</a>
-
-## License
+## Licença
 
 **GymTask's own code** is [GNU AGPL v3.0](LICENSE) — free and open source. You can self-host,
 use, modify and share it; if you run a modified version as a network service, you must offer that

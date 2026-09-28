@@ -1,48 +1,32 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// A stand-in for what @capacitor/core's registerPlugin() really returns: a Proxy that turns ANY
-// property — `then` included — into a method wrapper whose native call fails asynchronously
-// without ever invoking the callbacks it was handed. Resolving a promise with that object makes
-// the promise wait for `then` to call back, which it never does (issues #42 / #58).
-const calls = []
-const backing = new Map()
-const impl = {
-  get: async k => (backing.has(k) ? backing.get(k) : null),
-  set: async (k, v) => { backing.set(k, v) },
-  remove: async k => backing.delete(k)
-}
-const SecureStorage = new Proxy({}, {
-  get(_, prop) {
-    if (prop === '$$typeof') return undefined
-    if (prop === 'toJSON') return () => ({})
-    return (...args) => {
-      calls.push(String(prop))
-      if (impl[prop]) return impl[prop](...args)
-      return Promise.reject(new Error(`"SecureStorage.${String(prop)}()" is not implemented on android`))
-    }
-  }
-})
-vi.mock('@aparajita/capacitor-secure-storage', () => ({ SecureStorage }))
-
+// The key lives in this browser's localStorage; the in-memory map behind it is for storage that
+// is missing or refuses the write (see coach-secrets.js).
 const secrets = await import('./coach-secrets.js')
 
 const within = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`hung for ${ms} ms`)), ms))])
 
-describe('coach-secrets against a Capacitor-style plugin proxy', () => {
-  beforeEach(() => { calls.length = 0; backing.clear() })
+describe('coach-secrets', () => {
+  beforeEach(() => { try { localStorage.clear() } catch { /* no storage */ } })
 
-  it('a round trip settles instead of waiting on the proxy\'s never-answering then()', async () => {
+  it('a round trip settles', async () => {
     await within(secrets.setApiKey('sk-live-1'), 1000)
     expect(await within(secrets.getApiKey(), 1000)).toBe('sk-live-1')
     await within(secrets.clearApiKey(), 1000)
     expect(await within(secrets.getApiKey(), 1000)).toBe(null)
-    expect(calls).not.toContain('then')
   })
 
-  it('goes through the platform store, not the in-memory fallback', async () => {
-    await within(secrets.setApiKey('sk-live-2'), 1000)
-    expect([...backing.keys()]).toEqual(['coach.apiKey'])
-    expect(calls).toEqual(['set'])
+  it('the key lands in localStorage, so it survives a reload — and clear takes it out', async () => {
+    await secrets.setApiKey('sk-live-2')
+    expect(localStorage.getItem('coach.apiKey')).toBe('sk-live-2')
+    await secrets.clearApiKey()
+    expect(localStorage.getItem('coach.apiKey')).toBe(null)
+  })
+
+  it('blank and missing values read as no key', async () => {
+    expect(await secrets.getApiKey()).toBe(null)
+    await secrets.setApiKey('   ')
+    expect(await secrets.getApiKey()).toBe(null)
   })
 })

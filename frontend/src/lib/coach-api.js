@@ -8,7 +8,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { api } from './api.js'
 import { DEMO } from './demo.js'
-import { MOBILE } from './mobile.js'
 import { t } from './i18n.js'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
@@ -24,12 +23,12 @@ let demoMod = null
 const demo = async () => (demoMod = demoMod || await import('./coach-demo.js'))
 const S = () => useStore.getState().S
 
-// The mobile build's third answer: a phone that brought its own API key runs the Coach itself
+// The third answer: a device that brought its own API key runs the Coach itself
 // (lib/coach-local.js — the same core the server runs, imported lazily so the catalogue and the
-// validator only ever load on a phone that chose this). A paired phone takes the api() branch
-// like the web app does; nothing on the web or demo builds reaches this.
+// validator only ever load on a device that chose this). A device on the server branch takes
+// the api() branch like any other; nothing on the demo build reaches this.
 let localMod = null
-const LOCAL = () => MOBILE && useStore.getState().coachLocal?.mode === 'byok'
+const LOCAL = () => useStore.getState().coachLocal?.mode === 'byok'
 const local = async () => {
   if (!localMod) {
     localMod = await import('./coach-local.js')

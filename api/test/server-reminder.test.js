@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 const API = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SECRET = crypto.randomBytes(32).toString('hex');
 
-// Same construction as server.js makeSession(): payload `uid:exp:sv`, HMAC-SHA256 over SECRET.
+// Same construction as server.js session tokens: payload `uid:exp:sv`, HMAC-SHA256 over SECRET.
 function mintSession(uid) {
   const payload = `${uid}:${Date.now() + 86400000}:0`;
   return payload + '.' + crypto.createHmac('sha256', SECRET).update(payload).digest('base64url');
@@ -42,7 +42,7 @@ async function startServer(t, subs = []) {
   const port = await freePort();
   const child = spawn(process.execPath, ['server.js'], {
     cwd: API, stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, ORIGIN: 'http://localhost:8080', RP_ID: 'localhost', REMINDER_TICK_MS: '300' }
+    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, ORIGIN: 'http://localhost:8080', REMINDER_TICK_MS: '300' }
   });
   const h = { api: `http://127.0.0.1:${port}`, dataDir, child, log: '' };
   child.stdout.on('data', d => h.log += d);

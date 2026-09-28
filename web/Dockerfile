@@ -14,9 +14,9 @@ FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 # is exactly what made the v1.2.15 web image fail to build.
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json* ./
-# --ignore-scripts: the web image only needs `vite build`; the one heavy postinstall in this tree
-# (@capacitor/assets -> sharp, a libvips download from GitHub) is for drawing app icons and has
-# timed out on the shared runners — a lockfile-ignoring `npm install` fallback is no answer to that.
+# --ignore-scripts: the web image only needs `vite build`, and no dependency in this tree needs a
+# lifecycle script to work — a lockfile-ignoring `npm install` fallback is no answer to a
+# postinstall that times out on the shared runners (that is what used to break this line).
 RUN npm ci --ignore-scripts
 COPY api/coach/core/ /app/api/coach/core/
 COPY frontend/ ./
@@ -29,12 +29,12 @@ ARG VERSION=dev
 ARG VCS_REF=dev
 ARG BUILD_DATE=unknown
 
-LABEL maintainer="Duarte Santos https://gitlab.com/DuarteSantos8" \
-    org.opencontainers.image.title="opengym-web" \
-    org.opencontainers.image.description="Frontend for Self-hosted gym & body-weight tracker — plan routines, log workouts (supersets & cardio too), track your weight and progress, passkey login. Your data, your server." \
-    org.opencontainers.image.source="https://gitlab.com/DuarteSantos8/opengym" \
-    org.opencontainers.image.url="https://gitlab.com/DuarteSantos8/opengym/container_registry" \
-    org.opencontainers.image.documentation="https://gitlab.com/DuarteSantos8/opengym#readme" \
+LABEL maintainer="Paulo-Santos20 https://github.com/Paulo-Santos20" \
+    org.opencontainers.image.title="gytask-web" \
+    org.opencontainers.image.description="Frontend for GymTask — plan routines, log workouts (supersets & cardio too), track your weight and progress. Derived from openGym. Your data, your server." \
+    org.opencontainers.image.source="https://github.com/Paulo-Santos20/GymTask" \
+    org.opencontainers.image.url="https://github.com/Paulo-Santos20/GymTask" \
+    org.opencontainers.image.documentation="https://github.com/Paulo-Santos20/GymTask#readme" \
     org.opencontainers.image.licenses="AGPL-3.0-or-later" \
     org.opencontainers.image.version=$VERSION \
     org.opencontainers.image.revision=$VCS_REF \

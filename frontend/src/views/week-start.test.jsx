@@ -1,4 +1,4 @@
-// @vitest-environment happy-dom
+﻿// @vitest-environment happy-dom
 // The setting is only worth anything if the screens actually follow it: the toggle has to
 // write the field, and the Plan list has to draw the week in that order.
 import React, { act } from 'react'
@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => {
       state.S = next
     },
     replaceState: vi.fn(), setUser: vi.fn(), pullState: vi.fn(), pushState: vi.fn(),
-    signOut: vi.fn(), signOutAll: vi.fn(), resetDemo: vi.fn(), disconnectServer: vi.fn(),
+    signOut: vi.fn(), signOutAll: vi.fn(), resetDemo: vi.fn(),
   })
   return state
 })
@@ -37,12 +37,10 @@ vi.mock('../store/useUI.js', () => {
 })
 vi.mock('react-router-dom', () => ({ useNavigate: () => () => {} }))
 vi.mock('../lib/api.js', () => ({
-  api: vi.fn(), webauthnOK: () => false, passkeyLogin: vi.fn(), passkeyRegister: vi.fn(), IS_ANDROID: false,
+  api: vi.fn(), IS_ANDROID: false,
 }))
 vi.mock('../lib/push.js', () => ({ pushSupported: () => false, enablePush: vi.fn(), disablePush: vi.fn(), sendTestPush: vi.fn() }))
 vi.mock('../lib/wakelock.js', () => ({ wakeLockSupported: () => false }))
-vi.mock('../lib/mobile.js', () => ({ MOBILE: false, isAndroid: () => Promise.resolve(false), shareExport: vi.fn(), syncReminder: vi.fn() }))
-vi.mock('./MobileOnboarding.jsx', () => ({ ConnectSheet: () => null }))
 vi.mock('../sheets.jsx', () => ({
   starterPlanSheet: vi.fn(), confirmSheet: vi.fn(), importFromApp: vi.fn(),
   importFromHevy: vi.fn(), equipmentProfileSheet: vi.fn(),
@@ -69,7 +67,7 @@ afterEach(() => {
 const segButton = label => [...host.querySelectorAll('.seg button')].find(b => b.textContent === label)
 const dayRows = () => [...host.querySelectorAll('.item .tt')].map(e => e.textContent)
 
-describe('Settings — week starts on', () => {
+describe('Settings â€” week starts on', () => {
   const mount = () => act(() => root.render(<Settings />))
 
   it('offers Monday and Sunday and writes the getDay() index', () => {
@@ -91,7 +89,7 @@ describe('Settings — week starts on', () => {
   })
 })
 
-describe('Plan — the week schedule follows the setting', () => {
+describe('Plan â€” the week schedule follows the setting', () => {
   const mount = () => act(() => root.render(<Plan />))
 
   it('runs Monday to Sunday by default', () => {
@@ -119,7 +117,7 @@ describe('Plan — the week schedule follows the setting', () => {
   })
 })
 
-describe('Plan — inline per-day routine management (combine routines)', () => {
+describe('Plan â€” inline per-day routine management (combine routines)', () => {
   const mount = () => act(() => root.render(<Plan />))
   const dayContainer = name => [...host.querySelectorAll('.item')].find(el => el.querySelector('.tt')?.textContent === name)
 
@@ -139,7 +137,7 @@ describe('Plan — inline per-day routine management (combine routines)', () => 
     expect(mon.textContent).toContain('2 routines')
   })
 
-  it('✕ removes a routine, and drops the day key on the last removal', () => {
+  it('âœ• removes a routine, and drops the day key on the last removal', () => {
     mocks.S.week = { 1: ['r1', 'r2'] }
     mount()
     const removeButtons = () => [...dayContainer('Monday').querySelectorAll('button[aria-label="Remove"]')]

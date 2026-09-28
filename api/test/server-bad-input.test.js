@@ -15,14 +15,13 @@ import { fileURLToPath } from 'node:url';
 const API = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SECRET = crypto.randomBytes(32).toString('hex');
 
-// Same construction as server.js makeSession(): payload `uid:exp:sv`, HMAC-SHA256 over SECRET.
+// Same construction as server.js session tokens: payload `uid:exp:sv`, HMAC-SHA256 over SECRET.
 function mintSession(uid, sv = 0) {
   const payload = `${uid}:${Date.now() + 86400000}:${sv}`;
   return payload + '.' + crypto.createHmac('sha256', SECRET).update(payload).digest('base64url');
 }
 const UID = 'u_bad_1';
 const authed = { Cookie: `gymsid=${mintSession(UID)}`, 'Content-Type': 'application/json' };
-const anon = { 'Content-Type': 'application/json' };
 
 const freePort = () => new Promise(r => {
   const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => r(p)); });
@@ -37,7 +36,7 @@ async function startServer(t) {
   const port = await freePort();
   const child = spawn(process.execPath, ['server.js'], {
     cwd: API, stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, ORIGIN: 'http://localhost:8080', RP_ID: 'localhost' }
+    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, ORIGIN: 'http://localhost:8080' }
   });
   const h = { api: `http://127.0.0.1:${port}`, log: '', dataDir };
   child.stdout.on('data', d => h.log += d);
@@ -64,9 +63,8 @@ test('malformed and non-object JSON bodies are a 400 with no stack trace, on eve
   const h = await startServer(t);
   const bad = ['not json', '{bad', 'null', '"str"', '42', '[]'];
   const routes = [
-    ['POST', '/api/register/options', anon],
-    ['POST', '/api/register/verify', anon],
-    ['POST', '/api/pair/redeem', anon],
+    ['POST', '/api/push/unsubscribe', authed],
+    ['POST', '/api/activity', authed],
     ['PUT', '/api/data', authed],
     ['POST', '/api/push/rest-timer', authed]
   ];
@@ -77,20 +75,10 @@ test('malformed and non-object JSON bodies are a 400 with no stack trace, on eve
       assert.equal(r.body.error, 'invalid json', `${method} ${p} with body ${b}`);
     }
   }
-  // A field whose toString is not callable is valid JSON; String() on it used to throw.
-  let r = await status(h, 'POST', '/api/register/options', anon, JSON.stringify({ name: 'x', code: { toString: 1 } }));
-  assert.notEqual(r.status, 500);
-  r = await status(h, 'POST', '/api/pair/redeem', anon, JSON.stringify({ code: { toString: 1 } }));
-  assert.equal(r.status, 400);
-  r = await status(h, 'POST', '/api/register/options', anon, JSON.stringify({ name: { toString: 1 } }));
-  assert.equal(r.status, 400);
-  assert.equal(r.body.error, 'name required');
   // An empty body is still "no fields", as the routes that send none rely on.
-  r = await status(h, 'POST', '/api/logout', { Cookie: authed.Cookie });
+  let r = await status(h, 'POST', '/api/logout', { Cookie: authed.Cookie });
   assert.equal(r.status, 200);
   // Well-formed controls keep their own answers.
-  r = await status(h, 'POST', '/api/register/options', anon, '{}');
-  assert.deepEqual(r, { status: 400, body: { error: 'name required' } });
   r = await status(h, 'PUT', '/api/data', authed, JSON.stringify({ state: { workouts: [], routines: [] }, baseRev: 0 }));
   assert.equal(r.status, 200);
   assert.equal(h.stackFrames(), 0, `stack traces in the log:\n${h.log}`);

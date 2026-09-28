@@ -28,7 +28,7 @@ const REGION = 'us-central1';
 
 /* Duplicated from api/coach/core/system-prompt.js — see the header: same bytes, by design. */
 const SYSTEM_PROMPT =
-  'You are the openGym Coach. ' +
+  'You are the GymTask Coach. ' +
   'Answer only the supplied task and return exactly the requested JSON. ' +
   'You have no tools, filesystem access, external services, or persistent memory.';
 
@@ -321,9 +321,8 @@ exports.pushDailyReminder = onSchedule(
     const messaging = messagingOrNull();
     if (!messaging) return; // init failed above and already logged
 
-    // The whole payload: topic + pt-BR notification, sent exactly once. `webpush.fcmOptions.link`
-    // is what a click on the browser notification opens (the installed PWA); it is ignored by
-    // the native Android/iOS Capacitor shells, which use the notification block alone.
+// The whole payload: topic + pt-BR notification, sent exactly once. `webpush.fcmOptions.link`
+      // is what a click on the browser notification opens (the installed PWA).
     try {
       const messageId = await messaging.send({
         topic: REMINDER_TOPIC,

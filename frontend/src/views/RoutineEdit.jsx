@@ -311,10 +311,6 @@ export default function RoutineEdit() {
   const toast = useUI(s => s.toast)
   const r = S.routines.find(x => x.id === id)
   useEffect(() => { if (!r) nav('/plan') }, [!!r])
-  // Editing here has no explicit "save" — every field change persists immediately. A single
-  // auto-backup on the way out (not per keystroke) covers the whole editing session, deletion
-  // included: this still unmounts after the delete button navigates away.
-  useEffect(() => () => useStore.getState().autoBackupNow(), [])
   const edit = fn => update(s => { fn(s.routines.find(x => x.id === id).ex) })
   const reorder = useRoutineReorder(r, r?.ex || [], (sourceIndex, targetSlot) => {
     edit(exercises => { reorderRoutineUnit(exercises, sourceIndex, targetSlot) })

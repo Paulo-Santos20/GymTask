@@ -127,6 +127,18 @@ export default function Home() {
       </div>
     )}
 
+    {/* The /nutrition screen was routed but unreachable — no tab, no link anywhere. This is
+        its door, the same quick-tap card the check-in above uses. */}
+    <div className="card tappable" style={{ cursor: 'pointer' }} {...tappable(() => nav('/nutrition'))}>
+      <div className="row between">
+        <div className="row" style={{ gap: 9 }}>
+          <span className="lrow-i" style={{ background: 'var(--orange)' }}><Icon name="flame" /></span>
+          <div className="ttl">{t('Nutrition')}</div>
+        </div>
+        <Icon name="chevronRight" className="chev" />
+      </div>
+    </div>
+
     {!S.routines.length && !S.active && (
       <div className="card">
         <div className="row" style={{ gap: 10, marginBottom: 6 }}>

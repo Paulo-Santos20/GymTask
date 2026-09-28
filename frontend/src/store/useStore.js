@@ -1,14 +1,12 @@
 import { create } from 'zustand'
-import { api, setRemoteAuth } from '../lib/api.js'
+import { api } from '../lib/api.js'
 import { localTZ } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
 import { registerCustom } from '../lib/exercises.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { guestAllowed } from '../lib/guest.js'
-import { MOBILE, initReminderSync, nativeLoad, nativeSave, onAppActive, syncReminder, writeAutoBackup } from '../lib/mobile.js'
 import { mergeStates, localExtras } from '../lib/sync-merge.js'
-import { loadRemote, chooseLocal, forgetRemote, connect } from '../lib/remote.js'
-import { loadCoachDevice, saveCoachDevice, coachDeviceSettings } from '../lib/coach-device.js'
+import { saveCoachDevice, coachDeviceSettings } from '../lib/coach-device.js'
 
 import { WC_DEFAULT } from '../lib/workout-controls.js'
 
@@ -107,7 +105,6 @@ export function restoredStateFor(local, remote, dirty = false) {
 
 export const useStore = create((set, get) => {
   let pushTm = null
-  let saveTm = null
   let toldTooLarge = false
   let pushing = null       // the PUT in flight, so a second push waits for it instead of racing it
   let pushAgain = false    // a push asked for while one was in flight — run once more after it
@@ -129,15 +126,6 @@ export const useStore = create((set, get) => {
   }
   const isNetworkError = e => e && e.status == null   // fetch itself failed: no response at all
 
-  initReminderSync(() => get().S)
-
-  // Mobile build: mirror the state into a file in the app's data directory (survives WebView
-  // storage eviction) and keep the native reminder schedule in step with the weekly plan.
-  const nativePersist = () => {
-    clearTimeout(saveTm)
-    saveTm = setTimeout(() => { saveTm = null; nativeSave(get().S); syncReminder(get().S) }, 800)
-  }
-
   // `_ts` is when this device last changed the data — it decides which copy wins on the next
   // pull (restoredStateFor). A copy merely adopted from the server or the file mirror keeps the
   // stamp it came with: re-stamping a read would make an unchanged copy look newer than a real
@@ -147,7 +135,6 @@ export const useStore = create((set, get) => {
     registerCustom(S.customEx)
     localStorage.setItem(KEY, JSON.stringify(S))
     set({ S })
-    if (MOBILE) nativePersist()
     if (push && get().user) {
       // Before boot has pulled, the copy in hand may be older than the server's: a push now
       // would carry it with a stale (or no) baseRev. It waits for finishBoot.
@@ -197,7 +184,6 @@ export const useStore = create((set, get) => {
   window.addEventListener('focus', () => checkRev())
   window.addEventListener('pageshow', e => { if (e.persisted) checkRev() })
   window.addEventListener('online', () => checkRev(true))   // also retries a push that failed offline
-  onAppActive(() => checkRev())
   schedulePoll()
 
   // Both copies changed: keep both sides' entries, let the newer copy decide the rest
@@ -263,16 +249,8 @@ export const useStore = create((set, get) => {
   }
 
   // A setting changed right before switching away/closing the tab must not get lost mid-debounce
-  // (e.g. setting the reminder time then immediately backgrounding to test it). On mobile the
-  // same applies to the file mirror — backgrounding is often the last thing before the OS
-  // kills the app.
+  // (e.g. setting the reminder time then immediately backgrounding to test it).
   const flush = () => {
-    if (MOBILE && saveTm) {
-      clearTimeout(saveTm)
-      saveTm = null
-      nativeSave(get().S)
-      syncReminder(get().S)
-    }
     if (pushTm) {
       clearTimeout(pushTm)
       pushTm = null
@@ -321,8 +299,7 @@ export const useStore = create((set, get) => {
        hangs off it via coachAvailable(), so an unconfigured instance renders exactly what it
        always did, and a configured one is the only place any of it appears. */
     config: null,
-    needsMobileOnboarding: false,   // mobile build only — set true by boot() on a genuine first launch
-    // Mobile build only: how the Coach runs on this phone — { mode: 'off'|'server'|'byok',
+    // How the Coach runs on this device — { mode: 'off'|'server'|'byok',
     // provider, model, baseUrl } from lib/coach-device.js. Never the key, never a proposal.
     coachLocal: null,
     async setCoachLocal(patch) {
@@ -338,14 +315,6 @@ export const useStore = create((set, get) => {
     // A replace that is meant to reach the server (backup import, reset) is a deliberate
     // overwrite, not a change to merge: the push it arms goes without a baseRev.
     replaceState(S, push = false) { if (push) forceNext = true; persist(clone(S), push) },
-
-    // Fires after the moments where losing local data would actually hurt — a workout just
-    // logged, a routine just edited — not on every keystroke. No-op off mobile or with the
-    // setting off; the private file mirror (nativePersist, above) already covers every change.
-    autoBackupNow() {
-      const S = get().S
-      if (MOBILE && S.autoBackup) writeAutoBackup(S)
-    },
 
     isGuest: () => localStorage.getItem('gym_guest') === '1',
     setGuest(v) { if (v) localStorage.setItem('gym_guest', '1'); else localStorage.removeItem('gym_guest'); set({}) },
@@ -491,32 +460,6 @@ export const useStore = create((set, get) => {
       clearLocalSession()
     },
 
-    // Mobile-only ("connect to my server" onboarding, see App.jsx's needsMobileOnboarding).
-    // Picking local — even before there's any data — persists the choice so onboarding never
-    // asks again.
-    async chooseLocalMode() {
-      await chooseLocal()
-      set({ needsMobileOnboarding: false })
-    },
-    // Redeems the pairing code shown in the browser (Settings → "Pair the mobile app") and
-    // switches this device over to that account, same as signing in on the web does.
-    async connectToServer(url, code, ask) {
-      const user = await connect(url, code)   // throws on a bad URL/expired code — caller shows it
-      get().setUser(user)
-      await get().refreshConfig()   // what this server offers (the Coach, guest mode) — see boot()
-      await get().adoptProfile(ask)
-      syncReminder(get().S)
-      set({ needsMobileOnboarding: false })
-    },
-    // Leaves remote mode and drops cleanly back to local-only, without losing whatever was last
-    // synced (signOut() already pushes before it clears).
-    async disconnectServer() {
-      await get().signOut()
-      await forgetRemote()
-      get().setGuest(true)
-      set({ ready: true })
-    },
-
     // "Sign out everywhere": the server bumps this profile's session version, which kills every
     // session it has on any device — this browser included, so the app has to end up exactly
     // where a normal signOut leaves it. Unlike signOut the request is NOT swallowed: if it fails
@@ -538,46 +481,6 @@ export const useStore = create((set, get) => {
 
     // Boot: ask the server who we are, then pull.
     async boot() {
-      // Mobile build: no backend by default — restore from the file mirror (the durable copy;
-      // localStorage may have been evicted since the last run) and go straight in. Unless this
-      // device was paired to a server ("connect to my server" mode, lib/remote.js), in which
-      // case it behaves exactly like the signed-in web flow below, straight from here.
-      if (MOBILE) {
-        const remote = await loadRemote()
-        set({ coachLocal: coachDeviceSettings(await loadCoachDevice()) })
-        if (remote?.mode === 'remote') {
-          setRemoteAuth(remote.base, remote.token)
-          try {
-            const me = await api('/api/me')   // also catches a token revoked elsewhere (sign out everywhere)
-            get().setUser(me.user)
-            // The paired server's /api/config, the same one the web boot reads: without it the
-            // phone never learned whether the server offers the Coach and told everyone "your
-            // server has no Coach enabled" — with the admin looking at a green test.
-            await get().loadConfig()
-            await get().pullState()
-          } catch (e) {
-            if (e.status === 401) { await forgetRemote(); get().setGuest(true) }
-            else { get().setUser(remote.user); setSync({ offline: true }) }   // offline — keep going from the last-synced local copy
-          }
-          syncReminder(get().S)
-          finishBoot()
-          return
-        }
-        const saved = await nativeLoad()
-        const S = get().S
-        if (saved && (!hasData(S) || (saved._ts || 0) >= (S._ts || 0))) {
-          persist(Object.assign(clone(DEF), saved), false, false)
-        } else if (hasData(S)) {
-          nativeSave(S)   // first run after an update from a file-less version: seed the mirror
-        }
-        get().setGuest(true)
-        syncReminder(get().S)
-        // Only a genuinely first launch — nothing chosen yet and nothing to lose either — offers
-        // the choice. Picking local (even with no data yet) persists that choice below and this
-        // never asks again.
-        finishBoot({ needsMobileOnboarding: !remote && !hasData(get().S) })
-        return
-      }
       // Demo build (GitHub Pages): no backend at all — seed once, stay in guest mode.
       if (DEMO) {
         if (!localStorage.getItem(DEMO_SEEDED)) {

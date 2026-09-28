@@ -5,23 +5,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { todayISO } from './format.js'
 
-// The device file and the secret store are in-memory here; nativeFetch is the script.
-const device = { data: null }
-vi.mock('./mobile.js', () => ({
-  MOBILE: true,
-  readJsonFile: async () => device.data,
-  writeJsonFile: async (_n, d) => { device.data = JSON.parse(JSON.stringify(d)) }
-}))
+// The device entry (localStorage via lib/coach-device.js) and the secret store are in-memory
+// here; the global fetch stub is the wire every provider call goes out on.
 const secret = { key: 'sk-test-1' }
 vi.mock('./coach-secrets.js', () => ({ getApiKey: async () => secret.key, setApiKey: async v => { secret.key = v }, clearApiKey: async () => { secret.key = null } }))
 const wire = { calls: [], answer: null }
-vi.mock('./capacitor-fetch.js', () => ({
-  nativeFetch: async (url, init) => {
-    wire.calls.push({ url, init, body: JSON.parse(init.body) })
-    const a = typeof wire.answer === 'function' ? wire.answer(wire.calls.length) : wire.answer
-    return { ok: a.status < 300, status: a.status, text: async () => JSON.stringify(a.body), json: async () => a.body }
-  }
-}))
+vi.stubGlobal('fetch', async (url, init) => {
+  wire.calls.push({ url, init, body: JSON.parse(init.body) })
+  const a = typeof wire.answer === 'function' ? wire.answer(wire.calls.length) : wire.answer
+  return { ok: a.status < 300, status: a.status, text: async () => JSON.stringify(a.body), json: async () => a.body }
+})
 
 const local = await import('./coach-local.js')
 const { _resetCoachDevice, loadCoachDevice, saveCoachDevice } = await import('./coach-device.js')
@@ -53,7 +46,9 @@ async function settle() {
 describe('the Coach on a phone with its own key', () => {
   beforeEach(async () => {
     _resetCoachDevice(); local._resetLocal()
-    device.data = { mode: 'byok', provider: 'openai', model: 'gpt-t', baseUrl: null }
+    // _resetCoachDevice only drops the in-memory cache, so the day's counter and any proposal
+    // left by the previous test are still in localStorage — each test starts from a clean device.
+    await saveCoachDevice({ mode: 'byok', provider: 'openai', model: 'gpt-t', baseUrl: null, daily: null, pending: null })
     wire.calls = []; wire.answer = chat(JSON.stringify(review)); secret.key = 'sk-test-1'
   })
 
@@ -125,7 +120,7 @@ describe('the Coach on a phone with its own key', () => {
     await local.localReview(S)
     const s = await settle()
     expect(JSON.stringify(S)).not.toContain('sk-test-1')
-    expect(JSON.stringify(device.data)).not.toContain('sk-test-1')
+    expect(JSON.stringify(await loadCoachDevice())).not.toContain('sk-test-1')
     expect(JSON.stringify(s.pending)).not.toContain('sk-test-1')
   })
 
@@ -158,12 +153,12 @@ describe('the Coach on a phone with its own key', () => {
   it('a proposal waits in the device file, expires, and is cleared by resolve', async () => {
     await local.localReview(state())
     await settle()
-    expect(device.data.pending).toBeTruthy()
-    await saveCoachDevice({ pending: { ...device.data.pending, expiresAt: Date.now() - 1 } })
+    expect((await loadCoachDevice()).pending).toBeTruthy()
+    await saveCoachDevice({ pending: { ...(await loadCoachDevice()).pending, expiresAt: Date.now() - 1 } })
     expect((await local.localStatus()).pending).toBeNull()
     await local.localReview(state()); await settle()
     await local.localResolve()
-    expect(device.data.pending).toBeNull()
+    expect((await loadCoachDevice()).pending).toBeNull()
   })
 
   it('creates a plan from an intake, and refines it against the previous bundle', async () => {
@@ -201,11 +196,5 @@ describe('timeouts on the phone', () => {
     expect(timeoutFor('compatible')).toBe(LOCAL_ENDPOINT_TIMEOUT_MS)
     expect(LOCAL_ENDPOINT_TIMEOUT_MS).toBeGreaterThanOrEqual(20 * 60000)
     for (const p of ['anthropic', 'openai', 'gemini']) expect(timeoutFor(p)).toBe(TIMEOUT_MS)
-  })
-  it('the native transport read timeout outlasts the longest job', async () => {
-    const src = (await import('node:fs')).readFileSync(new URL('./capacitor-fetch.js', import.meta.url), 'utf8')
-    const m = src.match(/readTimeout:\s*(\d+)\s*\*\s*60000/)
-    expect(m).toBeTruthy()
-    expect(+m[1] * 60000).toBeGreaterThan(25 * 60000)
   })
 })

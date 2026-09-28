@@ -50,14 +50,8 @@ const coachOf = s => (s.coach = s.coach || emptyCoach())
 // The demo build is the one exception, and it is deliberate: it has no backend and no
 // account, but it does have a canned provider, and hiding the app's most interesting feature
 // from the page people are sent to look at it on would be a strange choice.
-//
-// The mobile build has two ways in, both chosen in Settings (views/CoachSetup.jsx): a phone
-// paired to a self-hosted server is an ordinary signed-in profile and takes the web rule; a
-// phone that brought its own API key runs the Coach itself (lib/coach-local.js). Nothing
-// chosen means nothing shown — the same "invisible unless configured" promise the web keeps.
-export const coachAvailable = (config, user, { demo, mobile, coachMode } = {}) =>
-  mobile ? (coachMode === 'byok' || !!(config?.coach?.enabled && user))
-    : demo ? true : !!(config?.coach?.enabled && user)
+export const coachAvailable = (config, user, { demo } = {}) =>
+  demo ? true : !!(config?.coach?.enabled && user)
 
 // What each data category means, in the user's words. Rendered from the same list the payload
 // builder uses (api/coach/core/categories.js), so the screen cannot promise less than leaves.

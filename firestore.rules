@@ -1,6 +1,7 @@
 // Regras de segurança do Firestore — GymTask.
-// ATENÇÃO: o ID real do projeto (e o deploy) depende do placeholder em .firebaserc —
-// trocar quando as credenciais chegarem.
+// Projeto gymtask-ce4b6; deploy com: firebase deploy --only firestore:rules
+// (as credenciais do CLI vêm do login `firebase login` ou de
+// GOOGLE_APPLICATION_CREDENTIALS=data/service-account.json).
 //
 // Isolamento por usuário: o app grava o blob de estado em users/{uid}/state/app
 // (campos = chaves do estado + _rev). Só o dono, e só autenticado, lê/escreve.

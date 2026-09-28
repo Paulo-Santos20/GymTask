@@ -108,7 +108,7 @@ export default {
           abortController,
           cwd: jobDir,
           // `env` REPLACES the child environment rather than extending it — which is exactly the
-          // contract config.jobEnv() was written to. It builds from nothing, so RP_ID, ADMIN_UIDS
+          // contract config.jobEnv() was written to. It builds from nothing, so ADMIN_UIDS
           // and the VAPID keys cannot reach the model process by inheritance.
           env: { ...env, CLAUDE_AGENT_SDK_CLIENT_APP: CLIENT_APP },
           model: model || undefined,

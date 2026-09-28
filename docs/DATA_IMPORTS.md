@@ -8,13 +8,13 @@ The app supports exporting and an export always contain *every* current routine.
 If you don't want to share every plan that you have currently created, you can either:
 - edit the exported json with a text editor  
   or (if you don't feel like editing json files):
-- open the [Demo](https://opengym.duarte-santos.ch/demo/#/home)
+- open GymTask in a desktop browser (your deploy, or `npm run dev` locally)
     - import your plans
     - make changes 
     - export a new json file for sharing
 
-If you are using the standalone app on your mobile, you can use the demo for creating plans on your PC and import them.  
-The demo stores all data in your browser, it is not public or shared in any way.
+If you train from your phone, you can use the browser version on your PC for creating plans and import them.  
+Without Firebase configured the browser version stores all data in your browser, it is not public or shared in any way.
 
 Writing a json file yourself will be a bit of a complex task since the IDs of the exercises have to match the IDs in the database.  
 
@@ -43,7 +43,7 @@ These apps have been tested to work without adjustments to the column names:
 If you have **Hevy Pro**, you can skip the CSV and import straight from Hevy:
 
 1. Open [Hevy → Settings → Developer](https://hevy.com/settings?developer) and create an API key
-2. In openGym: **Settings → Import from Hevy**
+2. In GymTask: **Settings → Import from Hevy**
 3. Paste the key (used only for that import — it is not saved)
 4. Choose whether to bring **workouts**, **routines**, **weigh-ins**, or any mix, then confirm
 

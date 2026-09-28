@@ -1,20 +1,19 @@
-# openGym
+# GymTask
 
-> Free, open-source gym & body-weight tracker (AGPL-3.0). Runs as a standalone
-> Android app (sideloaded APK) or self-hosted with Docker (passkey profiles,
-> multi-device sync, PWA). No account required, no cloud, no telemetry.
+> Free, open-source gym & body-weight tracker (AGPL-3.0). Runs as an installable
+> web PWA (Add to Home Screen on Android/iPhone; iOS needs the installed PWA for
+> push) or self-hosted with Docker (multi-device sync).
+> No account required in guest mode — e-mail/password sign-in when Firebase
+> is configured. No telemetry.
 
 ## Docs
-- [Complete reference](https://opengym.duarte-santos.ch/docs.html): every feature, self-hosting, every .env setting, AI Coach, imports (FitNotes/Strong/Hevy/Apple Health), backups, MCP server, troubleshooting
-- [HTTP API](https://opengym.duarte-santos.ch/api.html): OpenAPI spec, also at [openapi.yaml](https://opengym.duarte-santos.ch/openapi.yaml)
-- [README](https://opengym.duarte-santos.ch/README.md): project overview in Markdown
+- [Complete reference](https://gytask.example.com/docs.html): every feature, self-hosting, every .env setting, AI Coach, imports (FitNotes/Strong/Hevy/Apple Health), backups, MCP server, troubleshooting
+- [HTTP API](https://gytask.example.com/api.html): OpenAPI spec, also at [openapi.yaml](https://gytask.example.com/openapi.yaml)
+- [README](https://gytask.example.com/README.md): project overview in Markdown
 
 ## Try & get it
-- [Live demo](https://opengym.duarte-santos.ch/demo/): the real app with example data, in the browser
-- [Android APK](https://opengym.duarte-santos.ch/openGym.apk): signed, sideloadable; SHA-256 next to it at openGym.apk.sha256 and on the GitHub release
-- [About](https://opengym.duarte-santos.ch/about.html): the story and every release
+- [PWA](https://gytask.example.com/): installable — open in the browser and Add to Home Screen
+- [About](https://gytask.example.com/about.html): the story and every release
 
 ## Source & community
-- [GitHub repository](https://github.com/DuarteSantos8/openGym): code, issues, pull requests, releases
-- [GitLab mirror](https://gitlab.com/DuarteSantos8/opengym): CI, APK and image builds
-- [Discord](https://discord.gg/e62jY6fwVb): release announcements and self-hosting help
+- [GitHub repository](https://github.com/Paulo-Santos20/GymTask): code, issues, pull requests, releases

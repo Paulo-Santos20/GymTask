@@ -1,4 +1,4 @@
-name: opengym
+name: gytask
 
 services:
   # One-time: download the exercise images + GIFs into ./media (skipped if already there).
@@ -32,15 +32,11 @@ services:
         fi
     restart: "no"
 
-  # Passkey auth + per-user data (Node, no framework).
-  # image: prebuilt (docker compose pull). build: from source (docker compose up --build).
+  # Per-user data (Node, no framework). Built from source — the fork publishes no images.
   api:
-    image: ghcr.io/duartesantos8/opengym-api:latest
     # Default target: no AI runtime, no AI dependency — the image every instance has always had.
     # To opt into the AI Coach, build the other target instead:
     #     API_TARGET=coach docker compose up --build api
-    # `--build` matters: with an `image:` also set, compose would otherwise pull the prebuilt
-    # default rather than build the coach one.
     build:
       context: ./api
       target: ${API_TARGET:-default}
@@ -52,16 +48,15 @@ services:
       - PORT=${PORT:-3000}
       - DATA_DIR=/data
     volumes:
-      - ./data:/data         # users, passkeys, per-user state, session secret — BACK THIS UP
+      - ./data:/data         # users, per-user state, session secret — BACK THIS UP
       # Provider credential cache (Codex). A sibling of ./data on purpose: the documented backup
       # is `tar czf … data/`, and a live refresh token must not end up inside it. Nothing here
       # needs backing up — if you lose it, sign the provider in again.
       - ./coach-auth:/coach-auth
 
   # Builds the React frontend (multi-stage) and serves it, proxying /api → api
-  # and the exercise media from the shared volume. Single origin for passkeys.
+  # and the exercise media from the shared volume. One origin for the whole app.
   web:
-    image: ghcr.io/duartesantos8/opengym-web:latest
     build:
       context: .
       dockerfile: web/Dockerfile
