@@ -8,9 +8,8 @@ const placeholders = value => [...String(value).matchAll(/\{\d+\}/g)].map(match 
 const byCodeUnit = ([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)
 
 describe('Brazilian Portuguese locale', () => {
-  test('is a separately selectable locale with Brazilian date formatting', () => {
-    expect(LANGS.pt).toBe('Português (Portugal)')
-    expect(LANGS['pt-BR']).toBe('Português (Brasil)')
+  test('is the app’s only selectable locale, with Brazilian date formatting', () => {
+    expect(LANGS).toEqual({ 'pt-BR': 'Português (Brasil)' })
     expect(DATE_LOCALES['pt-BR']).toBe('pt-BR')
   })
 
@@ -27,11 +26,11 @@ describe('Brazilian Portuguese locale', () => {
       .sort(byCodeUnit)
     const fingerprint = createHash('sha256').update(JSON.stringify(inherited)).digest('hex')
 
-    expect(Object.keys(PT_BR_OVERRIDES)).toHaveLength(645)
-    expect(inherited).toHaveLength(660)
+    expect(Object.keys(PT_BR_OVERRIDES)).toHaveLength(710)
+    expect(inherited).toHaveLength(657)
     // If this fails, review the changed keys and wording before accepting a new hash. From
     // frontend/: node scripts/pt-br-inheritance-fingerprint.mjs --list
-    expect(fingerprint, 'pt-PT inheritance changed; review the inherited pt-BR wording').toBe('a2027d64b3944dcef644b11b4d9688b88fe5cff0693acf04c73f0667e2b86825')
+    expect(fingerprint, 'pt-PT inheritance changed; review the inherited pt-BR wording').toBe('9fbd0ce037ba4ac553b72f673687e69ddaa36d046c2ce905ae0ac399347d3359')
   })
 
   test('does not leak European Portuguese UI terms', () => {

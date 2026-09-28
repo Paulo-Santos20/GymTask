@@ -10,7 +10,7 @@ import { EXIDX, registerCustom } from './lib/exercises.js'
 import { DEF, useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { _setLangState } from './lib/i18n-core.js'
-import de from './locales/de.js'
+import ptBR from './locales/pt-BR.js'
 import { exercisePicker, exConfigSheet } from './sheets.jsx'
 import MuscleExplorer from './components/MuscleExplorer.jsx'
 
@@ -84,30 +84,30 @@ describe('muscle names in the rows and tags (QA C9)', () => {
     expect(tags(renderTop())).toEqual(['hamstrings', 'barbell', 'Calves', 'Forearms', 'Shoulders'])
   })
 
-  it('translates them in German too — "forearm" was staying English', () => {
-    _setLangState('de', de, null, null)
+  it('translates them in pt-BR too — "forearm" was staying English', () => {
+    _setLangState('pt-BR', ptBR, null, null)
     seed(custom())
     exConfigSheet(EXIDX['0648'], null, vi.fn())
     const tags = [...renderTop().querySelectorAll('.tag')].map(e => e.textContent.trim())
-    expect(tags).toEqual(['Beinbeuger', 'Langhantel', 'Waden', 'Unterarme', 'Schultern'])
+    expect(tags).toEqual(['isquiotibiais', 'barra', 'Panturrilhas', 'Antebraços', 'Ombros'])
     exercisePicker(vi.fn())
     const host = renderTop()
     act(() => type(host.querySelector('input.input'), 'QA Custom'))
-    expect(rowFor(host, 'QA Custom Thrust').querySelector('.ss').textContent).toBe('Gesäß · Langhantel')
+    expect(rowFor(host, 'QA Custom Thrust').querySelector('.ss').textContent).toBe('Glúteos · barra')
   })
 
   // The dataset's cardio target "cardiovascular system" is both a map id and a translated key
   // of its own. Routing it through MUSCLE_NAME must not cost it its translation: the 29
-  // built-in cardio exercises read "Herz-Kreislauf" in German, never "Cardiovascular system".
-  it('keeps the cardio target translated (burpee, de)', () => {
-    _setLangState('de', de, null, null)
+  // built-in cardio exercises read "sistema cardiovascular" in pt-BR, never the English source.
+  it('keeps the cardio target translated (burpee, pt-BR)', () => {
+    _setLangState('pt-BR', ptBR, null, null)
     exercisePicker(vi.fn())
     const host = renderTop()
     act(() => type(host.querySelector('input.input'), 'burpee'))
-    expect(rowFor(host, 'burpee').querySelector('.ss').textContent).toBe('Herz-Kreislauf · Körpergewicht')
+    expect(rowFor(host, 'burpee').querySelector('.ss').textContent).toBe('sistema cardiovascular · peso corporal')
     exConfigSheet(EXIDX['1160'], null, vi.fn())
     const tags = [...renderTop().querySelectorAll('.tag')].map(e => e.textContent.trim())
-    expect(tags).toEqual(['Cardio', 'Herz-Kreislauf', 'Körpergewicht'])
+    expect(tags).toEqual(['Cardio', 'sistema cardiovascular', 'peso corporal'])
   })
 
   it('Muscles explorer row names the target the same way', () => {

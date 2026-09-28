@@ -1,0 +1,14 @@
+{
+  "name": "gymtask-functions",
+  "description": "GymTask Firebase Cloud Functions — AI coach (Grok/xAI), Nutritionix proxy, daily FCM reminder push",
+  "private": true,
+  "license": "AGPL-3.0-or-later",
+  "main": "index.js",
+  "engines": {
+    "node": "22"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.4.0"
+  }
+}

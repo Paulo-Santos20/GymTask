@@ -1,0 +1,9 @@
+# Real environment files — secrets stay out of git; the template .env.example is committed.
+.env
+.env.*
+!.env.example
+
+# Firebase / npm local artifacts
+node_modules/
+firebase-debug.log
+.firebase/

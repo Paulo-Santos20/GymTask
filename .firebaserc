@@ -1,0 +1,8 @@
+// Mapeamento de projetos do Firebase CLI.
+// ATENÇÃO: "GYTASK-PROJECT-ID-TBD" é um placeholder — substituir pelo ID real do
+// projeto Firebase assim que as credenciais/credenciais do projeto chegarem.
+{
+  "projects": {
+    "default": "GYTASK-PROJECT-ID-TBD"
+  }
+}

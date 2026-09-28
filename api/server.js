@@ -24,15 +24,9 @@ const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
 const RP_ID = process.env.RP_ID || 'localhost';
 const ORIGIN = process.env.ORIGIN || 'http://localhost:8080';
-const RP_NAME = process.env.RP_NAME || 'openGym';
-// Admin dashboard (issue): admins are matched by uid; INVITE_ONLY gates new signups behind a
-// code the admin generates. Both default off so a fresh self-hosted instance stays open.
-const ADMIN_UIDS = (process.env.ADMIN_UIDS || '').split(',').map(s => s.trim()).filter(Boolean);
-const INVITE_ONLY = /^(1|true|yes|on)$/i.test(process.env.INVITE_ONLY || '');
+const RP_NAME = process.env.RP_NAME || 'GymTask';
 // Guest mode ("Continue without account") keeps everything in the browser and never touches this
-// server — but on an instance meant for a known set of people, an entrance nobody can walk back
-// out of is still the wrong front door (#42). Default ON, so existing instances are unchanged;
-// the polarity is inverted from INVITE_ONLY because the safe default here is the permissive one.
+// server. Default ON so existing instances are unchanged — the safe default is the permissive one.
 const ALLOW_GUEST = !/^(0|false|no|off)$/i.test(process.env.ALLOW_GUEST || '');
 // 90 days keeps someone who trains a few times a week permanently signed in without a stolen
 // cookie staying good for a year. Overridable because a family instance and one on the open
@@ -64,11 +58,10 @@ if (!fs.existsSync(secretFile)) fs.writeFileSync(secretFile, crypto.randomBytes(
 const SECRET = fs.readFileSync(secretFile, 'utf8').trim();
 
 const dbFile = path.join(DATA, 'db.json');
-let db = { users: [], creds: [], subs: [], invites: [] };
+let db = { users: [], creds: [], subs: [] };
 try { db = JSON.parse(fs.readFileSync(dbFile, 'utf8')); } catch {}
 db.subs = db.subs || [];
-db.invites = db.invites || [];
-const isAdmin = user => !!user && (user.admin === true || ADMIN_UIDS.includes(user.id));
+delete db.invites;   // invite codes are gone; strip them from an upgraded db.json on load
 // 0600: db.json holds passkey credential material. It used to be covered by a blanket 0700 on
 // the whole directory; now that the directory stays traversable, the file carries its own mode.
 function saveDb() { atomicWrite(dbFile, JSON.stringify(db, null, 2), 0o600); }
@@ -85,9 +78,7 @@ function readState(uid) {
 // list. PUT /api/data drops the rest on the way in — a null workout, a routine that is a
 // number — and refuses a list that is not an array at all, but a file written before it did
 // answers to nobody, and the readers below walk those lists (`r.id`, `w.d`, `.slice()`). One
-// throw inside an admin route is a 500 for that whole profile: the drill-down never leaves
-// "Loading…", the Disable button lives inside it, and the account an operator opened the
-// dashboard to stop is exactly the one they then cannot. Answering with the entries that are
+// throw inside such a reader is a 500 for the whole request. Answering with the entries that are
 // there is the honest reading of such a file — what was dropped carried nothing to show.
 const record = x => !!x && typeof x === 'object' && !Array.isArray(x);
 const records = v => (Array.isArray(v) ? v.filter(record) : []);
@@ -428,15 +419,6 @@ function readSession(req) {
   if (!Number.isInteger(claimed) || claimed !== sessionVersion(user)) return null;
   return user;
 }
-// Guard for /api/admin/* — resolves the caller and 401/403s if they aren't an admin.
-function requireAdmin(req, res) {
-  const user = readSession(req);
-  if (!user) { json(res, 401, { error: 'not signed in' }); return null; }
-  // Only the 403 is recorded: a 401 is any unauthenticated bot poking /api/admin/*, and
-  // logging those would bury the events an operator actually wants to see.
-  if (!isAdmin(user)) { audit(req, 'admin.denied', { ok: false, user }); json(res, 403, { error: 'forbidden' }); return null; }
-  return user;
-}
 const expireCookie = name => `${name}=; Path=/; Max-Age=0; HttpOnly;${SECURE} SameSite=Lax`;
 function sessionCookie(user) {
   const fresh = `${COOKIE}=${makeSession(user)}; Path=/; Max-Age=${SESSION_DAYS * 86400}; HttpOnly;${SECURE} SameSite=Lax`;
@@ -574,20 +556,14 @@ const text = v => (typeof v === 'string' ? v : typeof v === 'number' ? String(v)
 const b64uToBuf = s => Buffer.from(s, 'base64url');
 
 /* ---------- live presence (in-memory) ---------- */
-// Clients heartbeat /api/activity while a workout is on screen; the admin dashboard reads who's
-// live. Purely ephemeral — never persisted. Expires shortly after the last ping.
+// Clients heartbeat /api/activity while a workout is on screen. Purely ephemeral — never
+// persisted. Expires shortly after the last ping.
 const presence = new Map();               // uid -> { name, exIdx, exTotal, setsDone, setsTotal, startedAt, updatedAt }
 const PRESENCE_TTL = 70000;               // ~3.5× the 20s client heartbeat
-function livePresence(uid) {
-  const p = presence.get(uid);
-  if (!p) return null;
-  if (Date.now() - p.updatedAt > PRESENCE_TTL) { presence.delete(uid); return null; }
-  return p;
-}
 setInterval(() => { for (const [k, v] of presence) if (Date.now() - v.updatedAt > PRESENCE_TTL) presence.delete(k); }, 30000).unref();
 
 /* ---------- audit log ---------- */
-// Who signed in, who tried and failed, and what an admin changed. One JSON object per line in
+// Who signed in and who tried and failed. One JSON object per line in
 // ./data/audit.log, appended and never rewritten in place. It deliberately does not live in
 // db.json: that file is rewritten whole on every save, and the login/register handshakes are
 // unauthenticated and unthrottled by design (see SECURITY.md), so an audit trail in there would
@@ -595,7 +571,7 @@ setInterval(() => { for (const [k, v] of presence) if (Date.now() - v.updatedAt 
 // is dropped on read.
 //
 // On by default. It records strictly less than the instance already holds — every account is in
-// db.json and every workout is in state-<uid>.json, both readable by any admin — and a security
+// db.json and every workout is in state-<uid>.json, both sitting on the host — and a security
 // feature that ships switched off protects nobody. IP addresses are the exception: off unless you
 // ask for them, because they are the one field here that says where somebody physically is.
 const AUDIT_ON = !/^(0|false|no|off)$/i.test(process.env.AUDIT_LOG || '');
@@ -690,25 +666,19 @@ const routes = {
   // the app it was before the feature existed.
   'GET /api/config': async (req, res) => {
     const coach = coachConfig.publicConfig();
-    json(res, 200, { invite_only: INVITE_ONLY, allow_guest: ALLOW_GUEST, ...(coach ? { coach } : {}) });
+    json(res, 200, { invite_only: false, allow_guest: ALLOW_GUEST, ...(coach ? { coach } : {}) });
   },
 
   'GET /api/me': async (req, res) => {
     const user = readSession(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
-    json(res, 200, { user: { id: user.id, name: user.name, admin: isAdmin(user) } });
+    json(res, 200, { user: { id: user.id, name: user.name } });
   },
 
   'POST /api/register/options': async (req, res) => {
     const body = await readBody(req);
     const name = text(body.name).trim().slice(0, 40);
     if (!name) return json(res, 400, { error: 'name required' });
-    const code = text(body.code).trim().toUpperCase();
-    if (INVITE_ONLY && !db.invites.some(i => i.code === code && !i.usedBy && !i.revoked)) {
-      // The rejected code itself is never recorded — a near-miss guess in the log is a liability.
-      audit(req, 'auth.register.denied', { ok: false, name, msg: 'invite-rejected' });
-      return json(res, 403, { error: 'a valid invite code is required' });
-    }
     const uid = crypto.randomBytes(12).toString('base64url');
     const options = await generateRegistrationOptions({
       rpName: RP_NAME, rpID: RP_ID,
@@ -717,7 +687,7 @@ const routes = {
       authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
       excludeCredentials: []
     });
-    const cid = putChallenge({ challenge: options.challenge, name, uid, code });
+    const cid = putChallenge({ challenge: options.challenge, name, uid });
     json(res, 200, { cid, options });
   },
 
@@ -751,17 +721,7 @@ const routes = {
       audit(req, 'auth.register.fail', { ok: false, name: c.name, msg: 'credential-exists' });
       return json(res, 409, { error: 'credential already registered' });
     }
-    // Re-check the invite at the last moment (it may have been used/revoked since options), then burn it.
-    let invite = null;
-    if (INVITE_ONLY) {
-      invite = db.invites.find(i => i.code === c.code && !i.usedBy && !i.revoked);
-      if (!invite) {
-        audit(req, 'auth.register.fail', { ok: false, name: c.name, msg: 'invite-invalid' });
-        return json(res, 403, { error: 'invite code is no longer valid — ask for a new one' });
-      }
-    }
     const user = { id: c.uid, name: c.name, created: new Date().toISOString() };
-    if (invite) { user.invitedBy = invite.code; invite.usedBy = user.id; invite.usedAt = user.created; }
     db.users.push(user);
     db.creds.push({
       id: credential.id, userId: user.id,
@@ -770,8 +730,8 @@ const routes = {
       transports: body.credential?.response?.transports || []
     });
     saveDb();
-    audit(req, 'auth.register.ok', { user, msg: invite ? invite.code : null });
-    json(res, 200, { user: { id: user.id, name: user.name, admin: isAdmin(user) } }, { 'Set-Cookie': sessionCookie(user) });
+    audit(req, 'auth.register.ok', { user });
+    json(res, 200, { user: { id: user.id, name: user.name } }, { 'Set-Cookie': sessionCookie(user) });
   },
 
   'POST /api/login/options': async (req, res) => {
@@ -792,7 +752,7 @@ const routes = {
     const cred = db.creds.find(x => x.id === body.credential?.id);
     if (!cred) {
       // No credential id goes in the log: it is a stable handle for one passkey, and recording it
-      // would let an admin correlate an unknown device across attempts. Nothing here identifies
+      // would let anyone correlate an unknown device across attempts. Nothing here identifies
       // the caller beyond the timestamp (and the network, if AUDIT_IP is on).
       audit(req, 'auth.login.fail', { ok: false, msg: 'unknown-credential' });
       return json(res, 404, { error: 'unknown passkey — create a profile first' });
@@ -832,7 +792,7 @@ const routes = {
       return json(res, 403, { error: 'this account has been disabled' });
     }
     audit(req, 'auth.login.ok', { user });
-    json(res, 200, { user: { id: user.id, name: user.name, admin: isAdmin(user) } }, { 'Set-Cookie': sessionCookie(user) });
+    json(res, 200, { user: { id: user.id, name: user.name } }, { 'Set-Cookie': sessionCookie(user) });
   },
 
   // Reads the session purely so the sign-out can be recorded; the cookie is cleared either way.
@@ -886,11 +846,11 @@ const routes = {
       return json(res, 400, { error: 'invalid or expired code' });
     }
     audit(req, 'auth.pair.ok', { user });
-    json(res, 200, { token: makeSession(user), user: { id: user.id, name: user.name, admin: isAdmin(user) } });
+    json(res, 200, { token: makeSession(user), user: { id: user.id, name: user.name } });
   },
 
   // `rev` is the server's own count of writes to this profile (also stored inside the document as
-  // `_rev`, so every other reader of the file — reminder tick, admin, Coach, MCP — is unaffected).
+  // `_rev`, so every other reader of the file — reminder tick, Coach, MCP — is unaffected).
   // A client pushes it back as `baseRev`, and a write over a document it never saw is refused.
   'GET /api/data': async (req, res) => {
     const user = readSession(req);
@@ -912,7 +872,7 @@ const routes = {
     if (!user) return json(res, 401, { error: 'not signed in' });
     const body = await readBody(req);
     if (!body.state || typeof body.state !== 'object') return json(res, 400, { error: 'state required' });
-    // The reminder tick and the admin routes iterate these two on the server's side, so a truthy
+    // The reminder tick and Coach iterate these two on the server's side, so a truthy
     // non-array would throw there on every pass for as long as it sat on disk. Absent or null is
     // fine — every client fills its own defaults. An array is `typeof 'object'` but no document:
     // `_rev` set on it is dropped by JSON.stringify, so the file would read back as rev 0 while
@@ -953,7 +913,7 @@ const routes = {
     const bad = pushEndpointError(sub.endpoint);
     if (bad) return json(res, 400, { error: bad });
     // Only the two keys the push protocol needs are kept: `sub` is caller-supplied and would
-    // otherwise put arbitrary fields into db.json, which every admin route reads back out.
+    // otherwise put arbitrary fields into db.json, which the server reads back out.
     const keys = { p256dh: String(sub.keys.p256dh), auth: String(sub.keys.auth) };
     const deviceId = deviceIdOf(body.deviceId);
     // An upsert: the client re-sends its subscription on every boot (lib/push.js) so a row this
@@ -1040,162 +1000,14 @@ const routes = {
     json(res, 200, { ok: true });
   },
 
-  /* ---------- admin dashboard ---------- */
-  // One row per user, cheap enough for a personal instance (reads each state file once).
-  'GET /api/admin/users': async (req, res) => {
-    if (!requireAdmin(req, res)) return;
-    const users = db.users.map(u => {
-      const S = readState(u.id) || {};
-      const workouts = records(S.workouts);
-      const last = workouts[workouts.length - 1];
-      return {
-        id: u.id, name: u.name, created: u.created || null,
-        disabled: !!u.disabled, admin: isAdmin(u), invitedBy: u.invitedBy || null,
-        workouts: workouts.length,
-        lastWorkout: last ? last.d : null,
-        lastSync: S._ts || null,
-        hasPush: db.subs.some(s => s.userId === u.id),
-        live: livePresence(u.id)
-      };
-    });
-    json(res, 200, { users, invite_only: INVITE_ONLY, now: Date.now() });
-  },
-
-  // Drill-down: full workout history + body-weight log for one user.
-  'GET /api/admin/user': async (req, res) => {
-    if (!requireAdmin(req, res)) return;
-    const id = new URL(req.url, 'http://x').searchParams.get('id');
-    const u = db.users.find(x => x.id === id);
-    if (!u) return json(res, 404, { error: 'no such user' });
-    const S = readState(u.id) || {};
-    json(res, 200, {
-      user: { id: u.id, name: u.name, created: u.created || null, disabled: !!u.disabled, admin: isAdmin(u), invitedBy: u.invitedBy || null },
-      unit: S.unit || 'kg',
-      lastSync: S._ts || null,
-      routines: records(S.routines).map(r => ({ id: r.id, name: r.name, emoji: r.emoji, count: records(r.ex).length })),
-      bodyweight: records(S.bodyweight),
-      workouts: records(S.workouts).reverse()   // records() already copied, so this reverse is ours: newest first for display
-    });
-  },
-
-  'POST /api/admin/user/disable': async (req, res) => {
-    const admin = requireAdmin(req, res); if (!admin) return;
-    const body = await readBody(req);
-    const u = db.users.find(x => x.id === body.id);
-    if (!u) return json(res, 404, { error: 'no such user' });
-    if (isAdmin(u)) return json(res, 400, { error: 'cannot disable an admin' });
-    u.disabled = !!body.disabled;
-    if (u.disabled) presence.delete(u.id);   // drop them off "training now" at once
-    saveDb();
-    audit(req, u.disabled ? 'admin.user.disable' : 'admin.user.enable', { user: admin, target: u });
-    json(res, 200, { ok: true, id: u.id, disabled: u.disabled });
-  },
-
-  // Disable locks an account out; this removes it. The one destructive action in the app, so the
-  // client asks twice and this end refuses the two cases that cannot be undone from the UI
-  // afterwards: an admin deleting themselves, and the last admin standing (issue #107).
-  // The invite code that let them in stays burned — it was used, and freeing it would quietly
-  // widen an invite-only instance. `GET /api/admin/user` is the export: the dashboard offers it
-  // before the confirm, so the training history can be kept if anyone wants it.
-  'POST /api/admin/user/delete': async (req, res) => {
-    const admin = requireAdmin(req, res); if (!admin) return;
-    const body = await readBody(req);
-    const u = db.users.find(x => x.id === body.id);
-    if (!u) return json(res, 404, { error: 'no such user' });
-    if (u.id === admin.id) return json(res, 400, { error: 'you cannot delete your own account' });
-    if (isAdmin(u) && db.users.filter(isAdmin).length <= 1) return json(res, 400, { error: 'cannot delete the last admin' });
-    const name = u.name;
-    db.users = db.users.filter(x => x.id !== u.id);
-    db.creds = (db.creds || []).filter(c => c.userId !== u.id);
-    db.subs = (db.subs || []).filter(x => x.userId !== u.id);
-    presence.delete(u.id);
-    // The training history and any Coach credential of theirs, both outside db.json.
-    try { fs.unlinkSync(stateFile(u.id)); } catch { /* already gone */ }
-    try { coachConfig.clearProfileAuth(u.id); } catch { /* nothing stored */ }
-    saveDb();
-    // Logged with the name, because the id is about to mean nothing to anyone reading this back.
-    audit(req, 'admin.user.delete', { user: admin, msg: name });
-    json(res, 200, { ok: true, id: u.id });
-  },
-
-  'GET /api/admin/invites': async (req, res) => {
-    if (!requireAdmin(req, res)) return;
-    // resolve usedBy uid → name for display
-    const invites = db.invites.map(i => ({
-      ...i, usedByName: i.usedBy ? (db.users.find(u => u.id === i.usedBy) || {}).name || null : null
-    }));
-    json(res, 200, { invites, invite_only: INVITE_ONLY });
-  },
-
-  'POST /api/admin/invites/new': async (req, res) => {
-    const admin = requireAdmin(req, res); if (!admin) return;
-    const body = await readBody(req);
-    let code;
-    // 16 hex chars = 64 bits, up from 8 chars / 32 bits. The app has no rate limiting by design
-    // (that's the reverse proxy's job) and /api/register/options tells a caller whether a code is
-    // good, so the code itself has to be the thing that isn't worth guessing. Codes already in
-    // db.json keep working — validation is an exact string compare, never a length or format check.
-    do { code = crypto.randomBytes(8).toString('hex').toUpperCase(); } while (db.invites.some(i => i.code === code));
-    const invite = { code, note: text(body.note).slice(0, 60), createdBy: admin.id, created: new Date().toISOString() };
-    db.invites.push(invite);
-    saveDb();
-    audit(req, 'admin.invite.create', { user: admin, msg: code });
-    json(res, 200, { invite });
-  },
-
-  'POST /api/admin/invites/revoke': async (req, res) => {
-    const admin = requireAdmin(req, res); if (!admin) return;
-    const body = await readBody(req);
-    const inv = db.invites.find(i => i.code === text(body.code).toUpperCase());
-    if (!inv) return json(res, 404, { error: 'no such code' });
-    if (inv.usedBy) return json(res, 400, { error: 'already used — cannot revoke' });
-    db.invites = db.invites.filter(i => i.code !== inv.code);
-    saveDb();
-    audit(req, 'admin.invite.revoke', { user: admin, msg: inv.code });
-    json(res, 200, { ok: true });
-  },
-
-  /* ---------- activity log ---------- */
-  // Newest first, paged by id. Not by offset: the log grows at the front of this view, so an
-  // offset cursor would repeat a row whenever an event lands between two pages; and not by
-  // timestamp, because two events can share a millisecond. auditKeep() runs on read as well as
-  // on the hourly compaction, so nothing past its retention is ever served.
-  'GET /api/admin/audit': async (req, res) => {
-    if (!requireAdmin(req, res)) return;
-    const q = new URL(req.url, 'http://x').searchParams;
-    const limit = Math.max(1, Math.min(200, +q.get('limit') || 100));
-    const before = +q.get('before') || Infinity;
-    const cat = q.get('cat') || '';
-    let rows = auditKeep(auditLines()).reverse();
-    if (cat === 'fail') rows = rows.filter(r => !r.ok);
-    else if (cat) rows = rows.filter(r => String(r.ev).startsWith(cat + '.'));
-    const page = rows.filter(r => r.id < before).slice(0, limit);
-    json(res, 200, {
-      events: page,
-      total: rows.length,
-      nextBefore: page.length === limit ? page[page.length - 1].id : null,
-      enabled: AUDIT_ON, ip_mode: AUDIT_IP,
-      retention: { max: AUDIT_MAX, days: AUDIT_DAYS },
-      now: Date.now()
-    });
-  },
-
-  // Deleting the log is itself logged, and auditSeq is not reset — so a clear always leaves a
-  // visible gap in the ids and can't be used to quietly erase a trace. There is no export route:
-  // ./data/audit.log already is the export, in a format jq reads directly.
-  'POST /api/admin/audit/clear': async (req, res) => {
-    const admin = requireAdmin(req, res); if (!admin) return;
-    try { fs.unlinkSync(auditFile); } catch { /* nothing logged yet */ }
-    auditCount = 0;
-    audit(req, 'admin.audit.clear', { user: admin });
-    json(res, 200, { ok: true });
-  },
-
   /* ---------- AI Coach ---------- */
   // Routes live in coach/routes.js and are handed the helpers above rather than importing
   // them: they are closures over db and SECRET, and passing them in keeps that module free of
   // a cycle. Every one of them is inert while the feature is unconfigured.
-  ...coachRoutes({ json, readBody, readSession, requireAdmin })
+  // coach/routes.js stays byte-identical and still exports upstream /api/admin/coach/* handlers;
+  // drop those keys here — with the admin panel gone nothing calls them (requireAdmin went too).
+  ...Object.fromEntries(Object.entries(coachRoutes({ json, readBody, readSession }))
+    .filter(([k]) => !k.startsWith('/api/admin/')))
 };
 
 /* ---------- Coach: boot recovery, notifications, scheduled reviews ---------- */

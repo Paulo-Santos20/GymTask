@@ -19,7 +19,7 @@ const umamiSrc = process.env.VITE_UMAMI_SRC
 const umamiId = process.env.VITE_UMAMI_ID
 
 const umami = {
-  name: 'opengym-umami',
+  name: 'gytask-umami',
   transformIndexHtml() {
     if (!umamiSrc || !umamiId) return
     return [{
@@ -35,7 +35,7 @@ const umami = {
 // shell and chunks are dropped on activate instead of piling up under one fixed name. The
 // stamp is a hash of the built index.html — it changes exactly when the bundle does.
 const swStamp = {
-  name: 'opengym-sw-stamp',
+  name: 'gytask-sw-stamp',
   apply: 'build',
   closeBundle() {
     const dir = new URL('./dist/', import.meta.url)
@@ -55,6 +55,7 @@ export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(pkgVersion) },
   plugins: [react(), umami, swStamp],
   base: './',
+  test: { setupFiles: ['./vitest.setup.js'] },
   server: {
     // The Coach's core (payload, validator, prompts, HTTP adapters) lives in ../api/coach/core
     // and is imported by the phone build. vite build and vitest already reach it; the dev

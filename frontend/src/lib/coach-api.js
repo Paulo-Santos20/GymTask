@@ -65,11 +65,6 @@ export const coachAccount = async () =>
     : LOCAL() ? { mode: 'device', provider: useStore.getState().coachLocal.provider, providerLabel: null, account: null, connected: true, reason: null, message: null }
       : api('/api/coach/account')
 
-/* Admin-only. The token is write-only from the client's side: it goes up once and is never
-   read back, so there is deliberately no "show me the current credential" call to pair with it. */
-export const connectCredential = body => api('/api/admin/coach/connect', { method: 'POST', body: JSON.stringify(body) })
-export const disconnectCredential = () => api('/api/admin/coach/disconnect', { method: 'POST', body: '{}' })
-
 /**
  * Live job/proposal state.
  *

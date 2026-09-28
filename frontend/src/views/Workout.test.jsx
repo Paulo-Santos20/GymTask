@@ -1437,15 +1437,15 @@ describe('Workout exercise tags', () => {
   })
 
   // The cardio target "cardiovascular system" is a translated key of its own; mapping it through
-  // MUSCLE_NAME must not turn "Herz-Kreislauf" back into English for every built-in cardio exercise.
-  it('keeps the cardio target translated (burpee, de)', async () => {
+  // MUSCLE_NAME must not turn the pt-BR wording back into English for every built-in cardio exercise.
+  it('keeps the cardio target translated (burpee, pt-BR)', async () => {
     const { _setLangState } = await import('../lib/i18n-core.js')
-    const { default: de } = await import('../locales/de.js')
-    _setLangState('de', de, null, null)
+    const { default: ptBR } = await import('../locales/pt-BR.js')
+    _setLangState('pt-BR', ptBR, null, null)
     try {
       await mount([exercise('1160', [false])])
       const tags = [...container.querySelectorAll('.tag')].map(tag => tag.textContent.trim())
-      expect(tags).toContain('Herz-Kreislauf')
+      expect(tags).toContain('sistema cardiovascular')
       expect(tags).not.toContain('Cardiovascular system')
     } finally { _setLangState('en', null, null, null) }
   })

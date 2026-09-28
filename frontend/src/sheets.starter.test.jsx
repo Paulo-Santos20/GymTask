@@ -78,7 +78,7 @@ describe('starter plan chooser', () => {
 
     const confirm = renderTop()
     expect(confirm.querySelector('h3').textContent).toBe('Load Full Body?')
-    expect(confirm.textContent).toContain('Monday, Wednesday and Friday')
+    expect(confirm.textContent).toContain('Monday, Wednesday e Friday')
     expect(S().week[3]).toEqual(['mine'])                  // nothing applied yet
     expect(S().routines).toHaveLength(1)
 

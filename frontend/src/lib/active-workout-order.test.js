@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { canMoveActiveWorkoutUnit, moveActiveWorkoutUnit } from './active-workout-order.js'
-import { LANGS, DERIVED_LOCALES } from './i18n-core.js'
+import { LANGS } from './i18n-core.js'
 import { PT_BR_OVERRIDES } from '../locales/pt-BR.js'
 
 const entry = (id, extra = {}) => ({
@@ -68,9 +68,8 @@ describe('active workout whole-unit order', () => {
 
 describe('active workout move locale coverage', () => {
   const packs = import.meta.glob('../locales/*.js', { eager: true, import: 'default' })
-  // English is the source language and has no pack. Derived locales (de-CH) have none either:
-  // they transform their base language's pack at load time, and are checked separately below.
-  const localeCodes = Object.keys(LANGS).filter(code => code !== 'en' && !DERIVED_LOCALES[code])
+  // pt-BR is the selectable language; pt.js stays as the base pack pt-BR.js imports and spreads.
+  const localeCodes = [...Object.keys(LANGS), 'pt']
 
   it('defines both visible move labels in every current locale pack', () => {
     expect(Object.keys(packs)).toHaveLength(localeCodes.length)
