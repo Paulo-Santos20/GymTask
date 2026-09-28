@@ -1,9 +1,9 @@
-/* openGym service worker — the app shell and its hashed assets are cached at install and kept
+/* GymTask service worker — the app shell and its hashed assets are cached at install and kept
    fresh network-first, media (img/gif) cache-first. A home-screen app reopened without a network
    comes back from here with the same bundle it last ran; the state itself lives in localStorage.
    `CACHE` carries the build hash (vite.config.js rewrites it), so every deploy is a new worker
    with its own cache and the previous build's files are dropped on activate. */
-const CACHE = 'opengym-rt-__BUILD__'
+const CACHE = 'gytask-v1-__BUILD__'
 
 // What the shell needs to boot without a network: index.html plus every script/style/icon it
 // references. Read from the served index.html so the list follows the build, not a hand-kept
@@ -38,9 +38,9 @@ self.addEventListener('push', e => {
     // One alert per kind: a new rest-timer push replaces the last one instead of stacking
     // up in the tray (issue #172). `tag` alone should do that, but iOS keeps every one, so
     // the previous notification with the same tag is closed by hand first.
-    const tag = data.tag || 'opengym'
+    const tag = data.tag || 'gytask'
     try { for (const n of await self.registration.getNotifications({ tag })) n.close() } catch {}
-    await self.registration.showNotification(data.title || 'openGym', {
+    await self.registration.showNotification(data.title || 'GymTask', {
       body: data.body || '',
       icon: 'icon-512.png',
       badge: 'icon-180.png',

@@ -2,14 +2,14 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import React, { act } from 'react'
-import { LANGS, DERIVED_LOCALES } from '../lib/i18n-core.js'
+import { LANGS } from '../lib/i18n-core.js'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RoutineEdit from './RoutineEdit.jsx'
 import { DEF, useStore } from '../store/useStore.js'
 import { _setLangState } from '../lib/i18n-core.js'
-import de from '../locales/de.js'
+import ptBR from '../locales/pt-BR.js'
 import { buildPlanBundle, parsePlan } from '../lib/plan-share.js'
 
 const cssSource = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
@@ -182,12 +182,12 @@ describe('routine move controls', () => {
   })
 
   it('uses localized accessible names and titles, retains button focus, and does not open config', () => {
-    _setLangState('de', de, null, null)
+    _setLangState('pt-BR', ptBR, null, null)
     setRoutine([entry('c1', 10), entry('c2', 20)])
     renderRoutine()
-    const button = moveButton('c2', 'Nach oben')
+    const button = moveButton('c2', 'Mover para cima')
 
-    expect(button.title).toBe('Nach oben')
+    expect(button.title).toBe('Mover para cima')
     button.focus()
     act(() => button.click())
 
@@ -216,8 +216,9 @@ describe('routine move controls', () => {
 describe('routine move-control locale coverage', () => {
   const packs = import.meta.glob('../locales/*.js', { eager: true, import: 'default' })
 
-  it('defines both accessible names in every non-English locale pack', () => {
-    expect(Object.keys(packs)).toHaveLength(Object.keys(LANGS).filter(c => c !== 'en' && !DERIVED_LOCALES[c]).length)
+  it('defines both accessible names in every locale pack', () => {
+    // pt.js stays as pt-BR's base pack, so the file count is LANGS plus that one.
+    expect(Object.keys(packs)).toHaveLength(Object.keys(LANGS).length + 1)
     Object.entries(packs).forEach(([path, pack]) => {
       expect(pack, `${path} is missing Move up`).toHaveProperty('Move up')
       expect(pack, `${path} is missing Move down`).toHaveProperty('Move down')

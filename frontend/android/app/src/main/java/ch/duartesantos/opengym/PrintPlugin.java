@@ -37,7 +37,7 @@ public class PrintPlugin extends Plugin {
             call.reject("html is required");
             return;
         }
-        final String jobName = call.getString("name", "openGym");
+        final String jobName = call.getString("name", "GymTask");
 
         getActivity().runOnUiThread(() -> {
             WebView webView = new WebView(getContext());

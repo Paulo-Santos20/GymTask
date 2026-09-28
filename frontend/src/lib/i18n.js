@@ -5,18 +5,18 @@
 
 import { useSyncExternalStore } from 'react'
 import {
-  LANGS, INSTR_LANGS, EXERCISE_NAME_LANGS, DATE_LOCALES, DERIVED_LOCALES,
+  LANGS, INSTR_LANGS, EXERCISE_NAME_LANGS, DATE_LOCALES,
   getLang, dateLocale, t, instrFor, exerciseNameFor, exerciseNameSearchText, getVersion,
-  baseLang, derivePack, _setLangState
+  _setLangState
 } from './i18n-core.js'
 
 export {
-  LANGS, INSTR_LANGS, EXERCISE_NAME_LANGS, DATE_LOCALES, DERIVED_LOCALES,
+  LANGS, INSTR_LANGS, EXERCISE_NAME_LANGS, DATE_LOCALES,
   getLang, dateLocale, t, instrFor, exerciseNameFor, exerciseNameSearchText
 }
 
 // Vite code-splits locale, instruction and exercise-name packs via import.meta.glob. They are
-// lazy, so the production bundle ships English only until another language is selected.
+// lazy, so the production bundle ships English source strings until the pt-BR pack loads.
 const localePacks = import.meta.glob('../locales/*.js')
 const instrPacks = import.meta.glob('../instr/*.js')
 const exerciseNamePacks = import.meta.glob('../exercise-names/*.js')
@@ -26,21 +26,17 @@ const subs = new Set()
 const notify = () => { subs.forEach(f => f()) }
 
 export async function setLang(l) {
-  if (!LANGS[l]) l = 'en'
+  if (!LANGS[l]) l = 'pt-BR'
   if (l === getLang() && getVersion() > 0) return
-  // A derived locale (de-CH) ships no packs of its own: it loads its base language's and
-  // transforms the strings on the way through. `l` stays the selected language throughout, so
-  // dateLocale() still reports de-CH and formats numbers Swiss-style.
-  const base = baseLang(l)
   let dict = {}, instr = null, exerciseNames = null
-  try { dict = base === 'en' ? {} : (await localePacks['../locales/' + base + '.js']()).default } catch (e) { dict = {} }
-  try { instr = base === 'en' || !INSTR_LANGS.includes(base) ? null : (await instrPacks['../instr/' + base + '.js']()).default } catch (e) { instr = null }
+  try { dict = (await localePacks['../locales/' + l + '.js']()).default } catch (e) { dict = {} }
+  try { instr = INSTR_LANGS.includes(l) ? (await instrPacks['../instr/' + l + '.js']()).default : null } catch (e) { instr = null }
   try {
-    exerciseNames = base === 'en' || !EXERCISE_NAME_LANGS.includes(base)
-      ? null
-      : (await exerciseNamePacks['../exercise-names/' + base + '.js']()).default
+    exerciseNames = EXERCISE_NAME_LANGS.includes(l)
+      ? (await exerciseNamePacks['../exercise-names/' + l + '.js']()).default
+      : null
   } catch (e) { exerciseNames = null }
-  _setLangState(l, derivePack(l, dict), derivePack(l, instr), derivePack(l, exerciseNames))
+  _setLangState(l, dict, instr, exerciseNames)
   notify()
 }
 

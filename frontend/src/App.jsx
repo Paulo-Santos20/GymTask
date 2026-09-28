@@ -4,7 +4,7 @@ import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { bindUI } from './components/ui.jsx'
 import { ACCENTS, setWeightDecimals } from './lib/format.js'
-import { setLang, useLang } from './lib/i18n.js'
+import { setLang, useLang, getLang } from './lib/i18n.js'
 import { setPlayOnSilent } from './lib/sound.js'
 import { setNav } from './lib/nav.js'
 import { initBackButton } from './lib/back.js'
@@ -34,10 +34,10 @@ import History from './views/History.jsx'
 import Library from './views/Library.jsx'
 import Muscles from './views/Muscles.jsx'
 import Settings from './views/Settings.jsx'
-import Admin from './views/Admin.jsx'
 import CoachChat from './views/CoachChat.jsx'
 import CoachIntake from './views/CoachIntake.jsx'
 import CoachSetup from './views/CoachSetup.jsx'
+import Nutrition from './views/Nutrition.jsx'
 
 // last known scrollY per route, so back-navigation can put the page where it was
 const scrollPositions = new Map()
@@ -80,10 +80,10 @@ function Shell() {
     mql.addEventListener('change', onChange)
     return () => mql.removeEventListener('change', onChange)
   }, [S.theme, S.accent])
-  useEffect(() => { setLang(S.lang || 'en') }, [S.lang])
+  useEffect(() => { setLang(S.lang || 'pt-BR') }, [S.lang])
   // Same shape as the language: a module-level display setting, pushed when it changes (#139).
   useEffect(() => { setWeightDecimals(S.wdec) }, [S.wdec])
-  useEffect(() => { document.documentElement.lang = S.lang || 'en' }, [langV, S.lang])
+  useEffect(() => { document.documentElement.lang = getLang() }, [langV, S.lang])
   // Forward navigation starts at the top; going back lands where you left off.
   // The position is recorded from scroll events rather than read at route
   // change, because by then a shorter page may already have clamped it.
@@ -155,6 +155,7 @@ function Shell() {
               <Route path="/workout" element={<Workout />} />
               <Route path="/stats" element={<Stats />} />
               <Route path="/history" element={<History />} />
+<Route path="/nutrition" element={<Nutrition />} />
               <Route path="/library" element={<Library />} />
               <Route path="/muscles" element={<Muscles />} />
               <Route path="/settings" element={<Settings />} />
@@ -165,7 +166,6 @@ function Shell() {
               <Route path="/coach/intake" element={<CoachIntake />} />
               <Route path="/coach/proposal" element={<Navigate to="/coach" replace />} />
               <Route path="/coach/setup" element={<CoachSetup />} />
-              <Route path="/admin" element={user?.admin ? <Admin /> : <Navigate to="/home" replace />} />
               <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>
           )}

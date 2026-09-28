@@ -31,6 +31,18 @@ export const HTTP_PROVIDERS = Object.freeze({
     defaultModel: 'gemini-2.5-pro',
     keyPlaceholder: 'AIza… or AQ.…'
   }),
+  // xAI's Grok. Same Chat Completions shape as OpenAI — POST /v1/chat/completions, bearer
+  // auth — so only the endpoint, the key variable and the default model differ. The key and
+  // the model may also arrive as plain XAI_API_KEY / XAI_MODEL environment variables on an
+  // instance that never opens the credential flow; grok.js merges the two (a stored
+  // credential wins, an explicit model pick wins over the env).
+  grok: Object.freeze({
+    label: 'Grok (xAI)', runtime: 'HTTPS', http: true,
+    apiKeyEnv: 'XAI_API_KEY', oauthEnv: null,
+    defaultBase: 'https://api.x.ai',
+    defaultModel: 'grok-3-mini',
+    keyPlaceholder: 'xai-…'
+  }),
   // Ollama, LM Studio, vLLM, OpenRouter, a corporate gateway: anything that serves the
   // Chat Completions shape. The base URL is the whole configuration; a key is optional
   // because a model on your own LAN usually has none.

@@ -119,7 +119,7 @@ describe('saved workout state sync and restore', () => {
 
     expect(useStore.getState().S.routines.map(r => r.id)).toEqual(['remote'])
     expect(useStore.getState().S.restSec).toBe(90)
-    expect(useStore.getState().S.lang).toBe('en')
+    expect(useStore.getState().S.lang).toBe('pt-BR')
   })
 
   it('keeps the local saved state when the restore request fails', async () => {

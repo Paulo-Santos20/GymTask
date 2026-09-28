@@ -1,0 +1,20 @@
+// Regras de segurança do Firestore — GymTask.
+// ATENÇÃO: o ID real do projeto (e o deploy) depende do placeholder em .firebaserc —
+// trocar quando as credenciais chegarem.
+//
+// Isolamento por usuário: o app grava o blob de estado em users/{uid}/state/app
+// (campos = chaves do estado + _rev). Só o dono, e só autenticado, lê/escreve.
+// Padrão do Firestore é NEGAR por omissão: qualquer outro caminho não listado
+// abaixo fica fechado sem precisar de um catch-all (um match /databases/... aninhado
+// dentro de outro /databases/... não seria um caminho válido — por isso a negação
+// é por ausência de regra).
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Estado por usuário (workout/nutrition) — apenas o dono, apenas logado.
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    // Todo o resto é negado por omissão (nenhuma outra regra = deny).
+  }
+}

@@ -148,7 +148,7 @@ test('jobEnv only ever carries the credential it was handed', () => {
   const env = cfg.jobEnv('/tmp/job', resolved);
   assert.equal(env.HOME, '/tmp/job');
   assert.equal(env.TMPDIR, '/tmp/job');
-  // Built from nothing: no RP_ID, no ADMIN_UIDS, no VAPID material, nothing this server holds.
+  // Built from nothing: no RP_ID, no VAPID material, nothing this server holds.
   // The one permitted addition is the configured provider's own credential variable — read off
   // the row rather than hardcoded, so this keeps testing the contract if that name ever changes.
   // connectInstance() files a `cli-token`, which jobEnv injects under the provider's oauthEnv.

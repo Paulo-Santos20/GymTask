@@ -1,14 +1,16 @@
 <div align="center">
 
-<img src="assets/banner.png" alt="openGym" width="720">
+<img src="assets/banner.png" alt="GymTask" width="720">
 
 <br>
 
-**A self-hosted gym & body-weight tracker you actually own.**
+**GymTask** — a self-hosted gym & body-weight tracker you actually own.**
 
 Plan your week, run guided workouts, track every set and your body weight over time —
 on your phone, synced across devices, behind your own passkey login.
 No account on someone else's server, no subscription, no ads. Just `docker compose up`.
+
+<sub>GymTask é um derivado de openGym (https://github.com/DuarteSantos8/openGym), licença AGPL-3.0.</sub>
 
 <br>
 
@@ -57,7 +59,7 @@ demo</a> is the real app with example data — no account, nothing to install.</
 ## Why
 
 Most workout apps lock your data behind a login on their servers, nag you to upgrade, or
-disappear when the startup does. openGym is the opposite: **it runs on your box, your data
+disappear when the startup does. GymTask is the opposite: **it runs on your box, your data
 stays in a folder you control, and it's yours to fork.** It still feels modern — installable
 as a home-screen app, passkey sign-in, offline support, sync across your phone and laptop.
 
@@ -98,9 +100,8 @@ as a home-screen app, passkey sign-in, offline support, sync across your phone a
 - 📳 **See the timer end, not just hear it** — an opt-in screen flash when a rest or work timer finishes, for loud gyms and headphones
 - 🔔 **Push notifications** — rest-timer alerts even with the app closed, plus an optional reminder on days you have a workout planned but haven't logged one — on the Android app scheduled per calendar date, so a day you already trained or rescheduled stays quiet. Opt in per profile; keys are generated on first run, nothing to configure
 - 🔑 **Passkeys, not passwords** — Face ID / Touch ID / fingerprint login; each profile keeps its own data, synced across devices. Sign-ins last 90 days by default (configurable), and “sign out everywhere” in Settings ends every session on every device at once
-- 🛠️ **Admin dashboard** (optional) — for whoever runs the instance: who's training right now, per-user history, disable accounts, invite-only signup, and an **activity log** of sign-ins, failed attempts and admin actions. Off by default, so a fresh instance stays open with no admin
 - 🎨 **Designed, not assembled** — light/dark themes and 8 accent colors saved to your profile, over a hand-drawn icon set instead of emoji, so it looks the same on every phone
-- 🌍 **14 languages** — full UI translation (EN, DE, ES, FR, IT, PT (Portugal), PT (Brazil), PL, TR, RU, ZH, KO, HI, TH, HU); exercise instructions localized in 12 of them and built-in exercise names shown bilingually in PT-BR and HU, all loaded on demand so the app stays fast
+- 🌍 **Brazilian Portuguese** — the entire interface in pt-BR, with exercise instructions localized to match and built-in exercise names shown bilingually
 - 📥 **Bring your history with you** — import from **FitNotes** (Android and iOS), **Strong** and **Hevy** (CSV or directly with a [Hevy Pro API key](https://hevy.com/settings?developer)), or body weight straight out of an **Apple Health** export. Exercise names are matched against the library and anything unrecognised becomes one of your own exercises, so nothing in the file is dropped
 - 📦 **Yours to keep** — one-tap JSON export/import, guest mode, **no telemetry**; switching kg ↔ lb offers to convert every stored number
 - 🤖 **Ask an AI about your training** (optional) — an [MCP server](mcp/README.md) lets a client like Claude Desktop or Cursor read your history in your own words: *"what did I bench last week?"*. Read-only, spawned locally by the client, nothing leaves your box. Not in the Docker build — if you don't use an AI assistant, it isn't there
@@ -122,12 +123,12 @@ docker compose up -d
 Open **http://localhost:8080**, tap **Create profile**, and you're in. First launch downloads
 the exercise media (~140 MB) once.
 
-> **About that media:** it reaches openGym through
+> **About that media:** it reaches GymTask through
 > [hasaneyldrm/exercises-dataset](https://github.com/hasaneyldrm/exercises-dataset), which
 > redistributes [ExerciseDB v1](https://exercisedb.dev/) — its metadata and instruction text are
 > MIT, but the images and animations are third-party content under *neither* that MIT license nor
-> openGym's AGPL, and their ownership is currently disputed between Gym visual and ExerciseDB.
-> openGym ships none of it: your instance downloads it from upstream. Reusing it yourself,
+> GymTask's AGPL, and their ownership is currently disputed between Gym visual and ExerciseDB.
+> GymTask ships none of it: your instance downloads it from upstream. Reusing it yourself,
 > commercially or not, means clearing it with the rights holder — see [NOTICE.md](NOTICE.md).
 The prebuilt images are published twice, from the same tag: `registry.gitlab.com/duartesantos8/opengym/{api,web}`
 (what `docker-compose.yml` pulls) and `ghcr.io/duartesantos8/opengym-{api,web}` on GitHub — swap the
@@ -148,7 +149,7 @@ mobile app is the install-and-done flavor.
 - **Android:** [**download the APK**](https://opengym.duarte-santos.ch) — or straight from
   [GitLab's package registry](https://gitlab.com/DuarteSantos8/opengym/-/packages) or the
   [GitHub release](https://github.com/DuarteSantos8/openGym/releases/latest), where every
-  build sits next to its `.sha256` — and sideload it; openGym is deliberately not on the Play
+  build sits next to its `.sha256` — and sideload it; GymTask is deliberately not on the Play
   Store. Or build it yourself: **[docs/MOBILE.md](docs/MOBILE.md)**.
 - **iPhone:** Apple doesn't allow installing apps outside the App Store, so there is no iOS
   download. Self-host and add it to your home screen from Safari (it's a full PWA), or build
@@ -178,8 +179,8 @@ The full HTTP API is documented as an OpenAPI spec in [`api/openapi.yaml`](api/o
 ## Your data
 
 Lives in `./data` on your host: `db.json` (profiles + public passkeys), `state-<user>.json`
-(each user's plan, workouts, body weight, settings), `audit.log` (the admin activity log — sign-ins
-and admin actions, no IP addresses unless you ask for them) and `secret` (the session-cookie key).
+(each user's plan, workouts, body weight, settings), `audit.log` (the activity log — sign-ins
+and account events, no IP addresses unless you ask for them) and `secret` (the session-cookie key).
 **Back up `./data` and you've backed up everything.** Passkey private keys never touch the
 server — they stay in your phone's secure hardware / your password manager.
 
@@ -195,18 +196,16 @@ All via `.env` (see `.env.example`):
 | `NGINX_PORT`  | Port the web container listens on, inside the container | `80`                 |
 | `BACKEND`     | Name of the API service that `/api` is proxied to — change it if yours isn't called `api` | `api` |
 | `PORT`        | Port the API listens on; the web container proxies to the same value | `3000`  |
-| `RP_NAME`     | Name shown in the passkey prompt                     | `openGym`               |
+| `RP_NAME`     | Name shown in the passkey prompt                     | `GymTask`               |
 | `SESSION_DAYS`| How long a sign-in lasts, in days                    | `90`                    |
-| `ADMIN_UIDS`  | User ids that get the admin dashboard (comma-separated) | *(none)*             |
-| `INVITE_ONLY` | Require an invite code to create a profile           | *(off)*                 |
 | `ALLOW_GUEST` | Offer "Continue without account" — set `0` to require a profile | *(on)*       |
-| `AUDIT_LOG`   | Record sign-ins and admin actions — set `0` to record nothing | *(on)*        |
+| `AUDIT_LOG`   | Record sign-ins and account events — set `0` to record nothing | *(on)*        |
 | `AUDIT_MAX`   | Events kept in the activity log; `0` for no limit    | `5000`                  |
 | `AUDIT_DAYS`  | Days kept in the activity log; `0` to keep until `AUDIT_MAX` | `90`            |
 | `AUDIT_IP`    | Record the caller's address: `off`, `net` (network only) or `full` | `off`     |
 | `VAPID_SUBJECT` | Contact URL sent with push notifications           | your `ORIGIN`           |
 | `API_TARGET`  | Which API image to build: `default` (no AI runtime — API-key providers still work) or `coach` (adds the Claude Agent SDK + Codex CLI) | `default`   |
-| `COACH_DISABLED` | Set to `1` to force the AI Coach off instance-wide, whatever the admin toggled | *(unset)* |
+| `COACH_DISABLED` | Set to `1` to force the AI Coach off instance-wide, overriding the in-app setting | *(unset)* |
 
 Push notification keys are generated on first run and saved to `./data/vapid.json` — nothing to set.
 `DATA_DIR` is pinned to `/data` by `docker-compose.yml` and mapped to `./data` on the host; change the
@@ -274,7 +273,7 @@ in the Docker build.
 Issues and PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Good first issues: more starter
 plans, exercise-data languages, import from other trackers. **A ⭐ helps more people find it.**
 
-openGym is free and stays free: AGPL, no subscription, no paid tier, nothing held back for
+GymTask is free and stays free: AGPL, no subscription, no paid tier, nothing held back for
 sponsors. If it replaced a paid tracker for you and you want to chip in, there's a coffee button
 below (and a badge at the top) — a star, a bug report or a merge request is worth just as much.
 
@@ -286,19 +285,19 @@ below (and a badge at the top) — a star, a bug report or a merge request is wo
 
 ## License
 
-**openGym's own code** is [GNU AGPL v3.0](LICENSE) — free and open source. You can self-host,
+**GymTask's own code** is [GNU AGPL v3.0](LICENSE) — free and open source. You can self-host,
 use, modify and share it; if you run a modified version as a network service, you must offer that
-version's source under the same license. Nobody can turn openGym into a closed, proprietary
+version's source under the same license. Nobody can turn GymTask into a closed, proprietary
 product.
 
-**Third-party content is not, and openGym cannot sublicense it.** The exercise metadata and
-instruction text originate from [ExerciseDB v1](https://exercisedb.dev/) and reach openGym through
+**Third-party content is not, and GymTask cannot sublicense it.** The exercise metadata and
+instruction text originate from [ExerciseDB v1](https://exercisedb.dev/) and reach GymTask through
 [hasaneyldrm/exercises-dataset](https://github.com/hasaneyldrm/exercises-dataset) under the
 **MIT** license. The exercise images and animations are third-party content covered by neither
 that license nor the AGPL, and their ownership is **currently unresolved** — the upstream dataset
 attributes them to [Gym visual](https://gymvisual.com/) under a non-transferable permission, while
 [ExerciseDB/AscendAPI](https://exercisedb.io/faq) claims to be their creator and owner. A
-clarification has been requested. openGym does not redistribute them (your instance fetches them
+clarification has been requested. GymTask does not redistribute them (your instance fetches them
 at first run) and does not relicense them. To reuse that media yourself, clear it with the rights
 holder first.
 
