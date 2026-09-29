@@ -631,7 +631,7 @@ describe('progression guidance', () => {
     expect(button.getAttribute('type')).toBe('button')
     expect(button.getAttribute('aria-label')).toBe('Open progression settings')
     expect(mocks.exConfigSheet).toHaveBeenCalledOnce()
-    expect(mocks.exConfigSheet.mock.calls[0][1]).toBe(second.target)
+    expect(mocks.exConfigSheet.mock.calls[0][1]).toEqual(second.target)
     expect(mocks.exConfigSheet.mock.calls[0][4]).toBe(mocks.S.routines[0])
 
     mocks.exConfigSheet.mock.calls[0][2]({ ...second.target, prog: 'double', repsMin: 6 })

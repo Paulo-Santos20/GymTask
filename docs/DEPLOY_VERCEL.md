@@ -51,6 +51,8 @@ Development). Os nomes são exatamente os de `frontend/.env.example`:
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | id do remetente |
 | `VITE_FIREBASE_APP_ID` | id do app web |
 | `VITE_NUTRITION_PROXY_URL` | `https://us-central1-<projeto>.cloudfunctions.net/nutritionProxy` |
+| `VITE_IMG_BASE` | `https://cdn.jsdelivr.net/gh/hasaneyldrm/exercises-dataset@<commit>/images/` |
+| `VITE_GIF_BASE` | `https://cdn.jsdelivr.net/gh/hasaneyldrm/exercises-dataset@<commit>/videos/` |
 
 Detalhes importantes:
 
@@ -60,6 +62,12 @@ Detalhes importantes:
   "Configure o Firebase no arquivo .env para fazer login" (modo visitante continua disponível).
 - Opcional: `VITE_UMAMI_SRC` + `VITE_UMAMI_ID` ativam analytics opcional (sem elas o build
   permanece sem telemetria).
+- `VITE_IMG_BASE` / `VITE_GIF_BASE` resolvem a **mídia dos exercícios** (as duas únicas fontes
+  de `ex.img`/`ex.gif`, montadas em `lib/exercises.js`). Sem elas o build usa `img/` e `gif/`
+  relativos, que **não existem** no host estático → Library e folha do exercício aparecem sem
+  imagem (404 em `/img/*.jpg`). O dataset tem ~140 MB e é gitignored, então nunca entra no
+  artefato publicado: aponte para o jsDelivr, como no workflow do GitHub Pages
+  (`DATASET@<commit pinado>`). **São valores de build** — depois de mudar, faça Redeploy.
 
 ## 3. Pós-deploy no Firebase
 

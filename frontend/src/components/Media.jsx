@@ -50,7 +50,11 @@ export default function Media({ ex, id, compact, minimizable }) {
   )
 }
 
+// A thumb whose file 404s (a CDN hiccup, a build without media) shows the same neutral tile the
+// big Media falls back to, keyed on the src so a re-filtered row retries the new exercise.
 export function Thumb({ ex }) {
-  if (!ex.img) return <div className="thumb thumb-x"><Icon name="dumbbell" /></div>
-  return <img className="thumb" loading="lazy" decoding="async" draggable={false} src={imgSrc(ex)} alt="" />
+  const [bad, setBad] = useState(null)
+  const src = ex.img ? imgSrc(ex) : null
+  if (!src || bad === src) return <div className="thumb thumb-x"><Icon name="dumbbell" /></div>
+  return <img className="thumb" loading="lazy" decoding="async" draggable={false} src={src} alt="" onError={() => setBad(src)} />
 }
