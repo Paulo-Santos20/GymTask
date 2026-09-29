@@ -21,3 +21,8 @@ node_modules
 junit.xml
 coverage/
 frontend/bundle-size.json
+
+# Local tool state (Vercel link + opencode artifacts)
+.vercel/
+.omo/
+.slim/

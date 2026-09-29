@@ -232,7 +232,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <p class="api-facts">
     <span>OpenAPI 3.1.0</span>
     <span>GymTask v1.3.8</span>
-    <span>16 endpoints</span>
+    <span>30 endpoints</span>
     <span>AGPL-3.0-or-later</span>
   </p>
 
@@ -251,11 +251,15 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
   <div class="ov">
     <h3>Sessions</h3>
-<p>The cookie/bearer value is <code>&lt;payload&gt;.&lt;hmac&gt;</code> where the payload is <code>&lt;uid&gt;:&lt;expiry-ms&gt;:&lt;session-version&gt;</code>, signed with a per-instance secret (HMAC-SHA256). Sessions last <code>SESSION_DAYS</code> (default 90). <code>POST /api/logout/all</code> bumps the user's session version, which invalidates every token ever issued for the account.</p>
+<p>The cookie/bearer value is <code>&lt;payload&gt;.&lt;hmac&gt;</code> where the payload is <code>&lt;uid&gt;:&lt;expiry-ms&gt;:&lt;session-version&gt;</code>, signed with a per-instance secret (HMAC-SHA256). Sessions last 90 days — the expiry is baked into each token when it is issued. <code>POST /api/logout/all</code> bumps the user's session version, which invalidates every token ever issued for the account.</p>
   </div>
   <div class="ov">
     <h3>CSRF</h3>
 <p>State-changing browser requests must come from the app's own origin. The server checks <code>Sec-Fetch-Site</code> (falling back to <code>Origin</code> vs the configured <code>ORIGIN</code>); a mismatch is refused with <code>403 {&quot;error&quot;:&quot;cross-origin request refused&quot;}</code> on any non-GET route. Exempt: any request authenticated with a Bearer token.</p>
+  </div>
+  <div class="ov">
+    <h3>Coach</h3>
+<p><code>/api/coach/*</code> runs background jobs: enqueue answers <code>202 {job:{id}}</code> and state comes from <code>GET /api/coach/status</code>. Rejections are <code>{&quot;error&quot;, &quot;code&quot;}</code> with <code>code</code> one of <code>off | busy | consent | cap | shared | unprivileged</code> — the human message never leaks provider detail. The deployed Firebase app additionally calls the <code>coach</code> and <code>nutritionProxy</code> Cloud Functions directly (documented under the <code>functions</code> tag); this server never proxies them.</p>
   </div>
   <div class="ov">
     <h3>Environment-dependent behavior</h3>
@@ -854,6 +858,11 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="p-type">string</span>
     <span class="p-desc">Human-readable message. This is the only error shape the API has.</span>
   </div>
+  <div class="prow">
+    <span class="p-name">code</span>
+    <span class="p-type">string</span>
+    <span class="p-desc">Coach rejections only — <code>off | busy | consent | cap | shared | unprivileged</code>, so clients can branch without parsing English.</span>
+  </div>
 </div>
   </div>
 </details>
@@ -1208,6 +1217,289 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow">
     <span class="p-name">keys.auth<em class="p-req" title="required">required</em></span>
     <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+  </div>
+</details>
+
+<details class="ep sch" id="schema-CoachDisclosure">
+  <summary>
+    <span class="sch-name"><code>CoachDisclosure</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">What the consent screen shows before any payload leaves.</span>
+  </summary>
+  <div class="ep-body">
+
+<div class="ptab">
+  <div class="prow">
+    <span class="p-name">provider</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">providerLabel</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">categories</span>
+    <span class="p-type">string[]</span>
+    <span class="p-desc">Payload data categories — plan, training, bodyweight, profile, prefs.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">version</span>
+    <span class="p-type">integer</span>
+    <span class="p-desc">Disclosure version</span>
+  </div>
+</div>
+  </div>
+</details>
+
+<details class="ep sch" id="schema-CoachJob">
+  <summary>
+    <span class="sch-name"><code>CoachJob</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">A queued or running background job.</span>
+  </summary>
+  <div class="ep-body">
+
+<div class="ptab">
+  <div class="prow">
+    <span class="p-name">id</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">kind</span>
+    <span class="p-type">&quot;create&quot; | &quot;review&quot; | &quot;debrief&quot;</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">state</span>
+    <span class="p-type">&quot;queued&quot; | &quot;running&quot;</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">startedAt</span>
+    <span class="p-type">number</span>
+    <span class="p-desc">Enqueue time</span>
+  </div>
+</div>
+  </div>
+</details>
+
+<details class="ep sch" id="schema-CoachPending">
+  <summary>
+    <span class="sch-name"><code>CoachPending</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">A finished proposal awaiting accept/reject, already validated server-side (representative shape — the change kinds grow with the app).</span>
+  </summary>
+  <div class="ep-body">
+
+<div class="ptab">
+  <div class="prow">
+    <span class="p-name">id</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">kind</span>
+    <span class="p-type">&quot;create&quot; | &quot;review&quot; | &quot;debrief&quot;</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">changes</span>
+    <span class="p-type">object[]</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">expiresAt</span>
+    <span class="p-type">number</span>
+    <span class="p-desc">Expiry, ms since epoch — enforced lazily by the next status poll.</span>
+  </div>
+</div>
+  </div>
+</details>
+
+<details class="ep sch" id="schema-CoachStatus">
+  <summary>
+    <span class="sch-name"><code>CoachStatus</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">The answer of every status poll.</span>
+  </summary>
+  <div class="ep-body">
+
+<div class="ptab">
+  <div class="prow">
+    <span class="p-name">job</span>
+    <span class="p-type"><a href="#schema-CoachJob">CoachJob</a> | null</span>
+    <span class="p-desc">The profile's queued/running job, or null when idle.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">pending</span>
+    <span class="p-type"><a href="#schema-CoachPending">CoachPending</a> | null</span>
+    <span class="p-desc">Proposal awaiting a decision, or null.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">cap</span>
+    <span class="p-type">object</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">cap.used</span>
+    <span class="p-type">integer</span>
+    <span class="p-desc">Jobs this profile enqueued today (midnight UTC reset).</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">cap.limit</span>
+    <span class="p-type">integer</span>
+    <span class="p-desc"><code>caps.perProfileDaily</code>; 0 means unlimited.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">last</span>
+    <span class="p-type">null | object</span>
+    <span class="p-desc">How the most recent job ended; null when it never ran.</span>
+  </div>
+</div>
+  </div>
+</details>
+
+<details class="ep sch" id="schema-CoachAccount">
+  <summary>
+    <span class="sch-name"><code>CoachAccount</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Whose provider account this profile is about to spend.</span>
+  </summary>
+  <div class="ep-body">
+
+<div class="ptab">
+  <div class="prow">
+    <span class="p-name">mode</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"><code>authMode</code> — whose credential pays.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">provider</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">providerLabel</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">account</span>
+    <span class="p-type">string | null</span>
+    <span class="p-desc">Credential's account label — never the credential itself.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">connected</span>
+    <span class="p-type">boolean</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">reason</span>
+    <span class="p-type">string | null</span>
+    <span class="p-desc">Machine-readable reason when not connected (e.g. shared-account).</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">message</span>
+    <span class="p-type">string | null</span>
+    <span class="p-desc">Human-readable counterpart of <code>reason</code>.</span>
+  </div>
+</div>
+  </div>
+</details>
+
+<details class="ep sch" id="schema-CoachCohort">
+  <summary>
+    <span class="sch-name"><code>CoachCohort</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Medians across this instance's opted-in profiles — never an individual.</span>
+  </summary>
+  <div class="ep-body">
+<p><code>ok:false</code> variants explain why there is nothing to show.</p>
+<div class="ptab">
+  <div class="prow">
+    <span class="p-name">ok</span>
+    <span class="p-type">boolean</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">enabled</span>
+    <span class="p-type">boolean</span>
+    <span class="p-desc"><code>false</code> — community off on this instance.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">sharing</span>
+    <span class="p-type">boolean</span>
+    <span class="p-desc"><code>false</code> — this profile does not share itself.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">people</span>
+    <span class="p-type">integer</span>
+    <span class="p-desc">Participants (present once sharing and enabled).</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">minPeople</span>
+    <span class="p-type">integer</span>
+    <span class="p-desc">Minimum participants before anything is shown.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">unit</span>
+    <span class="p-type">&quot;kg&quot; | &quot;lb&quot;</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">sessionsPerWeek</span>
+    <span class="p-type">object</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">sessionsPerWeek.median</span>
+    <span class="p-type">number</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">sessionsPerWeek.you</span>
+    <span class="p-type">number</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">exercises</span>
+    <span class="p-type">object[]</span>
+    <span class="p-desc">Medians for exercises enough people share.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">exercises[].id</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">exercises[].name</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">exercises[].people</span>
+    <span class="p-type">integer</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">exercises[].median</span>
+    <span class="p-type">number | null</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">exercises[].you</span>
+    <span class="p-type">number | null</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">rankPct</span>
+    <span class="p-type">number | null</span>
     <span class="p-desc"></span>
   </div>
 </div>

@@ -71,7 +71,7 @@ com IA que o openGym original não tem.
 O caminho oficial de publicação é **frontend estático na Vercel + Auth/Firestore/Functions no Firebase**. O guia completo está em **[docs/DEPLOY_VERCEL.md](docs/DEPLOY_VERCEL.md)**; o resumo:
 
 1. Crie um projeto no [Firebase Console](https://console.firebase.google.com/): ative **Authentication → E-mail/senha**, crie um app Web e anote as 6 chaves `VITE_FIREBASE_*`.
-2. Importe o repositório na [Vercel](https://vercel.com/new) com raiz em `frontend/` (`npm run build`), definindo as variáveis `VITE_FIREBASE_*` + `VITE_NUTRITION_PROXY_URL`.
+2. Importe o repositório na [Vercel](https://vercel.com/new) e defina **Root Directory = `frontend/`** (Settings → General) — sem isso a Vercel tenta publicar o backend local `api/` como Serverless Functions e o plano Hobby estoura o limite de 12. As variáveis `VITE_FIREBASE_*` + `VITE_NUTRITION_PROXY_URL` vão em **Settings → Environment Variables**.
 3. Adicione o domínio da Vercel em **Authentication → Authorized domains** no Firebase.
 4. (Opcional, para Coach e busca de alimentos) `firebase deploy --only functions` com `XAI_API_KEY` e as chaves Nutritionix — ver `functions/.env.example`.
 

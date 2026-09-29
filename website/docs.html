@@ -499,8 +499,7 @@ docker compose up -d</code></pre>
     <tr><td><code>NGINX_PORT</code></td><td>Port the web container listens on, inside the container. Default <code>80</code>.</td></tr>
     <tr><td><code>BACKEND</code></td><td>Name of the API service <code>/api</code> is proxied to — change it if yours isn't called <code>api</code>.</td></tr>
     <tr><td><code>PORT</code></td><td>Port the API listens on; the web container proxies to the same value. Default <code>3000</code>.</td></tr>
-    <tr><td><code>SESSION_DAYS</code></td><td>How long a sign-in lasts, in days. Default <code>90</code>.</td></tr>
-    <tr><td><code>ALLOW_GUEST</code></td><td>Set <code>0</code> to remove <b>Continue without account</b>. Guest data isn't deleted — it stays in that browser and returns if you re-enable guests. Default: on.</td></tr>
+        <tr><td><code>ALLOW_GUEST</code></td><td>Set <code>0</code> to remove <b>Continue without account</b>. Guest data isn't deleted — it stays in that browser and returns if you re-enable guests. Default: on.</td></tr>
     <tr><td><code>AUDIT_LOG</code></td><td>Record auth events (sign-outs, pairing) to the <a href="#admin-log">activity log</a> — set <code>0</code> to record nothing. Default: on.</td></tr>
     <tr><td><code>AUDIT_MAX</code></td><td>Events kept in the activity log; <code>0</code> for no limit. Default <code>5000</code>.</td></tr>
     <tr><td><code>AUDIT_DAYS</code></td><td>Days kept in the activity log; <code>0</code> to keep until <code>AUDIT_MAX</code>. Default <code>90</code>.</td></tr>
