@@ -25,7 +25,7 @@ import { importHevyData, HevyApiError, HEVY_DEV_SETTINGS, mergeHevyRoutines } fr
 import { buildPlanBundle, parsePlan, mergePlan, printPlan } from './lib/plan-share.js'
 import { estimate1RM, best1RM, is1RMRecord, REP_CAP } from './lib/onerm.js'
 import { exerciseHistory } from './lib/exercise-history.js'
-import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC, MAX_BW_SETS, weightIncrement } from './lib/progression.js'
+import { policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC, MAX_BW_SETS, weightIncrement } from './lib/progression.js'
 import { normalizeRepRange } from './lib/rep-range.js'
 import { buildCompletedWorkout } from './lib/finish-workout.js'
 import { isWarmupRow, hasCompletedWork } from './lib/workout-model.js'
@@ -33,9 +33,9 @@ import { nextUnfinishedUnit } from './lib/supersetFlow.js'
 import { swapActiveExercise } from './lib/active-exercise-swap.js'
 import { useSheetKeyboard, useRevealActiveChip, tappable } from './lib/use-sheet-keyboard.js'
 import { isFav, toggleFav, sortFavouritesFirst } from './lib/favourites.js'
-import { buildSessionEntries } from './lib/session-start.js'
+import { buildSessionEntries, buildPlannedEntry } from './lib/session-start.js'
 import { buildCombinedEntries, deriveSessionName } from './lib/session-merge.js'
-import { workoutsOn, backfillStart, backfillEnd, completeBackfill } from './lib/backfill.js'
+import { workoutsOn, backfillStart, backfillEnd, completeBackfill, sessionHistory } from './lib/backfill.js'
 
 const S = () => useStore.getState().S
 const update = (...a) => useStore.getState().update(...a)
@@ -1024,15 +1024,18 @@ export function swapActiveWorkoutExercise(index) {
     // Same rows the add flow builds: last time's loads and, in a planned session, the
     // prescription — swapping barbell for dumbbell bench must not start you at an empty bar.
     const step = modeOf(full) === 'reps' ? weightIncrement(full, st.unit) : defaultIncrement(ex.id, st.unit)
-    const plan = freestyle ? null : nextPrescription(st, full, slotRoutine)
-    const built = buildSets(st, full, { step, ...(freestyle ? { preferLast: true } : {}), ...(plan?.kind === 'off' ? { useTarget: true } : {}) })
-    const replacement = {
-      id: ex.id,
-      target: { ...cfg },
-      plan,
-      sets: applyIntensifierPlan(freestyle ? built : applyPrescription(built, plan, step), full),
-      ...(current.rid ? { rid: current.rid } : {}),
-    }
+    // A planned swap builds exactly the way the session start built the slot; freestyle has no
+    // routine prescription to apply, so it reproduces what you did last time. Read from before
+    // the session's day when it is logged into the past (sessionHistory).
+    const past = sessionHistory(st)
+    const built = freestyle
+      ? {
+        target: { ...cfg },
+        plan: null,
+        sets: applyIntensifierPlan(buildSets(past, full, { step, preferLast: true }), full)
+      }
+      : buildPlannedEntry(past, full, slotRoutine)
+    const replacement = { id: ex.id, ...built, ...(current.rid ? { rid: current.rid } : {}) }
 
     const apply = options => {
       // A timed callback closes over entry/set indexes. Invalidate it, and the current rest,

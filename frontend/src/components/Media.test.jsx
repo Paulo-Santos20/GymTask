@@ -2,7 +2,7 @@
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import Media from './Media.jsx'
+import Media, { Thumb } from './Media.jsx'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -70,5 +70,18 @@ describe('Media gifSize', () => {
     mount({ minimizable: true })
     expect(host.querySelector('.exmedia img')).toBeTruthy()
     expect(host.querySelector('.exmedia.mini')).toBeFalsy()
+  })
+})
+
+describe('Thumb', () => {
+  it('falls back to the neutral tile when the file 404s, and retries a new src', async () => {
+    await act(() => root.render(<Thumb ex={EX} />))
+    expect(host.querySelector('img')).toBeTruthy()
+    await act(() => { host.querySelector('img').dispatchEvent(new window.Event('error')) })
+    expect(host.querySelector('img')).toBeFalsy()
+    expect(host.querySelector('.thumb-x')).toBeTruthy()
+    await act(() => root.render(<Thumb ex={{ id: 'squat', n: 'squat', img: 'squat.jpg' }} />))
+    expect(host.querySelector('img')).toBeTruthy()
+    expect(host.querySelector('.thumb-x')).toBeFalsy()
   })
 })

@@ -98,8 +98,15 @@ nunca chamam `initializeApp` diretamente.
 
 ```
 VITE_FIREBASE_API_KEY / AUTH_DOMAIN / PROJECT_ID / STORAGE_BUCKET / MESSAGING_SENDER_ID / APP_ID
-VITE_NUTRITION_PROXY_URL=https://us-central1-<proj>.cloudfunctions.net/nutritionProxy
+VITE_NUTRITION_PROXY_URL=https://us-central1-<projeto>.cloudfunctions.net/nutritionProxy
+VITE_IMG_BASE=https://cdn.jsdelivr.net/gh/hasaneyldrm/exercises-dataset@7455efae…/images/
+VITE_GIF_BASE=https://cdn.jsdelivr.net/gh/hasaneyldrm/exercises-dataset@7455efae…/videos/
 ```
+
+As duas últimas apontam a **mídia dos 1.324 exercícios** para o dataset no jsDelivr (mesmo
+commit pinado do workflow do GitHub Pages). Vazio = `img/`+`gif/` relativos, que só funcionam
+com a mídia servida junto ao app (dev: proxy do vite para `media/`). Sem elas a **Library e a
+folha do exercício ficam sem imagem** — os arquivos são gitignored e nunca entram no build.
 
 **Cloud Functions** (`functions/.env`, ver `functions/.env.example`):
 
@@ -154,6 +161,14 @@ NUTRITIONIX_APP_KEY=...
    restaurada (mode picker server/BYOK/off) + gating `coachAvailable` (byok libera o Coach).
 4. ~~**Entrada de Nutrition na UI**~~ ✅ — card/link `/nutrition` no `Home.jsx` (rota já existia).
 5. ~~**Rotas `/api/pair/*`**~~ ✅ — removidas (único caller era o shell nativo); testes/docs/spec limpos.
+6. ~~**Mídia dos exercícios em produção (Library/folha sem imagem)**~~ ✅ (2026-09-29) — causa:
+   `lib/exercises.js` caía em `img/`/`gif/` relativos e esses paths **não existem** no host
+   estático (404 confirmado em `gymtask-jtu8.vercel.app/img/…`); a mídia é gitignored e o build
+   não a baixa. Corrigido com `VITE_IMG_BASE`/`VITE_GIF_BASE` no **production** da Vercel apontando
+   para o dataset `@7455efae` no jsDelivr (mesmo pin do `pages.yml`) + fallback de thumb com
+   `onError` (`components/Media.jsx`) + docs (`.env.example`, `docs/DEPLOY_VERCEL.md` §2).
+   Preview não recebe as envs: `main` é a production branch, e variáveis de preview só aceitam
+   branch diferente dela. **Pendência**: fazer o Redeploy (envs de build mudam só com rebuild).
 
 ### Deploy (requer credenciais — §5.1)
 5. **Credenciais**: ~~Firebase~~ ✅ recebido (projeto `gymtask-ce4b6`, e-mail/senha ativo,
