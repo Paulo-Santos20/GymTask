@@ -92,7 +92,6 @@ WEB_PORT=8080              # host port — what you browse to
 NGINX_PORT=80              # port the web container listens on, inside the container
 BACKEND=api                # name of the API service that /api is proxied to
 PORT=3000                  # port the API listens on; web proxies to the same value
-SESSION_DAYS=90            # how long a fallback-API sign-in lasts
 ```
 
 The web image renders its nginx config from these when the container starts, so they take effect

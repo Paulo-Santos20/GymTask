@@ -6,13 +6,18 @@ continuam no Firebase. Este guia leva do repositório importado ao app no ar.
 ## 1. Importar o repositório
 
 1. Em [vercel.com/new](https://vercel.com/new), importe o repositório do GymTask.
-2. A Vercel detecta o framework **Vite** e lê a configuração do `vercel.json` na raiz — não é
-   preciso mudar nada no painel. O `vercel.json` já define:
-   - `installCommand`: `cd frontend && npm ci`
-   - `buildCommand`: `cd frontend && npm run build`
-   - `outputDirectory`: `frontend/dist`
+2. Em **Settings → General → Root Directory**, defina `frontend`. É **obrigatório**: com o
+   Root Directory vazio a Vercel enxerga a raiz do repositório, tenta registrar os ~240
+   `.js` de `api/` como Serverless Functions e falha com *"No more than 12 Serverless
+   Functions …"* no plano Hobby. Com Root Directory em `frontend/`, o backend local fica
+   fora do projeto Vercel — as functions de verdade rodam no **Firebase** (seção 3).
+3. O build usa o `vercel.json` (presente na raiz **e** em `frontend/`, valores idênticos) e
+   os campos do painel — as três fontes dizem o mesmo:
+   - `installCommand`: `npm ci`
+   - `buildCommand`: `npm run build`
+   - `outputDirectory`: `dist` (relativo ao Root Directory → `frontend/dist`)
    - os cabeçalhos de cache (seção 4 abaixo).
-3. Clique em **Deploy**. O primeiro build já passa sem segredos (o app entra em modo visitante),
+4. Clique em **Deploy**. O primeiro build já passa sem segredos (o app entra em modo visitante),
    mas o login só funciona com as variáveis da próxima seção.
 
 > **Por que não há `rewrites` de SPA no `vercel.json`?** O app usa `HashRouter`
@@ -20,6 +25,17 @@ continuam no Firebase. Este guia leva do repositório importado ao app no ar.
 > O servidor só precisa entregar `index.html` em `/` — que é exatamente o comportamento
 > padrão da Vercel para arquivos estáticos. Um rewrite `(.*)` → `/index.html` seria inútil e
 > quebraria o cache do `sw.js` e de `/assets/*` sem motivo.
+
+> **Troubleshooting — os dois erros de build já encontrados neste projeto:**
+>
+> - `cd: frontend: No such file or directory` — versões antigas do `vercel.json` usavam
+>   `cd frontend && …`; com o Root Directory preenchido o cwd **já é** `frontend/`, e o `cd`
+>   falhava. Corrigido: comandos relativos (`npm ci`, `npm run build`, `dist`) em três fontes
+>   idênticas — `vercel.json` na raiz, `frontend/vercel.json` e os Build settings do painel.
+> - `No more than 12 Serverless Functions can be added …` — Root Directory vazio fazia a
+>   Vercel ler `api/` (os ~240 `.js` do servidor local de fallback) como Serverless
+>   Functions do plano Hobby. Corrigido: Root Directory = `frontend`, então `api/` fica
+>   fora do projeto Vercel.
 
 ## 2. Variáveis de ambiente obrigatórias
 

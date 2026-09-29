@@ -21,7 +21,8 @@ info:
     ### Sessions
     The cookie/bearer value is `<payload>.<hmac>` where the payload is
     `<uid>:<expiry-ms>:<session-version>`, signed with a per-instance secret
-    (HMAC-SHA256). Sessions last `SESSION_DAYS` (default 90). `POST /api/logout/all`
+    (HMAC-SHA256). Sessions last 90 days — the expiry is baked into each token
+    when it is issued. `POST /api/logout/all`
     bumps the user's session version, which invalidates every token ever issued for
     the account.
 
@@ -30,6 +31,15 @@ info:
     checks `Sec-Fetch-Site` (falling back to `Origin` vs the configured `ORIGIN`);
     a mismatch is refused with `403 {"error":"cross-origin request refused"}` on any
     non-GET route. Exempt: any request authenticated with a Bearer token.
+
+    ### Coach
+    `/api/coach/*` runs background jobs: enqueue answers `202 {job:{id}}` and
+    state comes from `GET /api/coach/status`. Rejections are
+    `{"error", "code"}` with `code` one of `off | busy | consent | cap | shared |
+    unprivileged` — the human message never leaks provider detail. The deployed
+    Firebase app additionally calls the `coach` and `nutritionProxy` Cloud
+    Functions directly (documented under the `functions` tag); this server never
+    proxies them.
 
     ### Environment-dependent behavior
     - `ALLOW_GUEST=0` — hides the client-side "continue without account" mode; the
@@ -76,6 +86,12 @@ tags:
     description: Web Push (VAPID) subscriptions, rest-timer and test pushes
   - name: activity
     description: Live-workout presence heartbeat
+  - name: coach
+    description: >-
+      AI Coach jobs and proposals (server mode — the demo build and the
+      bring-your-own-key device mode answer client-side and never hit these)
+  - name: functions
+    description: Firebase Cloud Functions deployed alongside the app (not served by this API)
 
 security:
   - cookieAuth: []
@@ -563,6 +579,419 @@ paths:
               schema: { $ref: '#/components/schemas/Ok' }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  # ------------------------------------------------------------------ coach
+  # User surface of the AI Coach (api/coach/routes.js). Enqueue → 202 {job:{id}} →
+  # poll /api/coach/status. The demo build and the BYOK device mode run the same
+  # core client-side and never reach these routes. The /api/admin/coach* handlers
+  # that still live in routes.js are not registered by server.js and are not
+  # documented here.
+
+  /api/coach/disclosure:
+    get:
+      tags: [coach]
+      operationId: getCoachDisclosure
+      summary: What the consent screen must disclose
+      description: |
+        Provider identity and payload data categories, straight from the module
+        that builds payloads so the consent screen cannot drift from what actually
+        leaves (FR-09). Session only — no feature guard: which provider this box
+        is wired to is nobody's business before sign-in.
+      responses:
+        '200':
+          description: Disclosure terms.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoachDisclosure' }
+              example:
+                provider: grok
+                providerLabel: Grok
+                categories: [plan, training, bodyweight, profile, prefs]
+                version: 1
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/coach/status:
+    get:
+      tags: [coach]
+      operationId: getCoachStatus
+      summary: Poll job, proposal and cap state
+      description: |
+        What the client polls while a Coach surface is visible or a job is known
+        to be in flight (~3 s while running, 60 s idle — see the client's
+        coach-api.js). A proposal that expired is archived as a side effect of the
+        poll that notices it. `last` reports how the most recent job ended, so a
+        failure still surfaces instead of a job silently disappearing.
+      responses:
+        '200':
+          description: Current job (null when idle), pending proposal (null when none), daily cap, last outcome.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoachStatus' }
+              example:
+                job: { id: "a1b2c3d4e5f60718", kind: create, state: running, startedAt: 1756500000000 }
+                pending: null
+                cap: { used: 3, limit: 20 }
+                last: null
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/CoachOff' }
+
+  /api/coach/plan:
+    post:
+      tags: [coach]
+      operationId: postCoachPlan
+      summary: Enqueue plan creation or refinement
+      description: |
+        A minutes-scale background job: `202 {job:{id}}` means queued, not done —
+        poll /api/coach/status. Body is `{intake}` (first plan), `{refine}`
+        (change request against the current plan), or both.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                intake:
+                  type: object
+                  additionalProperties: true
+                  description: First-plan intake answers (goal, days, equipment, limitations…).
+                refine:
+                  type: string
+                  maxLength: 1000
+                  description: Free-text change request applied to the current plan.
+            example: { refine: "add a fifth pull day" }
+      responses:
+        '202': { $ref: '#/components/responses/CoachQueued' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/CoachConsent' }
+        '409': { $ref: '#/components/responses/CoachBusy' }
+        '429': { $ref: '#/components/responses/CoachDailyCap' }
+        '503': { $ref: '#/components/responses/CoachOff' }
+
+  /api/coach/review:
+    post:
+      tags: [coach]
+      operationId: postCoachReview
+      summary: Enqueue a plan review
+      description: |
+        The job reads the recent training log and proposes plan adjustments with
+        the evidence for each. `note` is an optional free-text hint (trimmed to
+        1000 chars). Queued like /api/coach/plan.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note: { type: string, maxLength: 1000, description: Optional hint from the user. }
+            example: { note: "the squat day felt too heavy this week" }
+      responses:
+        '202': { $ref: '#/components/responses/CoachQueued' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/CoachConsent' }
+        '409': { $ref: '#/components/responses/CoachBusy' }
+        '429': { $ref: '#/components/responses/CoachDailyCap' }
+        '503': { $ref: '#/components/responses/CoachOff' }
+
+  /api/coach/debrief:
+    post:
+      tags: [coach]
+      operationId: postCoachDebrief
+      summary: Enqueue a single-workout debrief
+      description: |
+        One workout, read closely. Nothing is applied to the plan — the result is
+        kept in the profile's coach log. `workoutId` selects the session (null
+        debriefs the most recent). Queued like /api/coach/plan.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                workoutId: { type: string, maxLength: 40, description: Workout to debrief; null → the latest. }
+            example: { workoutId: "w_2026-09-20" }
+      responses:
+        '202': { $ref: '#/components/responses/CoachQueued' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/CoachConsent' }
+        '409': { $ref: '#/components/responses/CoachBusy' }
+        '429': { $ref: '#/components/responses/CoachDailyCap' }
+        '503': { $ref: '#/components/responses/CoachOff' }
+
+  /api/coach/cohort:
+    get:
+      tags: [coach]
+      operationId: getCoachCohort
+      summary: Medians against opted-in profiles on this instance
+      description: |
+        How this profile compares with everyone here who shares themselves:
+        medians only, at least `minPeople` people, never an individual. A
+        `{ok:false}` answer explains why there is nothing to show (community off,
+        this profile not sharing, or too few people).
+      responses:
+        '200':
+          description: Cohort medians, or a reason there are none.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoachCohort' }
+              example:
+                ok: true
+                enabled: true
+                sharing: true
+                people: 7
+                minPeople: 3
+                unit: kg
+                sessionsPerWeek: { median: 3.2, you: 3 }
+                exercises: [{ id: "bench", name: "Bench Press", people: 6, median: 62.5, you: 70 }]
+                rankPct: 61
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/CoachOff' }
+
+  /api/coach/cohort/share:
+    post:
+      tags: [coach]
+      operationId: postCoachCohortShare
+      summary: Opt this profile in or out of the cohort
+      description: >
+        Toggles whether the profile contributes to the cohort medians. The answer
+        echoes the stored value, so the caller never has to trust its own write.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                share: { type: boolean }
+            example: { share: true }
+      responses:
+        '200':
+          description: Stored value.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, const: true }
+                  sharing: { type: boolean }
+              example: { ok: true, sharing: true }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/CoachOff' }
+
+  /api/coach/pending/resolve:
+    post:
+      tags: [coach]
+      operationId: postCoachPendingResolve
+      summary: Decide on the pending proposal
+      description: |
+        Accepts, rejects or dismisses the proposal currently awaiting a decision.
+        Applying the accepted changes is the client's job (with its undo
+        snapshot); this route archives the proposal so two devices can never
+        disagree about it. Answering when there is nothing pending is a no-op.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accepted:
+                  type: array
+                  items: { type: string }
+                  description: Change ids the user approved.
+                rejected:
+                  type: array
+                  items: { type: string }
+                  description: Change ids the user declined.
+                dismissed: { type: boolean, description: Drop the whole proposal without applying anything. }
+            example: { accepted: ["c1", "c3"], rejected: ["c2"], dismissed: false }
+      responses:
+        '200':
+          description: Archived.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+              example: { ok: true }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/CoachOff' }
+
+  /api/coach/forget:
+    post:
+      tags: [coach]
+      operationId: postCoachForget
+      summary: Drop everything held server-side for this profile
+      description: |
+        Consent withdrawn or the Coach turned off: deletes the profile's job
+        state, pending proposal and log immediately, without waiting for a sync
+        to carry the news (D5). Session only — deliberately works even when the
+        Coach is off, because withdrawing consent must never depend on the
+        feature being up. Daily cap survives (it bounds spending, not data).
+      responses:
+        '200':
+          description: Cleared.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+              example: { ok: true }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/coach/account:
+    get:
+      tags: [coach]
+      operationId: getCoachAccount
+      summary: Whose provider account this profile is about to spend
+      description: |
+        Its own route because both the Coach screen and the admin card must state
+        it, and neither should be inferring it from settings. In instance mode a
+        second profile is refused outright — that is something the user has to be
+        able to read before asking for a job, not after it is turned down.
+        Session only.
+      responses:
+        '200':
+          description: Account binding.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoachAccount' }
+              example:
+                mode: instance
+                provider: grok
+                providerLabel: Grok
+                account: "user@example.com"
+                connected: true
+                reason: null
+                message: null
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # ---------------------------------------------- Firebase Cloud Functions
+  # Not served by api/server.js — these are the Cloud Functions of the deployed
+  # Firebase project (see README "Como funciona"). The `coach` function mirrors
+  # the prompt shape of api/coach; `nutritionProxy` is how the app reaches
+  # Nutritionix without ever shipping its keys. URL pattern:
+  # https://us-central1-<project-id>.cloudfunctions.net/<name>
+
+  /coach:
+    servers:
+      - url: https://us-central1-gymtask-ce4b6.cloudfunctions.net
+        description: This deployment's project id — substitute your own.
+    post:
+      tags: [functions]
+      operationId: postFunctionCoach
+      summary: One-shot Grok completion (key stays server-side)
+      description: |
+        The simplest Coach entry point for a deployment without an api/ instance:
+        send `{system, prompt}` (as built by `buildPromptParts`) or
+        `{kind, payload}`; the function wraps it in the shared system prompt and
+        answers with the completion. `XAI_API_KEY` (+ optional `XAI_MODEL`,
+        default `grok-3-mini`) is read from the function's own env, never from a
+        client bundle. Optional `model` and `temperature` (0–2, default 0)
+        override per call.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                system: { type: string, description: Extra rules appended to the shared system prompt. }
+                prompt: { type: string, maxLength: 500000 }
+                kind: { type: string, description: "Alternative to prompt — a pipeline kind." }
+                payload:
+                  type: object
+                  additionalProperties: true
+                  description: "Its payload, paired with `kind` (max 500k chars serialized)."
+                model: { type: string, maxLength: 80 }
+                temperature: { type: number, minimum: 0, maximum: 2 }
+            example: { system: "Answer in pt-BR.", prompt: "Monte um treino de 3 dias." }
+      responses:
+        '200':
+          description: Completion (`answer` is `text` parsed as JSON when it holds JSON, else null).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, const: true }
+                  model: { type: string }
+                  text: { type: string }
+                  answer: { description: Parsed JSON of `text` when present. }
+              example: { ok: true, model: "grok-3-mini", text: "…", answer: null }
+        '400':
+          description: '`{ok:false, error}` — missing `XAI_API_KEY`, malformed body, or neither prompt nor payload.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { ok: false, error: "send { system, prompt } (from buildPromptParts) or { kind, payload }" }
+        '502':
+          description: '`{ok:false, error}` — xAI refused or was unreachable.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '504':
+          description: '`{ok:false, error}` — the model did not answer within 60 s.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /nutritionProxy:
+    servers:
+      - url: https://us-central1-gymtask-ce4b6.cloudfunctions.net
+        description: This deployment's project id — substitute your own.
+    post:
+      tags: [functions]
+      operationId: postFunctionNutritionProxy
+      summary: Nutritionix pt-BR natural search (keys stay server-side)
+      description: |
+        Server-to-server proxy for food search: the app id/key ride in headers
+        from `functions/.env` and are never exposed to the frontend. The client
+        calls it via `VITE_NUTRITION_PROXY_URL`. `results` is the normalized
+        contract; `foods` echoes the raw Nutritionix objects (temporary, for the
+        per-100 g reader).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: { type: string, description: Natural-language food query, e.g. "banana prata". }
+            example: { query: "2 ovos e 1 banana" }
+      responses:
+        '200':
+          description: Normalized foods.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, const: true }
+                  query: { type: string }
+                  locale: { type: string, const: br }
+                  source: { type: string, const: nutritionix }
+                  count: { type: integer }
+                  results:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+                  foods:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+        '400':
+          description: '`{ok:false, error}` — no `query`, or the Nutritionix env vars are missing.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '502':
+          description: '`{ok:false, error}` — Nutritionix refused or was unreachable.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '504':
+          description: '`{ok:false, error}` — Nutritionix did not answer within 15 s.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
 components:
   securitySchemes:
     cookieAuth:
@@ -570,7 +999,9 @@ components:
       in: cookie
       name: gymsid
       description: |
-        HMAC-signed session cookie, set by `register/verify` / `login/verify`.
+        HMAC-signed session cookie. Sign-in itself is client-side (Firebase), so
+        no route currently issues this cookie — routes that read it accept the
+        value a self-hosted deployment's login or a previous session left behind.
         On HTTPS deployments it is issued as **`__Host-gymsid`** (host-locked,
         Secure); the unprefixed `gymsid` is what a plain-http `localhost` instance
         uses, and is still accepted for pre-upgrade sessions. HttpOnly + SameSite=Lax;
@@ -590,6 +1021,48 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
           example: { error: "not signed in" }
+    CoachOff:
+      description: >-
+        503 — the Coach is disabled or not connected on this instance (feature
+        guard), or this profile has no provider account / jobs are switched off
+        for safety (on enqueue: `code: "off"` or `"unprivileged"`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "the Coach is not set up on this instance" }
+    CoachBusy:
+      description: >-
+        409 — `code: "busy"` (a job for this profile is already queued or
+        running) or `code: "shared"` (a personal credential is bound to another
+        profile).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "the Coach is already thinking about your training", code: "busy" }
+    CoachDailyCap:
+      description: "429 — the per-profile or instance daily job limit was reached (`code: \"cap\"`)."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "the Coach is resting — try again tomorrow", code: "cap" }
+    CoachConsent:
+      description: "403 — the profile has not given consent, enforced server-side (`code: \"consent\"`)."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "the Coach needs your go-ahead first", code: "consent" }
+    CoachQueued:
+      description: Job queued — poll GET /api/coach/status for progress and outcome.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              job:
+                type: object
+                properties:
+                  id: { type: string, description: Job id for the status poll. }
+          example: { job: { id: "a1b2c3d4e5f60718" } }
 
   schemas:
     Error:
@@ -599,6 +1072,11 @@ components:
         error:
           type: string
           description: Human-readable message. This is the only error shape the API has.
+        code:
+          type: string
+          description: >-
+            Coach rejections only — `off | busy | consent | cap | shared |
+            unprivileged`, so clients can branch without parsing English.
 
     Ok:
       type: object
@@ -763,3 +1241,132 @@ components:
           properties:
             p256dh: { type: string }
             auth: { type: string }
+
+    # ------------------------------------------------------------------ coach
+    CoachDisclosure:
+      type: object
+      description: What the consent screen shows before any payload leaves.
+      properties:
+        provider: { type: string, example: grok }
+        providerLabel: { type: string, example: Grok }
+        categories:
+          type: array
+          items: { type: string }
+          description: Payload data categories — plan, training, bodyweight, profile, prefs.
+        version: { type: integer, description: Disclosure version, bumped when categories change. }
+      additionalProperties: true
+
+    CoachJob:
+      type: object
+      description: A queued or running background job.
+      properties:
+        id: { type: string, example: "a1b2c3d4e5f60718" }
+        kind: { type: string, enum: [create, review, debrief] }
+        state: { type: string, enum: [queued, running] }
+        startedAt: { type: number, description: Enqueue time, ms since epoch. }
+      additionalProperties: true
+
+    CoachPending:
+      type: object
+      description: >
+        A finished proposal awaiting accept/reject, already validated
+        server-side (representative shape — the change kinds grow with the app).
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [create, review, debrief] }
+        changes:
+          type: array
+          items: { type: object, additionalProperties: true }
+        expiresAt:
+          type: number
+          description: Expiry, ms since epoch — enforced lazily by the next status poll.
+      additionalProperties: true
+
+    CoachStatus:
+      type: object
+      description: The answer of every status poll.
+      properties:
+        job:
+          oneOf:
+            - $ref: '#/components/schemas/CoachJob'
+            - type: 'null'
+          description: The profile's queued/running job, or null when idle.
+        pending:
+          oneOf:
+            - $ref: '#/components/schemas/CoachPending'
+            - type: 'null'
+          description: Proposal awaiting a decision, or null.
+        cap:
+          type: object
+          properties:
+            used: { type: integer, description: Jobs this profile enqueued today (midnight UTC reset). }
+            limit: { type: integer, description: "`caps.perProfileDaily`; 0 means unlimited." }
+        last:
+          description: How the most recent job ended; null when it never ran.
+          oneOf:
+            - type: 'null'
+            - type: object
+              properties:
+                id: { type: string }
+                kind: { type: string, enum: [create, review, debrief] }
+                outcome:
+                  type: string
+                  description: e.g. applied, dismissed, failed, expired.
+                errorClass:
+                  oneOf: [{ type: string }, { type: 'null' }]
+                  description: Coarse failure class shown to the user; never provider detail.
+                at: { type: number, description: ms since epoch. }
+                reading: { type: string, description: Optional one-line summary the chat bubble shows. }
+              additionalProperties: true
+      additionalProperties: true
+
+    CoachAccount:
+      type: object
+      description: Whose provider account this profile is about to spend.
+      properties:
+        mode: { type: string, example: instance, description: "`authMode` — whose credential pays." }
+        provider: { type: string, example: grok }
+        providerLabel: { type: string, example: Grok }
+        account:
+          oneOf: [{ type: string }, { type: 'null' }]
+          description: Credential's account label — never the credential itself.
+        connected: { type: boolean }
+        reason:
+          oneOf: [{ type: string }, { type: 'null' }]
+          description: Machine-readable reason when not connected (e.g. shared-account).
+        message:
+          oneOf: [{ type: string }, { type: 'null' }]
+          description: Human-readable counterpart of `reason`.
+      additionalProperties: true
+
+    CoachCohort:
+      type: object
+      description: >
+        Medians across this instance's opted-in profiles — never an individual.
+        `ok:false` variants explain why there is nothing to show.
+      properties:
+        ok: { type: boolean }
+        enabled: { type: boolean, description: "`false` — community off on this instance." }
+        sharing: { type: boolean, description: "`false` — this profile does not share itself." }
+        people: { type: integer, description: "Participants (present once sharing and enabled)." }
+        minPeople: { type: integer, description: Minimum participants before anything is shown. }
+        unit: { type: string, enum: [kg, lb] }
+        sessionsPerWeek:
+          type: object
+          properties:
+            median: { type: number }
+            you: { type: number }
+        exercises:
+          type: array
+          description: Medians for exercises enough people share.
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              name: { type: string }
+              people: { type: integer }
+              median: { oneOf: [{ type: number }, { type: 'null' }] }
+              you: { oneOf: [{ type: number }, { type: 'null' }] }
+            additionalProperties: true
+        rankPct: { oneOf: [{ type: number }, { type: 'null' }] }
+      additionalProperties: true

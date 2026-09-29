@@ -22,11 +22,6 @@ const ORIGIN = process.env.ORIGIN || 'http://localhost:8080';
 // Guest mode ("Continue without account") keeps everything in the browser and never touches this
 // server. Default ON so existing instances are unchanged — the safe default is the permissive one.
 const ALLOW_GUEST = !/^(0|false|no|off)$/i.test(process.env.ALLOW_GUEST || '');
-// 90 days keeps someone who trains a few times a week permanently signed in without a stolen
-// cookie staying good for a year. Overridable because a family instance and one on the open
-// internet don't want the same number. Only affects cookies minted from now on — the expiry is
-// baked into each cookie when it's issued, so lowering this never cuts an existing session short.
-const SESSION_DAYS = Math.max(1, +(process.env.SESSION_DAYS || 90) || 90);
 const MAX_BODY = 5 * 1024 * 1024;
 // Secure cookies require HTTPS; over plain http://localhost the flag would drop the cookie
 const SECURE = /^https:/i.test(ORIGIN) ? ' Secure;' : '';
@@ -338,10 +333,6 @@ setInterval(() => {
 }, REMINDER_TICK_MS).unref();
 
 /* ---------- sessions (signed cookie) ---------- */
-function sign(payload) {
-  const mac = crypto.createHmac('sha256', SECRET).update(payload).digest('base64url');
-  return payload + '.' + mac;
-}
 function verifySig(token) {
   const i = token.lastIndexOf('.');
   if (i < 0) return null;
