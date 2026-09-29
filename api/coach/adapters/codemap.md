@@ -28,8 +28,9 @@ both spawn-backed and HTTPS providers.
 
   `spawns` is the branch the job runner uses for the privilege drop (`true` here, `false` for
   every `../core/adapters/` HTTP adapter, which must not be refused for having no process to
-  drop). `ADAPTERS = { fixture, claude, codex, anthropic, openai, gemini, grok, compatible }` —
-  the last five are re-exported from `../core/adapters/`, so callers never import two paths.
+  drop). `ADAPTERS = { fixture, claude, codex, anthropic, openai, gemini, groq, grok,
+  compatible }` —
+  the last six are re-exported from `../core/adapters/`, so callers never import two paths.
 - **`spawn.js` sandbox**: no shell ever (argv array; user text travels inside the payload file
   as JSON), env built from an allowlist via `cfgStore.jobEnv()` so the child cannot read
   `ADMIN_UIDS`, VAPID material or `./data`, and the child runs as the unprivileged `coach` user

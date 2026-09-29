@@ -35,8 +35,8 @@ Firebase contract, Coach, Nutrition, pending work). Contributor rules: `CLAUDE.m
    Firebase is configured and a user is signed in; otherwise localStorage (`gym_state_v1`,
    `gym_nutrition_v1`) + HTTP `GET/PUT /api/data` against `api/server.js`.
 3. Coach: view → Cloud Function `functions/coach` (or local `api/coach` / phone BYOK
-   `lib/coach-local.js`) → provider row (`grok` → `https://api.x.ai`) → adapter → upstream;
-   `XAI_API_KEY` stays server-side.
+   `lib/coach-local.js`) → provider row (`grok` → `https://api.x.ai`, `groq` →
+   `https://api.groq.com/openai`) → adapter → upstream; `XAI_API_KEY` stays server-side.
 4. Nutrition search: `lib/foodApis.js` → USDA/Open Food Facts directly, Nutritionix via
    `nutritionProxy` (`VITE_NUTRITION_PROXY_URL`).
 5. Training logic is pure: everything that decides what you lift next or reads a session back
@@ -57,8 +57,8 @@ Firebase contract, Coach, Nutrition, pending work). Contributor rules: `CLAUDE.m
 | `frontend/src/exercise-names/` | Exercise-name datasets feeding the 1,324-exercise library. | [Map](frontend/src/exercise-names/codemap.md) |
 | `api/` | Framework-less Node HTTP server: session auth, atomic JSON state, Web Push; openapi.yaml. Legacy/dev fallback path. | [Map](api/codemap.md) |
 | `api/coach/` | Coach package root: prompts, core, adapters. | [Map](api/coach/codemap.md) |
-| `api/coach/core/` | Provider table + orchestrator (grok row → api.x.ai, default `grok-3-mini`). | [Map](api/coach/core/codemap.md) |
-| `api/coach/core/adapters/` | Provider adapters incl. `grok.js`. | [Map](api/coach/core/adapters/codemap.md) |
+| `api/coach/core/` | Provider table + orchestrator (rows incl. `grok` → api.x.ai, `groq` → api.groq.com/openai). | [Map](api/coach/core/codemap.md) |
+| `api/coach/core/adapters/` | Provider adapters incl. `groq.js`, `grok.js`. | [Map](api/coach/core/adapters/codemap.md) |
 | `api/coach/adapters/` | Coach adapters (see map for live-vs-legacy status). | [Map](api/coach/adapters/codemap.md) |
 | `functions/` | Firebase Cloud Functions (CJS): `coach`, `nutritionProxy`, `pushDailyReminder`. | [Map](functions/codemap.md) |
 | `mcp/` | MCP server manifest/tests; read-only, local, stdio. | [Map](mcp/codemap.md) |

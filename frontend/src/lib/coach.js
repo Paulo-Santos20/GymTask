@@ -50,8 +50,15 @@ const coachOf = s => (s.coach = s.coach || emptyCoach())
 // The demo build is the one exception, and it is deliberate: it has no backend and no
 // account, but it does have a canned provider, and hiding the app's most interesting feature
 // from the page people are sent to look at it on would be a strange choice.
-export const coachAvailable = (config, user, { demo } = {}) =>
-  demo ? true : !!(config?.coach?.enabled && user)
+//
+// BYOK is the other exception, for the opposite reason: in that mode the browser runs the
+// pipeline itself against the user's own key, so it needs neither the instance's config nor
+// an account — the thing being gated already exists on this device. Otherwise the instance
+// must offer the Coach and someone must be signed in.
+export const coachAvailable = (config, user, { demo, coachMode } = {}) =>
+  demo ? true
+    : coachMode === 'byok' ? true
+      : !!(config?.coach?.enabled && user)
 
 // What each data category means, in the user's words. Rendered from the same list the payload
 // builder uses (api/coach/core/categories.js), so the screen cannot promise less than leaves.

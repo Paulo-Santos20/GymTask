@@ -11,10 +11,10 @@ applies). Live code: this is one half of the adapter split, the other being
 - `http.js` — `httpAdapter(spec)`: the whole transport (timeouts, retries, model listing,
   error mapping). One file, every HTTPS provider.
 - `openai.js` — `chatCompletionsSpec()` factory (Chat Completions, not Responses API, because
-  it is the one shape `compatible` endpoints actually serve) — also the base for `grok.js` and
-  `compatible.js`.
-- `grok.js` · `anthropic.js` · `gemini.js` · `compatible.js` — thin specs: endpoint paths,
-  auth header, request body, response readers.
+  it is the one shape `compatible` endpoints actually serve) — also the base for `groq.js`,
+  `grok.js` and `compatible.js`.
+- `groq.js` · `grok.js` · `anthropic.js` · `gemini.js` · `compatible.js` — thin specs: endpoint
+  paths, auth header, request body, response readers.
 
 ## Design
 
@@ -41,6 +41,11 @@ applies). Live code: this is one half of the adapter split, the other being
   env or, guarded for the WebView, `process.env`); model = instance config → `XAI_MODEL` →
   `defaultModel grok-3-mini`. The key travels only in the outbound `Authorization` header —
   never in a URL, never in a response, never read by the frontend bundle.
+- **`groq.js`**: `chatCompletionsSpec('groq', {maxTokensField:'max_tokens',
+  temperature:0})` — the field Groq documents (both work live) and greedy decoding for a
+  deterministic plan diff; no env merge, unlike `grok.js` — `GROQ_API_KEY` arrives through the
+  normal env channel like `OPENAI_API_KEY`. The base carries `/openai` (`../providers.js`),
+  so the spec's `/v1/…` paths land on `api.groq.com` as-is.
 - **`gemini.js`** puts the key in a header (a `?key=` query string lands in proxy logs and
   browser history); **`anthropic.js`** sends `system-prompt.js`'s `SYSTEM_PROMPT` as the
   system block; **`compatible.js`** is the configurable one (base URL from config, key optional

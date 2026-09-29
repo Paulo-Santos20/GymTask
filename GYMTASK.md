@@ -18,7 +18,7 @@ O GymTask é a evolução do openGym para uso pessoal:
 | Idiomas | 13 locales | **apenas pt-BR** |
 | Admin/convites | painel admin, `INVITE_ONLY`, audit log | **removidos** |
 | Dieta | não existe | **módulo completo** (TDEE, macros, banco de alimentos, busca por API) |
-| Coach | Anthropic/OpenAI/Gemini/compatível | **+ Grok (xAI)** e proxy via **Cloud Functions** |
+| Coach | Anthropic/OpenAI/Gemini/compatível | **+ Grok (xAI)** e **+ Groq** e proxy via **Cloud Functions** |
 | Deploy | Docker self-hosted | **Vercel** (frontend estático) + Firebase (auth/db/functions) |
 
 Mantidos do upstream: treinos guiados, motor de progressão, 1RM, recuperação muscular,
@@ -37,7 +37,7 @@ GymTask/
 │       ├── locales/     # pt.js (base) + pt-BR.js (overrides) — únicos restantes
 │       └── components/  # UI compartilhada (sheets, modais, gráficos)
 ├── api/                 # backend Node sem framework (herdado) — usado no dev local e como fallback
-│   └── coach/           # núcleo do Coach: prompts, providers, adapters (inclui grok.js)
+│   └── coach/           # núcleo do Coach: prompts, providers, adapters (inclui grok.js, groq.js)
 ├── functions/           # Firebase Cloud Functions (CJS): coach, nutritionProxy, pushDailyReminder
 ├── docs/                # docs do upstream (SELF_HOSTING, MOBILE, AI_COACH, …)
 └── mcp/, website/, …    # herdados do upstream
@@ -62,11 +62,16 @@ Exports: `firebaseConfigured`, `app`, `auth`, `db` — `null`/`false` quando sem
 Firestore inicializado com `persistentLocalCache`. **Todos os módulos importam daqui**,
 nunca chamam `initializeApp` diretamente.
 
-### Coach + Grok
+### Coach + Grok/Groq
 
-- Providers em `api/coach/core/providers.js` (row `grok` → `https://api.x.ai`, `/v1/chat/completions`),
-  adapter em `api/coach/core/adapters/grok.js` (via `chatCompletionsSpec`, JSON mode com retry).
+- Providers em `api/coach/core/providers.js` (row `grok` → `https://api.x.ai`, `/v1/chat/completions`;
+  row `groq` → `https://api.groq.com/openai`, default `qwen/qwen3.8-27b`, `GROQ_API_KEY`),
+  adapters em `api/coach/core/adapters/{grok,groq}.js` (via `chatCompletionsSpec`; Groq usa
+  `max_tokens` + `temperature: 0`).
 - Chave/nunca no bundle: `XAI_API_KEY` / `XAI_MODEL` (default **`grok-3-mini`**) via env no servidor.
+- **BYOK (grátis, com Groq)**: rota `/coach/setup` (`views/CoachSetup.jsx`, row "AI Coach" em
+  `Settings.jsx`) escolhe modo server/BYOK/off; chave fica no `localStorage` (`lib/coach-local.js`),
+  `coachAvailable()` libera o Coach quando `mode='byok'` (community continua exigindo server).
 - `functions/index.js` exporta:
   - **`coach`** — `POST https://us-central1-<proj>.cloudfunctions.net/coach`, body `{system, prompt}`
     (ou `{kind, payload}`), responde `{ok, model, text, answer}`; 400 sem chave, 502/504 upstream, CORS `*`
@@ -116,10 +121,10 @@ NUTRITIONIX_APP_KEY=...
 | ⑤ | Rebrand + strip (admin/convites/idiomas) | ✅ concluído (sweep final feito) | ✅ 12 locales, `instr/*`, `Admin.jsx`, `audit.js`, testes admin, `App.jsx`, `server.js`, manifest/sw, mobile strings, docker-compose, `website/` + `mcp/` (rebrand feito, `OPENGYM_*` mantidos por decisão), CI (GitLab/Gitea/mirror/docker-publish removidos), `.env.example` (seção passkey → ORIGIN/CORS), `scripts/fetch-media.sh` (0 refs), `scripts/build-api-docs.mjs` rebrandado + `website/api.html` regenerado, docs `.md` reescritos (`bg_d2e34ae5`), `website/docs.html`/`about.html`/`llms.txt` limpos (`bg_b6c0603d`), `docs/*` PWA-only (`bg_2a401c07`, `docs/MOBILE.md` apagado), dangles (`CONTRIBUTING.md`, `SECURITY.md`, `docs/AI_COACH.md`), `assets/banner.svg`/`banner.png` rebrandados. PWA-only: `bg_7a715c51` (android/ios/cap/MOBILE/libs fora) + resíduo `bg_5dbd7edc` (renovate.json/dependabot/functions/mcp/credential.test — greps 0). **Sweep final `passkey\|webauthn\|capacitor\|.apk\|Xcode\|pair/create` = 0 em código**; restam só menções explicativas em docs ("passkeys removed") e notas históricas — classificado, nenhum hit de código. |
 | — | Passkey removido (frontend + api) | ✅ concluído | rotas WebAuthn/pairing removidas de `server.js`, `@simplewebauthn` fora de `package.json`, `RP_ID`/`RP_NAME` deletados, exports em `api.js` removidos, testes passkey removidos (−3), `openapi.yaml` limpo (`tags: [Data]`→`[data]`), 0 refs em `frontend/src` + `api` |
 | — | Rotas `/api/pair/*` removidas | ✅ concluído | `pair/create`+`pair/redeem` (único caller era o shell nativo) fora de `server.js`; `api/test/server-pairing.test.js` deletado (api **177/159/18**, delta = −1 teste, mesmas 18 falhas pré-existentes); grep `pair` = 0 em `server.js`/`openapi.yaml`/`website/api.html`/`docs/{API,SELF_HOSTING*}.md`; `node --check server.js` exit 0; `sign()`/`SESSION_DAYS` órfãos mantidos na época, **depois removidos** (débito §6 fechado 2026-09-28) |
-| — | Grok BYOK no frontend | ✅ concluído | `grok` importado e em `ADAPTERS` (`lib/coach-local.js`) |
+| — | Grok/Groq BYOK no frontend | ✅ concluído | `grok`+`groq` em `ADAPTERS` (`lib/coach-local.js`, `api/coach/adapters/index.js`); row `groq` (`providers.js`), `adapters/groq.js`, teste wire `adapters-http.test.js`; **tela BYOK restaurada**: `views/CoachSetup.jsx`+`CoachSetup.test.jsx`, rota `/coach/setup` (`App.jsx`), row "AI Coach" (`Settings.jsx`), gating `coachAvailable(byok→true)` (`lib/coach.js` + CoachChat/CoachIntake/Plan) |
 | — | Card Nutrition no Home | ✅ concluído | link `/nutrition` em `views/Home.jsx`; rota existia desde o módulo |
 | — | Rebrand do prompt do Coach + URLs upstream no `openapi` | ✅ concluído | `system-prompt.js`, `prompts/common.md` (+ `prompts.js` regenerado), `functions/index.js` → "GymTask Coach"; assertion `jobs.test.js:458` ajustada; comentários `config.js:19`/`node-fetch.js:10`; `openapi.yaml` (browse/contact/derived → fork) + `website/api.html` regenerado (16 endpoints); `build-coach-assets.mjs` normaliza CRLF (o `--check` do CI é byte-compare, agora estável entre plataformas); `scripts/` (hevy-id-map comments, tempdir `gytask-pt-br-`). Verificado: jobs 1/1, adapters-http 19/19, `--check` verde, greps `openGym Coach`/`inside openGym` = 0. Mantidos por contrato: `opengym_plan: 1`, salt HKDF `opengym-coach-v1`, UA `opengym-coach/` |
-| — | Build + testes centrais | ✅ **verde** (contagens finais pós-PWA-only) | `npm run build` exit 0; `npm test` **1527/1527** (121 arquivos — baseline 1581/126 menos 54 testes/5 arquivos = suites das libs móveis removidas `mobile/back/remote/update` + `CoachSetup.test.jsx`, todas deletadas junto com o código); census locale **695/641** (após strips passkey e APK/update; `pt-br-locale.test.js` 4/4 com fingerprint novo `4f9c1cf2…aea84f3`); `mcp` **58/58**; `api` **159 pass / 18 fail** (falhas pré-existentes CRLF Windows: `prompts.test.js` + `routes.test.js:70` — não corrigir) |
+| — | Build + testes centrais | ✅ **verde** (contagens pós-restauração BYOK + Groq) | `npm run build` exit 0; `npm test` **1531/1531** (122 arquivos — 1527 + 3 de `CoachSetup.test.jsx` restaurado + 1 de gating BYOK em `coach.test.js`); census locale **695/641** intacto (`pt-br-locale.test.js` 4/4, fingerprint `4f9c1cf2…aea84f3`; `check-locales` **1336/1336** em sincope); `mcp` **58/58**; `api` **163 pass / 18 fail** (mesmas 18 falhas CRLF pré-existentes: `prompts.test.js` + `routes.test.js:70` — não corrigir; baseline de controle via stash 162/18, delta +1 = teste Groq) |
 | — | Deploy Vercel/PWA | 🟡 configs no ar | Projeto `gymtask-jtu8` linkado (`.vercel/` gitignored); **envs 6 production + 6 preview** (`VITE_FIREBASE_*`) via CLI/API (2026-09-28); `rootDirectory=frontend` + build settings (`npm ci`/`npm run build`/`dist`) corrigidos via API PATCH; `vercel.json` **duplicado idêntico** (raiz + `frontend/`) com comandos relativos. Dois erros de build resolvidos: `cd: frontend: No such file or directory` (cwd já era o Root Directory) e limite de **12 Serverless Functions do Hobby** (Root Directory vazia via `api/` ~240 `.js`; agora `api/` fica fora do projeto Vercel — functions ficam no Firebase). Build verde ✅ (`1601e6c` READY 2026-09-28 21:18, headers PWA verificados ao vivo); falta `VITE_NUTRITION_PROXY_URL` |
 | — | Firebase deploy config | ✅ em produção | `firebase.json` (nodejs22), `.firebaserc` → **`gymtask-ce4b6`** (placeholder trocado 2026-09-28), `firestore.rules` **deployed** (`firebase deploy --only firestore:rules` exit 0, rules released) |
 | — | FCM push | ✅ código pronto | `pushDailyReminder` FCM topic `gytask-daily` + `functions/README.md` |
@@ -138,14 +143,15 @@ NUTRITIONIX_APP_KEY=...
    (`system-prompt.js`/`prompts/*.md`/`functions/index.js`), `scripts/` (hevy-id-map, tempdir).
    ~~2 agents PWA-only~~ ✅ **CONCLUÍDOS**: frontend (`bg_7a715c51`, 48min) — `android/`/`ios/`/
    `capacitor.config.json` deletados, libs mobile/back/remote/update/CoachSetup/MobileOnboarding
-   fora, `package.json`/lock limpos; resíduos (`bg_5dbd7edc`, timeout 42min, ~90% + resto manual)
+   fora, `package.json`/lock limpos (CoachSetup **restaurado em 2026-09-29** só na forma web — §4); resíduos (`bg_5dbd7edc`, timeout 42min, ~90% + resto manual)
    — `renovate.json` DELETADO, comentários `mcp/README.md`/`mcp/src/state.js`/`credential.test.js`
    limpos. Greps `passkey|webauthn|RP_ID|capacitor` fora de `frontend/`+docs = **0**.
    Sweep `opengym` classificado: só atribuição AGPL + identificadores KEEP (`OPENGYM_*`,
    `opengym_plan`, salt HKDF, UA `opengym-coach/`) + menções históricas em docs.
 2. ~~**Passkey residual**~~ ✅ — removido por completo (frontend + api + spec + testes −3;
    `openapi.yaml` tags `data` corrigido, `website/api.html` regenerado limpo: 0 passkey/WebAuthn).
-3. ~~**Grok no frontend (BYOK local)**~~ ✅ — `grok` em `ADAPTERS` (`lib/coach-local.js`).
+3. ~~**Grok no frontend (BYOK local)**~~ ✅ — `grok`+`groq` em `ADAPTERS`, tela `/coach/setup`
+   restaurada (mode picker server/BYOK/off) + gating `coachAvailable` (byok libera o Coach).
 4. ~~**Entrada de Nutrition na UI**~~ ✅ — card/link `/nutrition` no `Home.jsx` (rota já existia).
 5. ~~**Rotas `/api/pair/*`**~~ ✅ — removidas (único caller era o shell nativo); testes/docs/spec limpos.
 
@@ -183,8 +189,9 @@ NUTRITIONIX_APP_KEY=...
 
 ## 6. Avisos e débitos técnicos conhecidos
 
-- **xAI/Grok não é gratuito** (~US$2/1M in, ~US$6/1M out tokens). Alternativa gratuita:
-  manter outro provider do adapter já existente ou modelo gratuito compatível.
+- **xAI/Grok não é gratuito** (~US$2/1M in, ~US$6/1M out tokens). Alternativa gratuita já
+  implementada: **Groq** (`gsk_…`, tier grátis) via BYOK em `/coach/setup`; ou manter outro
+  provider do adapter já existente ou modelo gratuito compatível.
 - **Nutritionix sempre pelo proxy** (`nutritionProxy`) — chave nunca no bundle do browser.
 - TOCTOU no conflict check Firestore (getDoc→setDoc) tem janela maior que o compare-and-write
   síncrono do servidor — aceito, documentado no código.
@@ -262,7 +269,18 @@ cd functions && npm install
 
 ---
 
-*Última atualização: 2026-09-28 — **checkpoint**. ✅ Nesta rodada: **§5.9 openapi surface do
+*Última atualização: 2026-09-29 — **checkpoint**. ✅ Nesta rodada: **tela BYOK do Coach restaurada**
+(`views/CoachSetup.jsx` + `CoachSetup.test.jsx` de volta na forma web — rota `/coach/setup`, row
+"AI Coach" em `Settings.jsx`, mode picker server/BYOK/off, default `groq`) + **provider Groq**
+(row em `providers.js` `https://api.groq.com/openai`/`qwen/qwen3.8-27b`/`GROQ_API_KEY`, adapter
+`adapters/groq.js` via `chatCompletionsSpec` com `max_tokens`+`temperature:0`, wire em
+`adapters-http.test.js`) + **gating BYOK** (`coachAvailable(config, user, {demo, coachMode})` com
+`byok→true` em CoachChat/CoachIntake/Plan; community só server) + **codemaps** (7 arquivos) +
+checklist atualizado. **Verdes**: frontend vitest **1531/1531 (122 arq)**, `npm run build`
+exit 0, api **163 pass/18 fail** (baseline de controle via stash 162/18 — mesmas 18 falhas CRLF,
+delta +1 = teste Groq), `mcp` **58/58**, `check-locales` 1336/1336 em sincope,
+`pt-br-locale.test.js` 4/4, `node --check server.js` exit 0.
+— Checkpoint anterior (2026-09-28): ✅ **§5.9 openapi surface do
 coach** fechada (tags `coach`/`functions`, 10 rotas coach + 2 de functions com `servers:` próprio,
 responses `CoachOff/CoachBusy/CoachDailyCap/CoachConsent/CoachQueued`, schemas
 `CoachDisclosure/CoachJob/CoachPending/CoachStatus/CoachAccount/CoachCohort`, `Error.code`,

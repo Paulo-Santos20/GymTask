@@ -8,7 +8,7 @@ Views own the screen composition and the read/write wiring to Zustand; business 
 `frontend/src/lib/*` (progression, history, superset flow, effort, muscles, coach) and
 imperative UI (sheets, toasts, confirmations) in `frontend/src/sheets.jsx`.
 
-Route map (App.jsx:143-167; views not in `TabBar` are reached by in-screen links or deep links):
+Route map (App.jsx:144-168; views not in `TabBar` are reached by in-screen links or deep links):
 
 | View | Route |
 |---|---|
@@ -26,7 +26,8 @@ Route map (App.jsx:143-167; views not in `TabBar` are reached by in-screen links
 | `Settings.jsx` | `/settings` |
 | `CoachChat.jsx` | `/coach` (TabBar hidden while on it) |
 | `CoachIntake.jsx` | `/coach/intake` |
-| — | `/coach/proposal` → redirect `/coach`; `/coach/setup` → redirect `/settings` |
+| `CoachSetup.jsx` | `/coach/setup` (mode picker: server / BYOK / off) |
+| — | `/coach/proposal` → redirect `/coach` |
 
 TabBar tabs: home, plan, (start → /workout), stats, library.
 
@@ -124,6 +125,7 @@ TabBar tabs: home, plan, (start → /workout), stats, library.
   from `S.workouts`, metric segmented top-set / est. 1RM `e1rmSeries` / effort, `repsOnly`
   fallback), recent workouts (`WorkoutRow` → `workoutDetailSheet`).
 - **Settings.jsx**: sections — Account (sign-out / sign-out-everywhere / guest / demo),
+  AI Coach (row → `/coach/setup` mode picker),
   General (lang, kg↔lb with convert-or-relabel sheet, weight decimals, week start, check-in
   switch), During a workout (weigh-in, workout view cards/list/compact, `WorkoutControlsSheet`
   toggles for steppers/set shortcuts/pair buttons/exercise buttons, rest timers, keep-awake,
@@ -149,6 +151,10 @@ TabBar tabs: home, plan, (start → /workout), stats, library.
   `?edit=1` = profile editor) writing `S.coach.profile`; chat polls `useCoachStatus`, threads
   `S.coach.chat` + live job/pending proposal, applies/undoes via `lib/coach.js`
   (`applyChangeSet`, `applyCreatedPlan`, `revertLast`), history kept in `S.coach.log`.
+- **CoachSetup.jsx**: mode picker at `/coach/setup` — server (`coachLocal.mode='server'`) or
+  BYOK (provider chips from `HTTP_PROVIDERS`, key in `coach-secrets`, one lazy
+  `import('../lib/coach-local.js')` behind a 3-step prepare line; static core imports limited
+  to `providers.js` + `categories.js`, pinned by `CoachSetup.test.jsx`) or off.
 
 ## Integration
 
@@ -164,7 +170,7 @@ TabBar tabs: home, plan, (start → /workout), stats, library.
   defaults), Library (`S.favs`/equipment via `lib/equipment.js`), CoachChat (`S.coach`),
   Login (`user`, `config`, `setUser`/`setGuest`). `store/nutritionStore.js` is imported only by
   `Nutrition.jsx`. `store/useUI.js` (sheets/toast/timers) is imported by Workout, Nutrition,
-  Settings, Login, CoachChat, CoachIntake, CheckIn, RoutineEdit.
+  Settings, Login, CoachChat, CoachIntake, CoachSetup, CheckIn, RoutineEdit.
 - **Pure logic**: `lib/` does the heavy lifting — `history.js`/`workout-model.js`/`supersetFlow.js`
   (session structure), `progression.js` (prescriptions), `muscles.js`/`recovery.js`/`effort.js`/
   `onerm.js` (Stats), `foods.js`/`foodApis.js` (Nutrition), `coach.js`/`coach-api.js` (Coach),

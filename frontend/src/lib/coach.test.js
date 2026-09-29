@@ -45,6 +45,13 @@ describe('gating', () => {
     expect(coachAvailable(null, null, { demo: true })).toBe(true)
   })
 
+  it('is on in BYOK mode, where the browser runs the pipeline with the user\'s own key', () => {
+    expect(coachAvailable(null, null, { coachMode: 'byok' })).toBe(true)
+    expect(coachAvailable(null, { id: 'u' }, { coachMode: 'byok' })).toBe(true)
+    expect(coachAvailable(null, { id: 'u' }, { coachMode: 'server' })).toBe(false)
+    expect(coachAvailable(null, { id: 'u' }, { coachMode: 'off' })).toBe(false)
+  })
+
   it('treats an older consent version as no consent', () => {
     expect(hasConsent(state())).toBe(true)
     expect(hasConsent(state({ coach: { consent: { agreedAt: 'x', version: 0 } } }))).toBe(false)
