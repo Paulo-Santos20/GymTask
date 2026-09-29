@@ -47,7 +47,7 @@ training logic, nutrition, exercise catalogue, coach state, persistence, import/
 - **Coach:** `coach.js` proposal domain (`canonicalPlan`/`planHash`, `validateProposal`,
   `applyChangeSet`/`CHANGE_TYPES`, `pushSnapshot`/`revertLast`, chat/log caps); `coach-api.js`
   façade demo/BYOK/server; `coach-local.js` BYOK runtime (`ADAPTERS = { anthropic, openai,
-  gemini, compatible, grok }`, `LOCAL_DAILY_CAP = 10`, per-provider timeouts); `coach-secrets`
+  gemini, compatible, groq, grok }`, `LOCAL_DAILY_CAP = 10`, per-provider timeouts); `coach-secrets`
   (key storage), `coach-device` (`COACH_MODES`), `coach-insights`, `coach-demo`.
 - **Persistence/sync/IO:** `api.js` (see Integration), `firebase.js` (only `firebase/*` importer),
   `sync-merge.js` (`mergeStates`, `unionById`, `localExtras`), `import-csv.js` (`parseWorkoutCSV`,

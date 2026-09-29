@@ -117,6 +117,13 @@ export default function Settings() {
       )}
     </Section>
 
+    {/* ---------- the Coach: on the server, or with this browser's own key ---------- */}
+    <Section title={t('AI Coach')}>
+      <Row icon="sparkles" iconTint="var(--acc)" title={t('AI Coach')} accessory="chevron"
+        subtitle={coachLocal?.mode === 'server' ? t('Runs on your GymTask server') : coachLocal?.mode === 'byok' ? t('Runs on this phone with your own API key') : t('Off — choose how the Coach should run.')}
+        onClick={() => nav('/coach/setup')} />
+    </Section>
+
     {/* ---------- general ---------- */}
     <Section title={t('General')} footer={t('Switching the unit offers to convert every stored weight.')}>
       <SelectRow

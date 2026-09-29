@@ -14,6 +14,7 @@ const anthropic = (await import('../coach/core/adapters/anthropic.js')).default;
 const openai = (await import('../coach/core/adapters/openai.js')).default;
 const gemini = (await import('../coach/core/adapters/gemini.js')).default;
 const compatible = (await import('../coach/core/adapters/compatible.js')).default;
+const groq = (await import('../coach/core/adapters/groq.js')).default;
 const { attemptOnce } = await import('../coach/core/pipeline.js');
 const { HTTP_PROVIDERS, validateBaseUrl } = await import('../coach/core/providers.js');
 const { SYSTEM_PROMPT } = await import('../coach/core/system-prompt.js');
@@ -33,12 +34,12 @@ function fakeFetch(answers) {
   return f;
 }
 const ok = body => ({ status: 200, body });
-const env = { ANTHROPIC_API_KEY: 'sk-ant-1', OPENAI_API_KEY: 'sk-oa-1', GEMINI_API_KEY: 'AIza-1', OPENAI_COMPAT_API_KEY: 'compat-1' };
+const env = { ANTHROPIC_API_KEY: 'sk-ant-1', OPENAI_API_KEY: 'sk-oa-1', GEMINI_API_KEY: 'AIza-1', OPENAI_COMPAT_API_KEY: 'compat-1', GROQ_API_KEY: 'gsk-1' };
 const cfgCompat = { provider: 'compatible', providerOptions: { compatible: { baseUrl: 'http://ollama.lan:11434/' } } };
 const ANSWER = '{"coach_contract":1,"nochange":true,"reading":"fine"}';
 
-test('the four HTTP adapters spawn nothing and need no runtime', () => {
-  for (const a of [anthropic, openai, gemini, compatible]) {
+test('the HTTP adapters spawn nothing and need no runtime', () => {
+  for (const a of [anthropic, openai, gemini, compatible, groq]) {
     assert.equal(a.spawns, false, a.id);
     assert.equal(a.needsRuntime, false, a.id);
     assert.ok(HTTP_PROVIDERS[a.id], `${a.id} is described in core/providers.js`);
@@ -76,6 +77,19 @@ test('OpenAI: chat completions in JSON mode, bearer auth, max_completion_tokens'
   assert.equal(c.body.messages[0].content, SYSTEM_PROMPT);
   assert.equal(c.body.messages[1].content, 'P');
   assert.ok('max_completion_tokens' in c.body && !('max_tokens' in c.body));
+});
+
+test('Groq: chat completions on api.groq.com/openai, bearer gsk_ key, max_tokens, JSON mode', async () => {
+  const f = fakeFetch([ok({ choices: [{ message: { content: ANSWER }, finish_reason: 'stop' }] })]);
+  const r = await groq.invoke({ cfg: {}, prompt: 'P', env, model: null, fetch: f });
+  assert.equal(r.code, 0);
+  assert.equal(r.text, ANSWER);
+  const c = f.calls[0];
+  assert.equal(c.url, 'https://api.groq.com/openai/v1/chat/completions');
+  assert.equal(c.headers.authorization, 'Bearer gsk-1');
+  assert.equal(c.body.model, HTTP_PROVIDERS.groq.defaultModel);
+  assert.ok('max_tokens' in c.body && !('max_completion_tokens' in c.body));
+  assert.deepEqual(c.body.response_format, { type: 'json_object' });
 });
 
 test('Gemini: generateContent with the key as a header — never ?key= — and JSON output requested', async () => {

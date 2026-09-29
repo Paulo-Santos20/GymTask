@@ -16,9 +16,12 @@ model may say" to disagree, and the validator *is* the security boundary.
 ## Design
 
 - **Provider table** (`providers.js`, `HTTP_PROVIDERS` frozen): rows `anthropic`, `openai`,
-  `gemini`, `grok`, `compatible`, each `{label, runtime:'HTTPS', http:true, apiKeyEnv,
-  defaultBase, defaultModel, keyPlaceholder}`. Row `grok` → `defaultBase: https://api.x.ai`,
-  `defaultModel: grok-3-mini`, `apiKeyEnv: XAI_API_KEY`; `compatible` has no base and no default
+  `gemini`, `groq`, `grok`, `compatible`, each `{label, runtime:'HTTPS', http:true, apiKeyEnv,
+  defaultBase, defaultModel, keyPlaceholder}`. Row `groq` → `defaultBase:
+  https://api.groq.com/openai` (the `/openai` segment, so specs append `/v1/…` onto the live
+  endpoint), `defaultModel: qwen/qwen3.8-27b`, `apiKeyEnv: GROQ_API_KEY`; row `grok` →
+  `defaultBase: https://api.x.ai`, `defaultModel: grok-3-mini`, `apiKeyEnv: XAI_API_KEY`;
+  `compatible` has no base and no default
   model (it is whatever the owner's endpoint serves). `config.PROVIDERS` spreads these rows in
   next to the runtime-backed ones, and the phone reads them for its picker — one source, two
   runtimes. `baseUrlFor(id, cfg)` resolves override → default; `validateBaseUrl()` permits only

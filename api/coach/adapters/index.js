@@ -17,6 +17,7 @@ import codex from './codex.js';
 import anthropic from '../core/adapters/anthropic.js';
 import openai from '../core/adapters/openai.js';
 import gemini from '../core/adapters/gemini.js';
+import groq from '../core/adapters/groq.js';
 import grok from '../core/adapters/grok.js';
 import compatible from '../core/adapters/compatible.js';
 
@@ -46,6 +47,6 @@ const fixture = {
    lazily: on the default image the module loads, check() reports the runtime as absent, and
    isConnected() keeps the Coach out of /api/config entirely. Codex is here too, and unlike
    the SDK its runtime is a CLI binary, so its absence shows up as a spawn error from check(). */
-const ADAPTERS = { fixture, claude, codex, anthropic, openai, gemini, grok, compatible };
+const ADAPTERS = { fixture, claude, codex, anthropic, openai, gemini, groq, grok, compatible };
 export const adapterFor = provider => ADAPTERS[provider] || null;
 export default ADAPTERS;

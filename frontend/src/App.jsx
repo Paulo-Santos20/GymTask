@@ -33,6 +33,7 @@ import Muscles from './views/Muscles.jsx'
 import Settings from './views/Settings.jsx'
 import CoachChat from './views/CoachChat.jsx'
 import CoachIntake from './views/CoachIntake.jsx'
+import CoachSetup from './views/CoachSetup.jsx'
 import Nutrition from './views/Nutrition.jsx'
 
 // last known scrollY per route, so back-navigation can put the page where it was
@@ -160,9 +161,9 @@ function Shell() {
               <Route path="/coach" element={<CoachChat />} />
               <Route path="/coach/intake" element={<CoachIntake />} />
               <Route path="/coach/proposal" element={<Navigate to="/coach" replace />} />
-              {/* The setup screen is gone; the URL still lands where the web build always sent
-                  it (the screen redirected to Settings on every non-native mount). */}
-              <Route path="/coach/setup" element={<Navigate to="/settings" replace />} />
+              {/* /coach/setup is the mode picker: run on the server, or in this browser
+                  with the user's own API key. */}
+              <Route path="/coach/setup" element={<CoachSetup />} />
               <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>
           )}

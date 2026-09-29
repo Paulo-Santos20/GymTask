@@ -31,6 +31,15 @@ export const HTTP_PROVIDERS = Object.freeze({
     defaultModel: 'gemini-2.5-pro',
     keyPlaceholder: 'AIza… or AQ.…'
   }),
+  // Groq: OpenAI's Chat Completions wire shape at api.groq.com/openai — so the base carries
+  // the /openai segment and the wire spec appends /v1/chat/completions on top of it.
+  groq: Object.freeze({
+    label: 'Groq', runtime: 'HTTPS', http: true,
+    apiKeyEnv: 'GROQ_API_KEY', oauthEnv: null,
+    defaultBase: 'https://api.groq.com/openai',
+    defaultModel: 'qwen/qwen3.8-27b',
+    keyPlaceholder: 'gsk_…'
+  }),
   // xAI's Grok. Same Chat Completions shape as OpenAI — POST /v1/chat/completions, bearer
   // auth — so only the endpoint, the key variable and the default model differ. The key and
   // the model may also arrive as plain XAI_API_KEY / XAI_MODEL environment variables on an
