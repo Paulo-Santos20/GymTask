@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-Domain layer: 65 plain `.js` modules + 3 JSON data files with every rule the UI only displays —
+Domain layer: 69 plain `.js` modules + 3 JSON data files with every rule the UI only displays —
 training logic, nutrition, exercise catalogue, coach state, persistence, import/export. No React
 (three exceptions), no store writes: pure functions of state `S` committed by views/`src/store/*`.
 
@@ -27,9 +27,13 @@ training logic, nutrition, exercise catalogue, coach state, persistence, import/
 - **Superset/rest — `supersetFlow.js`:** `supersetFlowStep`, `nextUnfinishedUnit`,
   `restAfterSet`/`restOnRecheck`, `restSecFor`, `warmupRestSecFor` → `Workout.jsx`.
 - **Session lifecycle:** `session-start.buildSessionEntries`, `session-merge`, `backfill`,
-  `finish-workout.buildCompletedWorkout`, plus `active-workout-order`, `active-exercise-swap`,
+  `finish-workout.buildCompletedWorkout`, `workout-date` (move a logged session to another
+  date/time: re-files history in date order, keeps session length, re-derives PR badges),
+  `session-routines` (copy a saved workout's flat exercise setup into a routine — explicit
+  action only, never on finish), plus `active-workout-order`, `active-exercise-swap`,
   `workout-controls`, `rep-range`, `effort` (RIR summary/histogram), `bar` (`plateSplit`),
-  `starter`, `plan-share` (`buildPlanBundle`/`parsePlan`) → mostly `sheets.jsx`.
+  `plates` (plate/stack weights loaded from `S.plates`), `starter`, `plan-share`
+  (`buildPlanBundle`/`parsePlan`) → mostly `sheets.jsx`.
 - **Recovery/tonnage — `recovery.js`:** per-muscle `sessionTonnages` (kg; `BODYWEIGHT_REF_LOAD`,
   `CARDIO_TONNAGE_PER_MIN`), `fatigueOf` (36 h half-life, `FATIGUE_STATES`), `strengthOf` (14 d
   full / 28 d half-life, `STRENGTH_FLOOR`), `fatiguedMuscles`/`detrainedMuscles`; plus
@@ -53,14 +57,15 @@ training logic, nutrition, exercise catalogue, coach state, persistence, import/
   `sync-merge.js` (`mergeStates`, `unionById`, `localExtras`), `import-csv.js` (`parseWorkoutCSV`,
   `parseImport`, `mergeImport` — FitNotes/Strong/Hevy), `import-hevy.js`.
 - **UI plumbing:** `format` (dates/weeks/`fmtNum`/`uid`), `i18n-core`/`i18n`, `units`
-  (`convertStateUnit`), `sound`, `push`, `wakelock`, `viewport-guard`, `use-sheet-keyboard`,
+  (`convertStateUnit`), `speed` (cardio speed stored as km/h; display follows the profile
+  unit, km/h or mph), `sound`, `push`, `wakelock`, `viewport-guard`, `use-sheet-keyboard`,
   `qr`, `scan`/`scan-web`, `hchips`, `nav`, `guest`, `demo`/`demoSeed`.
 
 ## Design
 
 - **Pure framework-free functions + co-located unit tests (CONTRIBUTING.md rule):** anything
   deciding what you lift next or reading a logged session back is a pure helper here with its
-  vitest file beside it (`*.test.js`/`*.jsx` — 72 of them, `npm test` in `frontend/`; never
+  vitest file beside it (`*.test.js`/`*.jsx` — 75 of them, `npm test` in `frontend/`; never
   documented individually).
 - **No framework imports** except `use-sheet-keyboard.js`/`wakelock.js` (React hooks) and
   `i18n.js` (`useLang` via `useSyncExternalStore`).
