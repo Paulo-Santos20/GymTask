@@ -24,12 +24,12 @@
 
 - **GitHub Pages fora de escopo:** `.github/workflows/pages.yml` não é tocado (produção = Vercel `gymtask-jtu8`).
 - **Credenciais fora de escopo** (bloqueadas no usuário): Nutritionix, `VITE_FIREBASE_VAPID_KEY`, Authorized domain, rotação de `service-account.json` + Groq keys, `VITE_NUTRITION_PROXY_URL`.
-- **Baseline api invariante:** `163 pass / 18 fail` (18 falhas CRLF pré-existentes em `prompts.test.js` + `routes.test.js:70` — não corrigir, não recontar).
+- **Baseline api invariante:** `160 pass / 18 fail` via `npm test` (= `node --test test/*.test.js`, o glob que o CI roda). `node --test` puro (descoberta recursiva) também encontra `api/push-messages.test.js` (fora de `test/`) e dá `163/18` — os dois números são corretos para a sua invocação; todo `Expected` deste plano usa o comando escrito ao lado. 18 falhas CRLF pré-existentes em `prompts.test.js` + `routes.test.js:70` — não corrigir, não recontar.
 - **Fingerprint pt-BR invariante:** `4f9c1cf24a394a45ac8e14d412a97f0462e9ef4c6a9ae348a27203511aea84f3`; `inherited` = 641; `PT_BR_OVERRIDES` 702 → 735.
 - **Toda mutação de lockfile/package com npm 10:** `npx -y npm@10 <cmd>` — o CI roda npm 10 (node 22) e npm 11 é justamente o que gerou o lock incompleto.
 - **PowerShell 5.1:** sem `&&` — encadear com `; if ($?) { ... }` ou `;` simples. Sem `gh`, `docker`, `rg` instalados.
 - **Nenhuma dependência nova** — apenas updates dentro dos ranges já declarados (audit fix).
-- **Contagens finais esperadas** (usadas pelos docs da Task 6): frontend `1747/1747 (126 arq)`, `check-locales` `1376/1376`, `check-source-strings --strict` 0 pendências, mcp `63/63`, api `163/18`, census `735/641`, envs Vercel `8 production + 6 preview`.
+- **Contagens finais esperadas** (usadas pelos docs da Task 6): frontend `1747/1747 (126 arq)`, `check-locales` `1376/1376`, `check-source-strings --strict` 0 pendências, mcp `63/63`, api `160/18` (`npm test`), census `735/641`, envs Vercel `8 production + 6 preview`.
 - **Push único ao final** (após a Task 6), na branch `main` de `origin`. Nenhum commit fora das Tasks.
 
 ## File Structure
@@ -82,7 +82,7 @@ Expected: exit 0 (deixa o node_modules no estado exato do CI).
 - [ ] **Step 5: Rodar os testes da api**
 
 Run (workdir `api/`): `npm test`
-Expected: `163 pass / 18 fail` — exatamente o baseline (as 18 falhas CRLF pré-existentes).
+Expected: `160 pass / 18 fail` — exatamente o baseline via `npm test` (as 18 falhas CRLF pré-existentes; `node --test` puro daria 163/18 por `push-messages.test.js`).
 
 - [ ] **Step 6: Rodar os meta-steps que o job `api` roda após os testes**
 
@@ -165,7 +165,7 @@ Fallback se ainda restar o high: `npx -y npm@10 install undici@7.30.0` (aceita b
 
 Run (workdir `api/`): `npx -y npm@10 ci --omit=dev --omit=optional` → exit 0.
 Run (workdir `api/`): `npx -y npm@10 ci --omit=optional` → exit 0.
-Run (workdir `api/`): `npm test` → `163 pass / 18 fail` (baseline).
+Run (workdir `api/`): `npm test` → `160 pass / 18 fail` (baseline).
 Run (raiz): `node scripts/build-coach-assets.mjs --check` → exit 0; `node api/scripts/check-core-loadable.mjs` → exit 0.
 
 - [ ] **Step 3: raiz — fechar o high do js-yaml**
@@ -470,7 +470,7 @@ git commit -m "docs(codemaps): map plates/speed/workout-date/session-routines; r
 Read em `GYMTASK.md` a linha da tabela `| - | Build + testes centrais | ...` e substituir a linha inteira por:
 
 ```markdown
-| - | Build + testes centrais | ✅ **verde** (contagens pós-ci/i18n 2026-10-01) | `npm run build` exit 0; `npm test` **1747/1747** (126 arquivos); census locale **735/641** (`pt-br-locale.test.js` 4/4, fingerprint `4f9c1cf2.aea84f3` inalterado; `check-locales` **1376/1376**); `check-source-strings --strict` **0** pendências; `mcp` **63/63**; `api` **163 pass / 18 fail** (mesmas 18 falhas CRLF pré-existentes: `prompts.test.js` + `routes.test.js:70` - não corrigir) |
+| - | Build + testes centrais | ✅ **verde** (contagens pós-ci/i18n 2026-10-01) | `npm run build` exit 0; `npm test` **1747/1747** (126 arquivos); census locale **735/641** (`pt-br-locale.test.js` 4/4, fingerprint `4f9c1cf2.aea84f3` inalterado; `check-locales` **1376/1376**); `check-source-strings --strict` **0** pendências; `mcp` **63/63**; `api` **160 pass / 18 fail** via `npm test` (`node --test` recursivo: 163/18, inclui `push-messages.test.js`) (mesmas 18 falhas CRLF pré-existentes: `prompts.test.js` + `routes.test.js:70` - não corrigir) |
 ```
 
 - [ ] **Step 2: GYMTASK — pendência de redeploy resolvida**
@@ -513,7 +513,7 @@ para firebase@9.14.0, e o app usa `firebase@^12.19.0`. **i18n**: 33 strings de
 **Codemaps**: `plates`/`speed`/`workout-date`/`session-routines` mapeados + contagens de
 locale. **Docs**: GYMTASK, ROADMAP, README (Grok/Groq + envs de mídia), AI_COACH (row Groq,
 "phone app" → PWA). **Verdes**: frontend vitest **1747/1747 (126 arq)**, `npm run build`
-exit 0, `check-locales` **1376/1376**, `mcp` **63/63**, `api` **163 pass/18 fail**
+exit 0, `check-locales` **1376/1376**, `mcp` **63/63**, `api` **160 pass/18 fail**
 (baseline CRLF inalterado), `node --check server.js` exit 0. Env Vercel: **8 production +
 6 preview**.*
 ```
@@ -628,7 +628,7 @@ Run (workdir `frontend/`): `npm test` → `1747/1747 (126 arquivos)`.
 Run (workdir `frontend/`): `node scripts/check-locales.mjs` → exit 0, `1376 keys in sync`.
 Run (workdir `frontend/`): `node scripts/check-source-strings.mjs --strict` → exit 0.
 Run (workdir `mcp/`): `npm test` → `63 pass`.
-Run (workdir `api/`): `npm test` → `163 pass / 18 fail` (baseline).
+Run (workdir `api/`): `npm test` → `160 pass / 18 fail` (baseline).
 Run (raiz): `node scripts/build-coach-assets.mjs --check` → exit 0; `node api/scripts/check-core-loadable.mjs` → exit 0.
 
 - [ ] **Step 4: Estado do git**
@@ -649,4 +649,4 @@ O CLI não consegue ler Actions (sem `gh`; API 403 sem token). Evidência local 
 
 - [ ] **Step 7: Relatório final ao usuário**
 
-Resumo: 2 bugs de CI + audit por workspace (4 highs de firebase aceitos, com justificativa) + 33 strings traduzidas + `--strict` no CI + codemaps + docs + env local de mídia; contagens finais (1747/126, 1376, 735/641, fingerprint idêntico, 63/63, 163/18); pendências que seguem fora de escopo (Pages, credenciais do usuário, `VITE_NUTRITION_PROXY_URL`).
+Resumo: 2 bugs de CI + audit por workspace (4 highs de firebase aceitos, com justificativa) + 33 strings traduzidas + `--strict` no CI + codemaps + docs + env local de mídia; contagens finais (1747/126, 1376, 735/641, fingerprint idêntico, 63/63, 160/18); pendências que seguem fora de escopo (Pages, credenciais do usuário, `VITE_NUTRITION_PROXY_URL`).
