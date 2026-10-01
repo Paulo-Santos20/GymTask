@@ -58,7 +58,7 @@ com IA que o openGym original não tem.
 - 🗓️ **Plano semanal** — uma rotina por dia da semana, sobre uma biblioteca de **1.324 exercícios** (com busca, demos animados e mapa muscular)
 - 🔗 **Supersets, aquecimento, deload planejado, exercícios por tempo, cardio** — tudo contado do jeito certo nas estatísticas
 - 🥗 **Nutrição** — meta calórica e macros (TDEE por Mifflin-St Jeor), banco de ~200 alimentos BR com busca sem acento, busca externa (USDA / Open Food Facts / Nutritionix via proxy), diário por refeição com desfazer
-- 🧠 **Coach com IA (Grok)** — responde por chat, monta a semana de treinos e propõe ajustes a partir do que você registrou; cada mudança mostra a evidência e só entra com sua aprovação (com desfazer)
+- 🧠 **Coach com IA (Grok, Groq)** — responde por chat, monta a semana de treinos e propõe ajustes a partir do que você registrou; cada mudança mostra a evidência e só entra com sua aprovação (com desfazer)
 - 📥 **Traga seu histórico** — importação de **FitNotes** (Android e iOS), **Strong**, **Hevy** (CSV ou direto com chave Hevy Pro) e peso corporal de export do **Apple Health**
 - 📱 **PWA instalável** — adicione à tela inicial no Android ou no iPhone; funciona offline, com login por e-mail e senha e sincronização quando o Firebase está configurado
 - 🟩 **Estatísticas** — mapa de calor de atividade, mapa muscular (volume, fadiga, força), gráficos e PRs
@@ -133,6 +133,7 @@ Tudo via variáveis de ambiente (ver `frontend/.env.example` e `functions/.env.e
 | `VITE_NUTRITION_PROXY_URL` | URL da function `nutritionProxy` (busca de alimentos Nutritionix sem expor a chave) |
 | `XAI_API_KEY` (+ `XAI_MODEL`, padrão `grok-3-mini`) | Chave xAI para o Coach (só no servidor/functions, nunca no bundle) |
 | `NUTRITIONIX_APP_ID` / `NUTRITIONIX_APP_KEY` | Chaves Nutritionix para o proxy (só no servidor/functions) |
+| `VITE_IMG_BASE` / `VITE_GIF_BASE` | Base da CDN das mídias dos exercícios (jsDelivr, dataset `@7455efae`) - embutida no build do frontend (produção Vercel) |
 
 A especificação do projeto (arquitetura, contrato Firebase, Coach, nutrição) vive em [GYMTASK.md](GYMTASK.md).
 

@@ -6,7 +6,7 @@ running on your own server under your own provider account, off until it is swit
 > **GymTask fork notes (upstream text below is mostly historical):**
 > - **Grok (xAI) is a provider here** — `api/coach/core/providers.js` row `grok` →
 >   `https://api.x.ai`, default model `grok-3-mini`, adapter in
->   `api/coach/core/adapters/grok.js`. The phone app also lists it (`lib/coach-local.js`
+>   `api/coach/core/adapters/grok.js`. **Groq is a provider here too** - row `groq` → `https://api.groq.com/openai`, default model `qwen/qwen3.8-27b`, adapter in `api/coach/core/adapters/groq.js`. The PWA also lists it (`lib/coach-local.js`
 >   `ADAPTERS`).
 > - **The Coach also runs as a Firebase Cloud Function** — `functions/index.js` exports `coach`
 >   (`POST …/coach`, body `{system, prompt}` or `{kind, payload}`, answers
@@ -36,6 +36,7 @@ rest of this document applies to you.
 | **OpenAI API** | plain HTTPS to `api.openai.com` | an API key | default |
 | **Google Gemini** | plain HTTPS to `generativelanguage.googleapis.com` | an API key | default |
 | **Grok (xAI)** | plain HTTPS to `api.x.ai` (`/v1/chat/completions`), default model `grok-3-mini` | an API key (`XAI_API_KEY`, server-side only) | default, or the `coach` Cloud Function |
+| **Groq** | plain HTTPS to `api.groq.com/openai`, default model `qwen/qwen3.8-27b` | an API key (`GROQ_API_KEY` in the job env, delivered from the stored credential) | default |
 | **OpenAI-compatible endpoint** | plain HTTPS to a URL you give it — Ollama, LM Studio, vLLM, OpenRouter, a gateway of your own | an API key, optional | default |
 | **Claude (Anthropic)** | the Claude Agent SDK, inside the container | a `claude setup-token` | `coach` |
 | **Codex (OpenAI)** | the Codex CLI, inside the container | Codex's own device sign-in | `coach` |
@@ -54,7 +55,7 @@ configuration.
 Nothing here is an environment variable or a restart — the whole point of the admin card is that
 enabling the Coach is a decision you make in the app.
 
-### With an API key (Anthropic, OpenAI, Gemini, Grok, compatible)
+### With an API key (Anthropic, OpenAI, Gemini, Grok, Groq, compatible)
 
 **1. Get a key** from the provider's own console. For a compatible endpoint, get the URL it
 answers on instead, and a key only if it wants one.
@@ -418,7 +419,7 @@ in a device sync or in a user's own JSON export.
 
 The installed PWA uses the same Coach as on desktop. With a self-hosted instance
 the Coach runs on your server under the rules above; or bring your own API key and
-the phone calls Anthropic, OpenAI, Gemini or a compatible endpoint directly, with
+the app calls Anthropic, OpenAI, Gemini, Grok, Groq or a compatible endpoint directly, with
 a key you paste. It runs the same payload allowlist, the same validator and
 the same single repair round as the server, in the app. The key is kept in this
 browser's local storage, never in the app's state, so it cannot ride along in a
