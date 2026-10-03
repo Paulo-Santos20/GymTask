@@ -37,21 +37,54 @@ const FALLBACK_RULES =
   'Return exactly one JSON object and nothing else — no prose, no markdown fence. ' +
   'Follow the schema the app expects for this task.';
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type'
-};
+/* CORS is an origin ALLOWLIST, not '*': a wildcard lets any website drive these
+ * endpoints from a browser. The origin is echoed back only when it is on the list —
+ * ALLOWED_ORIGINS (comma-separated) overrides the defaults, which cover the Vercel
+ * production domain (gymtask-jtu8, see GYMTASK.md / docs/DEPLOY_VERCEL.md) and the
+ * vite dev/preview servers. No Origin header (curl, server-to-server) simply gets no
+ * ACAO header; that never blocks the request itself — CORS is a browser-enforced rule.
+ * Guest mode: no ID-token requirement anywhere, by plan decision (allowlist only). */
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://gymtask-jtu8.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:4173'
+];
 
-function send(res, status, body) {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', ...CORS });
+function allowedOrigins() {
+  const raw = process.env.ALLOWED_ORIGINS;
+  if (typeof raw === 'string' && raw.trim()) {
+    return raw.split(',').map(s => s.trim()).filter(Boolean);
+  }
+  return DEFAULT_ALLOWED_ORIGINS;
+}
+
+/** CORS headers for THIS request: ACAO only for allowlisted origins, exact match. */
+function corsHeaders(req) {
+  const headers = {
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin'
+  };
+  const origin = req && req.headers ? req.headers.origin : undefined;
+  if (typeof origin === 'string' && origin && allowedOrigins().includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin;
+  }
+  return headers;
+}
+
+function send(req, res, status, body, extraHeaders) {
+  res.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    ...corsHeaders(req),
+    ...(extraHeaders || {})
+  });
   res.end(JSON.stringify(body));
 }
 
 /** CORS preflight first; false means "not OPTIONS, keep going". */
 function preflight(req, res) {
   if (req.method === 'OPTIONS') {
-    res.writeHead(204, CORS);
+    res.writeHead(204, corsHeaders(req));
     res.end();
     return true;
   }
@@ -60,7 +93,7 @@ function preflight(req, res) {
 
 function postOnly(req, res) {
   if (req.method === 'POST') return false;
-  send(res, 405, { ok: false, error: 'POST only' });
+  send(req, res, 405, { ok: false, error: 'POST only' });
   return true;
 }
 
@@ -152,20 +185,20 @@ exports.coach = onRequest({ region: REGION, timeoutSeconds: 300 }, async (req, r
   if (preflight(req, res)) return;
   if (postOnly(req, res)) return;
   const body = bodyOf(req);
-  if (body === null) return send(res, 400, { ok: false, error: 'body must be valid JSON' });
+  if (body === null) return send(req, res, 400, { ok: false, error: 'body must be valid JSON' });
 
   // Clear message, never a crash and never the key itself: configured server-side via
   // functions/.env (see .env.example), invisible to every client bundle.
   const key = process.env.XAI_API_KEY;
   if (!key) {
-    return send(res, 400, {
+    return send(req, res, 400, {
       ok: false,
       error: 'XAI_API_KEY is not configured on this function — copy functions/.env.example to functions/.env, set it, and redeploy'
     });
   }
 
   const built = buildMessages(body);
-  if (built.error) return send(res, 400, { ok: false, error: built.error });
+  if (built.error) return send(req, res, 400, { ok: false, error: built.error });
 
   const model =
     (typeof body.model === 'string' && body.model.trim().slice(0, 80)) ||
@@ -174,11 +207,11 @@ exports.coach = onRequest({ region: REGION, timeoutSeconds: 300 }, async (req, r
   const temperature = Number.isFinite(+body.temperature) ? Math.min(2, Math.max(0, +body.temperature)) : 0;
 
   const out = await callGrok({ key, model, messages: built.messages, temperature });
-  if (out.timeout) return send(res, 504, { ok: false, error: 'the model did not answer within 60s' });
-  if (out.unreachable) return send(res, 502, { ok: false, error: 'could not reach api.x.ai: ' + out.unreachable });
-  if (out.error) return send(res, 502, { ok: false, error: out.error, status: out.status || null });
+  if (out.timeout) return send(req, res, 504, { ok: false, error: 'the model did not answer within 60s' });
+  if (out.unreachable) return send(req, res, 502, { ok: false, error: 'could not reach api.x.ai: ' + out.unreachable });
+  if (out.error) return send(req, res, 502, { ok: false, error: out.error, status: out.status || null });
 
-  return send(res, 200, { ok: true, model, text: out.text, answer: extractJson(out.text) });
+  return send(req, res, 200, { ok: true, model, text: out.text, answer: extractJson(out.text) });
 });
 
 /* --------------------------- nutritionProxy --------------------------- */
@@ -217,15 +250,15 @@ exports.nutritionProxy = onRequest({ region: REGION, timeoutSeconds: 30 }, async
   if (preflight(req, res)) return;
   if (postOnly(req, res)) return;
   const body = bodyOf(req);
-  if (body === null) return send(res, 400, { ok: false, error: 'body must be valid JSON' });
+  if (body === null) return send(req, res, 400, { ok: false, error: 'body must be valid JSON' });
 
   const query = String(body.query != null ? body.query : body.q != null ? body.q : '').trim().slice(0, 200);
-  if (!query) return send(res, 400, { ok: false, error: 'query is required — send { "query": "banana prata" }' });
+  if (!query) return send(req, res, 400, { ok: false, error: 'query is required — send { "query": "banana prata" }' });
 
   const appId = process.env.NUTRITIONIX_APP_ID;
   const appKey = process.env.NUTRITIONIX_APP_KEY;
   if (!appId || !appKey) {
-    return send(res, 400, {
+    return send(req, res, 400, {
       ok: false,
       error: 'NUTRITIONIX_APP_ID and NUTRITIONIX_APP_KEY must be set on this function — copy functions/.env.example to functions/.env, set them, and redeploy'
     });
@@ -244,11 +277,11 @@ exports.nutritionProxy = onRequest({ region: REGION, timeoutSeconds: 30 }, async
     try { data = JSON.parse(raw); } catch { data = null; }
     if (!upstream.ok) {
       const msg = (data && (data.message || (data.error && data.error.message))) || ('Nutritionix returned HTTP ' + upstream.status);
-      return send(res, 502, { ok: false, error: String(msg).slice(0, 300) });
+      return send(req, res, 502, { ok: false, error: String(msg).slice(0, 300) });
     }
   } catch (e) {
-    if (e && e.name === 'AbortError') return send(res, 504, { ok: false, error: 'Nutritionix did not answer within 15s' });
-    return send(res, 502, { ok: false, error: 'could not reach Nutritionix: ' + String((e && e.message) || e).slice(0, 200) });
+    if (e && e.name === 'AbortError') return send(req, res, 504, { ok: false, error: 'Nutritionix did not answer within 15s' });
+    return send(req, res, 502, { ok: false, error: 'could not reach Nutritionix: ' + String((e && e.message) || e).slice(0, 200) });
   } finally {
     clearTimeout(timer);
   }
@@ -259,7 +292,7 @@ exports.nutritionProxy = onRequest({ region: REGION, timeoutSeconds: 30 }, async
   // current frontend reader (frontend/src/lib/foodApis.js searchNutritionix) consumes
   // data.foods with raw Nutritionix field names (food_name, nf_*, serving_weight_grams)
   // for its own per-100 g conversion. Drop `foods` once that reader moves to `results`.
-  return send(res, 200, {
+  return send(req, res, 200, {
     ok: true, query, locale: 'br', source: 'nutritionix',
     count: results.length, results, foods: rawFoods
   });
