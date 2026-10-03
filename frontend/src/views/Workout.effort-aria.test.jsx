@@ -6,12 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Workout from './Workout.jsx'
 
 // The effort stepper's +/- styling in index.css used to key off the English aria-labels
-// (`[aria-label="Decrease"]`), coupling presentation to copy: the moment todo 14 translates
-// those labels through t(), every one of those rules would silently stop matching and the
-// buttons would lose their sizing/hiding rules. The contract now is a locale-independent
-// `data-aria="decrease|increase"` hook rendered alongside the (kept) aria-label, and this
-// suite is the regression gate: it fails while the CSS still selects on English text or
-// while the rendered controls are missing the hook.
+// (`[aria-label=Decrease]` in English words), coupling presentation to copy: the moment
+// todo 14 translates those labels through t(), every one of those rules would silently stop
+// matching and the buttons would lose their sizing/hiding rules. The contract now is a
+// locale-independent `data-aria="decrease|increase"` hook rendered alongside the (kept,
+// now-translated) aria-label, and this suite is the regression gate: it fails while the CSS
+// still selects on English text or while the rendered controls are missing the hook.
 const cssSource = readFileSync(new URL('../index.css', import.meta.url), 'utf8')
 const sheetsSource = readFileSync(new URL('../sheets.jsx', import.meta.url), 'utf8')
 
@@ -160,7 +160,8 @@ describe('effort stepper styling is decoupled from English aria-labels', () => {
     expect(decrease, '.effcell-stp must expose a [data-aria="decrease"] button').toBeTruthy()
     expect(increase, '.effcell-stp must expose a [data-aria="increase"] button').toBeTruthy()
 
-    // The a11y labels stay: they are the accessible names until todo 14 translates them.
+    // The a11y labels stay — now through t(): rendered values are the pt-BR translation at
+    // runtime and this suite's English fallback (no pack loaded under test).
     expect(decrease.getAttribute('aria-label')).toBe('Decrease')
     expect(increase.getAttribute('aria-label')).toBe('Increase')
   })
@@ -168,7 +169,7 @@ describe('effort stepper styling is decoupled from English aria-labels', () => {
   it("the effort picker's exact-value stepper carries the hook too", () => {
     // The picker's free-value row renders the same .effcell-stp markup (sheets.jsx); a source
     // assertion keeps the gate without standing up the whole sheet host.
-    expect(sheetsSource).toMatch(/aria-label="Decrease"[^>]*data-aria="decrease"/)
-    expect(sheetsSource).toMatch(/aria-label="Increase"[^>]*data-aria="increase"/)
+    expect(sheetsSource).toMatch(/aria-label=\{t\('Decrease'\)\}[^>]*data-aria="decrease"/)
+    expect(sheetsSource).toMatch(/aria-label=\{t\('Increase'\)\}[^>]*data-aria="increase"/)
   })
 })

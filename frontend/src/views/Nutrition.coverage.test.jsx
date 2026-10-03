@@ -76,8 +76,8 @@ describe('Nutrition diary', () => {
       .toBe(`Remaining ${fmtNum(Math.abs(targets.kcal - 750))} kcal`)
 
     // day navigation: today cannot move forward, the previous day is reachable
-    expect(host.querySelector('[aria-label="Next day"]').disabled).toBe(true)
-    expect(host.querySelector('[aria-label="Previous day"]').disabled).toBe(false)
+    expect(host.querySelector("[aria-label='Next day']").disabled).toBe(true)
+    expect(host.querySelector("[aria-label='Previous day']").disabled).toBe(false)
   })
 
   it('shows the no-meals fallback with zeroed totals for an empty diary', () => {

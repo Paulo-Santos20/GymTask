@@ -25,9 +25,9 @@ afterEach(() => { act(() => root.unmount()); host.remove() })
 const mount = () => act(() => root.render(<Plan />))
 // The weekday rows above the routine list share the `.item` class, so the rows are found by the
 // thing only a routine has: the move controls' own column.
-const rows = () => [...host.querySelectorAll('.item')].filter(e => e.querySelector('button[aria-label="Move up"]'))
+const rows = () => [...host.querySelectorAll('.item')].filter(e => e.querySelector("button[aria-label='Move up']"))
 const names = () => rows().map(e => e.querySelector('.tt').textContent)
-const btn = (row, label) => rows()[row].querySelector(`button[aria-label="${label}"]`)
+const btn = (row, label) => rows()[row].querySelector(`button[aria-label='${label}']`)
 const click = el => act(() => { el.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
 
 describe('routine order', () => {
@@ -50,6 +50,6 @@ describe('routine order', () => {
   it('leaves the arrows out when there is nothing to reorder', () => {
     useStore.setState(s => ({ S: { ...s.S, routines: [routine('a', 'Only one')] } }))
     mount()
-    expect(host.querySelector('button[aria-label="Move up"]')).toBe(null)
+    expect(host.querySelector("button[aria-label='Move up']")).toBe(null)
   })
 })

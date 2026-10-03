@@ -140,7 +140,7 @@ describe('Plan â€” inline per-day routine management (combine routines)', (
   it('âœ• removes a routine, and drops the day key on the last removal', () => {
     mocks.S.week = { 1: ['r1', 'r2'] }
     mount()
-    const removeButtons = () => [...dayContainer('Monday').querySelectorAll('button[aria-label="Remove"]')]
+    const removeButtons = () => [...dayContainer('Monday').querySelectorAll("button[aria-label='Remove']")]
     act(() => { removeButtons()[1].dispatchEvent(new Event('click', { bubbles: true })) })
     expect(mocks.S.week[1]).toEqual(['r1'])
     mount()
@@ -153,6 +153,6 @@ describe('Plan â€” inline per-day routine management (combine routines)', (
     mount()
     const tue = dayContainer('Tuesday')
     expect(tue.textContent).toContain('Rest')
-    expect(tue.querySelectorAll('button[aria-label="Remove"]').length).toBe(0)
+    expect(tue.querySelectorAll("button[aria-label='Remove']").length).toBe(0)
   })
 })

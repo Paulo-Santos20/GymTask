@@ -390,7 +390,7 @@ describe('Stats exercise progress picker', () => {
     expect(modal.textContent).toContain('No match')
     expect(optionButtons()).toHaveLength(0)
 
-    await click(modal.querySelector('button[aria-label="Clear"]'))
+    await click(modal.querySelector("button[aria-label='Clear']"))
     expect(input.value).toBe('')
     expect(optionButtons()).toHaveLength(initialOptionCount)
     expect(modal.textContent).toContain('Legacy shoulder press')
@@ -399,7 +399,7 @@ describe('Stats exercise progress picker', () => {
     expect(optionButtons()).toHaveLength(1)
     expect(optionButtons()[0].textContent).toContain('Legacy shoulder press')
 
-    await click(modal.querySelector('button[aria-label="Clear"]'))
+    await click(modal.querySelector("button[aria-label='Clear']"))
     await setSearch('squat full bárbell')
 
     expect(modal.textContent).toContain('barbell full squat')
