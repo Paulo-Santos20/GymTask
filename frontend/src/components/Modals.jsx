@@ -5,7 +5,11 @@ import { keyboardOpen } from '../lib/viewport-guard.js'
 // One bottom sheet (or centered dialog) with swipe-to-dismiss.
 function Sheet({ sheet }) {
   const { closeSheet } = useUI()
+  // The dialog element itself: the sheet panel or the centered dialog. The title heading is
+  // inside the render prop, so the dialog reads it from here for its accessible name.
   const ref = useRef(null)
+  // The element that had focus when the sheet took the screen — handed back on close.
+  const opener = useRef(null)
   // startY null = no gesture. axis stays null until the finger has travelled far enough to
   // tell a vertical pull from a sideways scroll; 'x' hands the gesture to whatever scrolls
   // horizontally under it (chip strips, heatmap) and the sheet stays put.
@@ -67,8 +71,10 @@ function Sheet({ sheet }) {
   const onMouseMove = e => move(e, e.clientX, e.clientY)
   const onMouseUp = () => onTouchEnd()
 
-  // non-passive touchmove so preventDefault works (bottom sheets only; centered dialogs have no ref)
+  // non-passive touchmove so preventDefault works (bottom sheets only; the centered dialog
+  // shares the dialog ref for its accessible name but has no swipe-to-dismiss)
   useEffect(() => {
+    if (sheet.kind === 'center') return
     const el = ref.current
     if (!el) return
     el.addEventListener('touchmove', onTouchMove, { passive: false })
@@ -80,18 +86,41 @@ function Sheet({ sheet }) {
   }, [])
 
   const close = () => closeSheet(sheet.id)
+
+  // Name the dialog after the sheet's own title heading (every sheet opens with an h1-h6).
+  // The text lives inside the render prop, so it can only be read once the DOM is there.
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const title = el.querySelector('h1, h2, h3, h4, h5, h6')
+    const name = title?.textContent?.trim()
+    if (name) el.setAttribute('aria-label', name)
+  })
+
+  // Focus belongs to the opener: save it while the sheet owns the screen, give it back when
+  // the sheet leaves — unless a sheet stacked on top still owns the screen, or the opener
+  // has left the page (a list that re-rendered, a sheet opened from a since-closed dialog).
+  useEffect(() => {
+    opener.current = document.activeElement
+    return () => {
+      if (useUI.getState().sheets.length) return
+      const el = opener.current
+      if (el && typeof el.focus === 'function' && document.contains(el)) el.focus()
+    }
+  }, [])
+
   if (sheet.kind === 'center') {
     return (
       <div>
         <div className="mback" onClick={() => { if (!sheet.locked) close() }} />
-        <div className="center">{sheet.render(close)}</div>
+        <div className="center" ref={ref} role="dialog" aria-modal="true">{sheet.render(close)}</div>
       </div>
     )
   }
   return (
     <div>
       <div className="mback" onClick={() => { if (!sheet.locked) close() }} />
-      <div className="sheet" ref={ref} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
+      <div className="sheet" ref={ref} role="dialog" aria-modal="true" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
         onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
         <div className="grab" />
         {sheet.render(close)}
