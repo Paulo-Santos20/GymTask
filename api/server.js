@@ -789,8 +789,10 @@ const routes = {
   // a cycle. Every one of them is inert while the feature is unconfigured.
   // coach/routes.js stays byte-identical and still exports upstream /api/admin/coach/* handlers;
   // drop those keys here — with the admin panel gone nothing calls them (requireAdmin went too).
+  // Keys are 'METHOD /path' (that is how the listener dispatches them), so the path is what gets
+  // matched: testing the raw key never sees '/api/admin/' and silently keeps every admin route.
   ...Object.fromEntries(Object.entries(coachRoutes({ json, readBody, readSession }))
-    .filter(([k]) => !k.startsWith('/api/admin/')))
+    .filter(([k]) => !k.slice(k.indexOf(' ') + 1).startsWith('/api/admin/')))
 };
 
 /* ---------- Coach: boot recovery, notifications, scheduled reviews ---------- */
