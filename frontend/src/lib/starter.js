@@ -32,13 +32,30 @@ const FIVE_BY_FIVE = [
   ['5x5-c', '5×5 C', 'barbell', [['0739', 5, 5], ['0047', 5, 5], ['1323', 5, 5]]]
 ]
 
+// Same push/pull routines as the ppl plan, legs dropped.
+const PUSH_PULL = PPL.slice(0, 2)
+
+const UPPER_AB = [
+  ['a', 'Upper A', 'barbell', [['0025', 3, 8], ['0027', 3, 10], ['0426', 3, 10], ['2330', 3, 10], ['0031', 3, 10], ['0241', 3, 12]]],
+  ['b', 'Upper B', 'barbell', [['0047', 3, 8], ['1323', 3, 10], ['0251', 3, 10], ['0334', 3, 12], ['0313', 3, 12], ['0092', 3, 12]]]
+]
+
+const BRO_UPPER = [
+  ['chest', 'Chest Day', 'barbell', [['0025', 4, 8], ['0047', 3, 10], ['0251', 3, 10], ['0241', 3, 12], ['0092', 3, 12]]],
+  ['back', 'Back Day', 'pullup', [['2330', 4, 10], ['0027', 3, 8], ['1323', 3, 10], ['0031', 3, 10], ['0313', 3, 12]]],
+  ['shoulders', 'Shoulders Day', 'figureStrength', [['0426', 4, 8], ['0334', 3, 12], ['0383', 3, 12], ['0070', 3, 12], ['0060', 3, 12]]]
+]
+
 // [weekday, routineKey] — weekday is a DAYN index, so 1 is Monday. Fixed weeks only: every
 // plan repeats the same seven days, which is all the weekly plan model can represent.
 const PLANS = {
   ppl: { routines: PPL, schedule: [[1, 'push'], [3, 'pull'], [5, 'legs']] },
   'upper-lower': { routines: UPPER_LOWER, schedule: [[1, 'upper-a'], [2, 'lower-a'], [4, 'upper-b'], [5, 'lower-b']] },
   'full-body': { routines: FULL_BODY, schedule: [[1, 'fb-a'], [3, 'fb-b'], [5, 'fb-c']] },
-  '5x5': { routines: FIVE_BY_FIVE, schedule: [[1, '5x5-a'], [3, '5x5-b'], [5, '5x5-c']] }
+  '5x5': { routines: FIVE_BY_FIVE, schedule: [[1, '5x5-a'], [3, '5x5-b'], [5, '5x5-c']] },
+  'push-pull': { routines: PUSH_PULL, schedule: [[1, 'push'], [3, 'pull'], [5, 'push']] },
+  'upper-ab': { routines: UPPER_AB, schedule: [[1, 'a'], [3, 'b'], [5, 'a']] },
+  'bro-upper': { routines: BRO_UPPER, schedule: [[1, 'chest'], [3, 'back'], [5, 'shoulders']] }
 }
 
 const build = routines =>
