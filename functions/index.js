@@ -107,6 +107,61 @@ function bodyOf(req) {
   return {};
 }
 
+/* Per-IP rate limit — in-memory fixed window, NO persistence (not Firestore), NO new
+ * dependency. Each warm Cloud Functions instance owns its Map, which is enough to blunt
+ * a burst from one client (the threat: burning the paid xAI/Nutritionix quota) without an
+ * external store. Applied to coach + nutritionProxy ONLY — never to OPTIONS preflights
+ * (checked after preflight()) and never to the scheduled pushDailyReminder.
+ * RATE_LIMIT_MAX / RATE_LIMIT_WINDOW_MS are read per request so tests and .env can tune them. */
+const rateBuckets = new Map(); // ip -> { count, resetAt }
+
+function rateLimitConfig() {
+  const max = parseInt(process.env.RATE_LIMIT_MAX, 10);
+  const windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10);
+  return {
+    max: Number.isFinite(max) && max > 0 ? max : 30,
+    windowMs: Number.isFinite(windowMs) && windowMs > 0 ? windowMs : 60000
+  };
+}
+
+function clientIp(req) {
+  const xff = req && req.headers ? req.headers['x-forwarded-for'] : undefined;
+  if (typeof xff === 'string' && xff.trim()) return xff.split(',')[0].trim();
+  if (req && typeof req.ip === 'string' && req.ip) return req.ip;
+  return 'unknown';
+}
+
+/** null = allowed; { retryAfterSec } = this IP exceeded its current window. */
+function rateCheck(req) {
+  const { max, windowMs } = rateLimitConfig();
+  const ip = clientIp(req);
+  const now = Date.now();
+  let bucket = rateBuckets.get(ip);
+  if (!bucket || now >= bucket.resetAt) {
+    bucket = { count: 0, resetAt: now + windowMs };
+    rateBuckets.set(ip, bucket);
+  }
+  bucket.count += 1;
+  if (rateBuckets.size > 10000) {
+    for (const [k, v] of rateBuckets) if (now >= v.resetAt) rateBuckets.delete(k);
+  }
+  if (bucket.count > max) {
+    return { retryAfterSec: Math.max(1, Math.ceil((bucket.resetAt - now) / 1000)) };
+  }
+  return null;
+}
+
+/** 429 + Retry-After when over the limit; false = keep going. */
+function rateLimited(req, res) {
+  const hit = rateCheck(req);
+  if (!hit) return false;
+  send(req, res, 429, {
+    ok: false,
+    error: 'rate limit exceeded — retry in ' + hit.retryAfterSec + 's'
+  }, { 'Retry-After': String(hit.retryAfterSec) });
+  return true;
+}
+
 function extractJson(text) {
   if (typeof text !== 'string') return null;
   try { return JSON.parse(text); } catch { /* fall through */ }
@@ -183,6 +238,7 @@ async function callGrok({ key, model, messages, temperature, timeoutMs = COACH_F
 
 exports.coach = onRequest({ region: REGION, timeoutSeconds: 300 }, async (req, res) => {
   if (preflight(req, res)) return;
+  if (rateLimited(req, res)) return;
   if (postOnly(req, res)) return;
   const body = bodyOf(req);
   if (body === null) return send(req, res, 400, { ok: false, error: 'body must be valid JSON' });
@@ -248,6 +304,7 @@ function normaliseFood(f) {
 
 exports.nutritionProxy = onRequest({ region: REGION, timeoutSeconds: 30 }, async (req, res) => {
   if (preflight(req, res)) return;
+  if (rateLimited(req, res)) return;
   if (postOnly(req, res)) return;
   const body = bodyOf(req);
   if (body === null) return send(req, res, 400, { ok: false, error: 'body must be valid JSON' });
