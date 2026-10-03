@@ -24,7 +24,7 @@ Inventory (consumers by grep of import sites):
 | `MuscleExplorer.jsx` | Muscle map + body-part/equipment/favourites filter + paginated catalogue; `onPick` makes it a picker | `views/Muscles.jsx` (full), `sheets.jsx` `ExercisePicker` (select mode) |
 | `SwipeToDelete.jsx` | Horizontal reveal-delete with axis lock; coexists with RoutineEdit's drag-reorder | `RoutineEdit.jsx` |
 | `QrCanvas.jsx`, `CameraScan.jsx` | Check-in QR render (lean-qr, pixelated CSS scale); live getUserMedia QR decode with in-place errors | `CheckIn.jsx` |
-| `NumField.jsx`, `Stepper.jsx` | 3-line shims re-exporting the `ui.jsx` implementations | legacy import sites (`sheets.jsx` imports `Stepper.jsx`) |
+| `Stepper.jsx` | 3-line shim re-exporting the `ui.jsx` implementation | legacy import site (`sheets.jsx` imports `Stepper.jsx`) |
 
 Tests sit beside their subject: `ui`, `Modals`, `LineChart`, `Heatmap`, `BodyMap`, `Media`.
 
