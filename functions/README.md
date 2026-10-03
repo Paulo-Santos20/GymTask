@@ -16,7 +16,7 @@ firebase login
 firebase deploy --only functions
 ```
 
-> Note: the repo has **no `firebase.json` yet** (creating it is a later todo), so the first deploy needs one pointing at this directory (`{"functions": {"source": "functions"}}` at the repo root) or running `firebase init functions` and keeping the existing `functions/` files. Also required once: `firebase use <your-project-id>`.
+> Note: the repo has a root `firebase.json` already pointing at this directory (`{"functions": {"source": "functions"}}` plus the Firestore rules mapping) — the first deploy just needs `firebase use <your-project-id>`.
 
 - Env vars are read from `functions/.env` (deployed) / `functions/.env.local` (emulator) — copy `functions/.env.example` and fill it in. They are **server-side only**, never in any client bundle.
 - Deploying **is** the opt-in for each function: whatever you deploy runs. `pushDailyReminder` fires daily at 09:00 `America/Sao_Paulo`; undeploy it with `firebase functions:delete pushDailyReminder` when you don't want it.

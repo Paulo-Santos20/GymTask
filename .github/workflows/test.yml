@@ -8,6 +8,7 @@ on:
       - 'frontend/**'
       - 'api/**'
       - 'mcp/**'
+      - 'functions/**'
       - 'scripts/build-coach-assets.mjs'
       - 'scripts/build-coach-library.mjs'
       - 'api/coach/prompts/**'
@@ -18,6 +19,7 @@ on:
       - 'frontend/**'
       - 'api/**'
       - 'mcp/**'
+      - 'functions/**'
       - 'scripts/build-coach-assets.mjs'
       - 'scripts/build-coach-library.mjs'
       - 'api/coach/prompts/**'
@@ -81,6 +83,20 @@ jobs:
       # module with 33 green tests standing over a server that died on startup.
       - run: npm run check:node-loadable
         working-directory: mcp
+
+  functions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - run: npm ci
+        working-directory: functions
+      - run: npm test
+        working-directory: functions
 
   api:
     runs-on: ubuntu-latest

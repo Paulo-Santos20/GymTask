@@ -1,14 +1,7 @@
-// Configuração de deploy do Firebase do GymTask (Cloud Functions + regras do Firestore).
-// Projeto: gymtask-ce4b6 (default no .firebaserc). Deploy alvo:
-// firebase deploy --only functions,firestore:rules (sem hosting: o frontend publica na Vercel).
 {
-  "functions": [
-    {
-      "source": "functions",
-      "codebase": "default",
-      "runtime": "nodejs22"
-    }
-  ],
+  "functions": {
+    "source": "functions"
+  },
   "firestore": {
     "rules": "firestore.rules"
   }
