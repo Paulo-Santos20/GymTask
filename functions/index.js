@@ -162,6 +162,47 @@ function rateLimited(req, res) {
   return true;
 }
 
+/* Per-route payload caps — same convention as api/server.js (MAX_BODY → 413): the DECLARED
+ * content-length is checked FIRST, before any body handling, so an oversized upload is
+ * refused on the header alone; only then is the already-parsed body measured, for chunked
+ * requests that arrive with no header (this code buffers nothing itself). Defaults: coach
+ * 1 MiB (prompt/payload traffic is KB-scale), nutritionProxy 16 KiB ({ query } only).
+ * Env: COACH_MAX_BODY / NUTRITION_MAX_BODY, read per request so tests/.env can tune them. */
+const COACH_MAX_BODY = 1024 * 1024;
+const NUTRITION_MAX_BODY = 16 * 1024;
+
+function maxBodyFor(route) {
+  const v = parseInt(process.env[route === 'coach' ? 'COACH_MAX_BODY' : 'NUTRITION_MAX_BODY'], 10);
+  const fallback = route === 'coach' ? COACH_MAX_BODY : NUTRITION_MAX_BODY;
+  return Number.isFinite(v) && v > 0 ? v : fallback;
+}
+
+function bodyTooLarge(req, cap) {
+  const headers = req && req.headers;
+  const declared = headers ? headers['content-length'] : undefined;
+  if (declared !== undefined && declared !== '') {
+    const n = Number(declared);
+    if (Number.isFinite(n) && n > cap) return true;
+  }
+  const b = req ? req.body : undefined;
+  if (b == null || b === '') return false;
+  let bytes;
+  if (typeof b === 'string') bytes = Buffer.byteLength(b, 'utf8');
+  else if (Buffer.isBuffer(b)) bytes = b.length;
+  else {
+    try { bytes = Buffer.byteLength(JSON.stringify(b), 'utf8'); } catch { return true; }
+  }
+  return bytes > cap;
+}
+
+/** 413 when the request exceeds this route's cap; false = keep going. */
+function payloadTooLarge(req, res, route) {
+  const cap = maxBodyFor(route);
+  if (!bodyTooLarge(req, cap)) return false;
+  send(req, res, 413, { ok: false, error: 'request body too large (max ' + cap + ' bytes)' });
+  return true;
+}
+
 function extractJson(text) {
   if (typeof text !== 'string') return null;
   try { return JSON.parse(text); } catch { /* fall through */ }
@@ -239,6 +280,7 @@ async function callGrok({ key, model, messages, temperature, timeoutMs = COACH_F
 exports.coach = onRequest({ region: REGION, timeoutSeconds: 300 }, async (req, res) => {
   if (preflight(req, res)) return;
   if (rateLimited(req, res)) return;
+  if (payloadTooLarge(req, res, 'coach')) return;
   if (postOnly(req, res)) return;
   const body = bodyOf(req);
   if (body === null) return send(req, res, 400, { ok: false, error: 'body must be valid JSON' });
@@ -305,6 +347,7 @@ function normaliseFood(f) {
 exports.nutritionProxy = onRequest({ region: REGION, timeoutSeconds: 30 }, async (req, res) => {
   if (preflight(req, res)) return;
   if (rateLimited(req, res)) return;
+  if (payloadTooLarge(req, res, 'nutrition')) return;
   if (postOnly(req, res)) return;
   const body = bodyOf(req);
   if (body === null) return send(req, res, 400, { ok: false, error: 'body must be valid JSON' });
