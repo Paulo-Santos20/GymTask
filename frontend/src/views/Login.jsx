@@ -139,14 +139,14 @@ export default function Login() {
       <div className="muted" style={{ marginBottom: 34 }}>{t('Your workouts. Your weights. Your profile.')}</div>
       <input
         className="input" type="email" inputMode="email" autoComplete="email" autoFocus
-        placeholder={t('E-mail')} maxLength={120} value={email}
+        placeholder={t('E-mail')} aria-label={t('E-mail')} maxLength={120} value={email}
         onChange={e => setEmail(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') submit() }}
       />
       <div style={{ height: 10 }} />
       <input
         className="input" type="password" autoComplete={signing ? 'current-password' : 'new-password'}
-        placeholder={t('Password')} maxLength={128} value={pass}
+        placeholder={t('Password')} aria-label={t('Password')} maxLength={128} value={pass}
         onChange={e => setPass(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') submit() }}
       />

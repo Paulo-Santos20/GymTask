@@ -87,11 +87,15 @@ export const SearchField = forwardRef(function SearchField({ value, onChange, on
 
 /* ============================ switch ============================ */
 
-export function Switch({ checked, onChange, disabled }) {
+// `label` is the switch's accessible name — callers pass it already translated
+// (label={t('…')}) so a screen reader announces what the toggle controls, not
+// just "switch". Without it the button has no name at all (a11y audit).
+export function Switch({ checked, onChange, disabled, label }) {
   return (
     <button
       role="switch"
       aria-checked={!!checked}
+      aria-label={label}
       disabled={disabled}
       className={'sw' + (checked ? ' on' : '')}
       onClick={() => onChange(!checked)}
