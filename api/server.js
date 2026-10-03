@@ -48,7 +48,28 @@ const SECRET = fs.readFileSync(secretFile, 'utf8').trim();
 
 const dbFile = path.join(DATA, 'db.json');
 let db = { users: [], creds: [], subs: [] };
-try { db = JSON.parse(fs.readFileSync(dbFile, 'utf8')); } catch {}
+/* A corrupt db.json is evidence, not empty state. A parse failure (torn write, half-synced
+ * mount) or a file that parses to anything but an object (`null`, `[]`) means the bytes on disk
+ * may still hold recoverable accounts, so they are copied aside as db.json.corrupt-<ts> BEFORE
+ * anything can rewrite the file: every later saveDb() is a whole-file atomic replace with these
+ * empty defaults, and without a copy the recoverable records would be gone for good. Booting on
+ * the defaults instead of crashing on `db.subs = ...` for a non-object keeps the instance
+ * serving, so the operator finds a running server and a backup rather than a restart loop. */
+if (fs.existsSync(dbFile)) {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(dbFile, 'utf8'));
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not a JSON object');
+    db = parsed;
+  } catch (e) {
+    try {
+      const backup = `${dbFile}.corrupt-${Date.now()}`;
+      fs.copyFileSync(dbFile, backup);
+      console.error(`db.json is unreadable (${e.message}) — original preserved at ${path.basename(backup)}; continuing with an empty database`);
+    } catch (copyErr) {
+      console.error('db.json is unreadable and the backup copy failed:', copyErr.message);
+    }
+  }
+}
 db.subs = db.subs || [];
 delete db.invites;   // invite codes are gone; strip them from an upgraded db.json on load
 // 0600: db.json holds account, credential and subscription records. It used to be covered by a
