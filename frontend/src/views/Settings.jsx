@@ -157,7 +157,7 @@ export default function Settings() {
       {/* Membership QR codes on Home (views/CheckIn.jsx); off = no Home card, no route. */}
       <Row icon="qr" iconTint="var(--blue)" title={t('Gym check-in')}
         subtitle={t('Show a card on Home with your membership QR codes.')}>
-        <Switch checked={S.checkIn !== false} onChange={v => update(s => { s.checkIn = v })} />
+        <Switch checked={S.checkIn !== false} label={t('Gym check-in')} onChange={v => update(s => { s.checkIn = v })} />
       </Row>
     </Section>
 
@@ -167,7 +167,7 @@ export default function Settings() {
           to the session. Home and Stats still log weight by hand. */}
       <Row icon="scale" iconTint="var(--green)" title={t('Weigh in before workouts')}
         subtitle={t('Asks for your body weight when a workout starts. Off starts the session straight away.')}>
-        <Switch checked={S.weighIn !== false} onChange={v => update(s => { s.weighIn = v })} />
+        <Switch checked={S.weighIn !== false} label={t('Weigh in before workouts')} onChange={v => update(s => { s.weighIn = v })} />
       </Row>
       {/* One exercise at a time (cards with Prev/Next), the whole session stacked as a
           scrollable list, or that list stripped to just names and set rows (compact).
@@ -205,7 +205,7 @@ export default function Settings() {
         options={[10, 15, 20, 30].map(v => ({ value: v, label: v + 's' }))} />
       <Row icon="sun" iconTint="var(--yellow)" title={t('Keep screen awake')}
         subtitle={wakeOK ? null : t('Not supported in this browser.')}>
-        <Switch checked={wakeOK && S.keepAwake !== false} disabled={!wakeOK}
+        <Switch checked={wakeOK && S.keepAwake !== false} disabled={!wakeOK} label={t('Keep screen awake')}
           onChange={v => update(s => { s.keepAwake = v })} />
       </Row>
       {/* 'full'/'mini' is also what the tap-toggle on the workout animation writes; 'off' hides
@@ -220,7 +220,7 @@ export default function Settings() {
       <Row icon="bell" iconTint="var(--pink)" title={t('Sounds')}>
         {/* Turning Sounds on is a tap: unlock the audio context now so a timer that ends before
             the next set check can already sound (iOS, #152). */}
-        <Switch checked={!!S.sound} onChange={v => { if (v) unlock(true); update(s => { s.sound = v }) }} />
+        <Switch checked={!!S.sound} label={t('Sounds')} onChange={v => { if (v) unlock(true); update(s => { s.sound = v }) }} />
       </Row>
       {/* iOS only (WebKit's audio-session API, iOS 17+): with it off the ring/silent switch mutes
           the timer. On, the phone treats the timer like a music player — exclusive, and the
@@ -228,11 +228,11 @@ export default function Settings() {
       {S.sound && playOnSilentSupported() && (
         <Row icon="bell" iconTint="var(--orange)" title={t('Play sounds when the phone is on silent')}
           subtitle={t('Music playing on this phone stops during a workout and does not resume by itself.')}>
-          <Switch checked={!!S.soundOnSilent} onChange={v => update(s => { s.soundOnSilent = v })} />
+          <Switch checked={!!S.soundOnSilent} label={t('Play sounds when the phone is on silent')} onChange={v => update(s => { s.soundOnSilent = v })} />
         </Row>
       )}
       <Row icon="sun" iconTint="var(--yellow)" title={t('Flash screen when timer ends')}>
-        <Switch checked={!!S.timerFlash} onChange={v => update(s => { s.timerFlash = v })} />
+        <Switch checked={!!S.timerFlash} label={t('Flash screen when timer ends')} onChange={v => update(s => { s.timerFlash = v })} />
       </Row>
       {/* Two names for the same judgement, so the column asks in the scale you already think in.
           The (i) sits before the control — you read it on the way to the choice, not after it. */}
@@ -296,9 +296,10 @@ export default function Settings() {
       <Row icon="download" iconTint="var(--blue)" title={t('Export backup (JSON)')} accessory="chevron" onClick={doExport} />
       <Row icon="trash" iconTint="var(--red)" title={t('Reset everything')} danger onClick={resetEverything} />
     </Section>
-    <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={doImport} />
+    <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: 'none' }} aria-label={t('Import backup')} onChange={doImport} />
     {/* Reset after reading so picking the same file twice still fires onChange. */}
     <input ref={importRef} type="file" accept=".csv,.xml,text/csv,text/xml" style={{ display: 'none' }}
+      aria-label={t('Import from another app')}
       onChange={ev => { const f = ev.target.files[0]; if (f) importFromApp(f); ev.target.value = '' }} />
 
     <Section title={t('Tip')}>
@@ -343,16 +344,16 @@ function WorkoutControlsSheet() {
     <div className="muted small" style={{ marginBottom: 12 }}>{t('Everything hidden here stays one tap away: the ⋯ button of an exercise and the number of a set.')}</div>
     <Section>
       <Row icon="plus" iconTint="var(--acc)" title={t('Weight and reps buttons')} subtitle={t('Off: tap the number and type it')}>
-        <Switch checked={wc.steppers} onChange={v => set('steppers', v)} />
+        <Switch checked={wc.steppers} label={t('Weight and reps buttons')} onChange={v => set('steppers', v)} />
       </Row>
       <Row icon="bolt" iconTint="var(--orange)" title={t('Drop and burst shortcuts on every set')}>
-        <Switch checked={wc.setShortcuts} onChange={v => set('setShortcuts', v)} />
+        <Switch checked={wc.setShortcuts} label={t('Drop and burst shortcuts on every set')} onChange={v => set('setShortcuts', v)} />
       </Row>
       <Row icon="link" iconTint="var(--blue)" title={t('Superset buttons in the exercise header')}>
-        <Switch checked={wc.pairButtons} onChange={v => set('pairButtons', v)} />
+        <Switch checked={wc.pairButtons} label={t('Superset buttons in the exercise header')} onChange={v => set('pairButtons', v)} />
       </Row>
       <Row icon="shuffle" iconTint="var(--teal)" title={t('Move, swap and remove buttons below the exercise')}>
-        <Switch checked={wc.exerciseButtons} onChange={v => set('exerciseButtons', v)} />
+        <Switch checked={wc.exerciseButtons} label={t('Move, swap and remove buttons below the exercise')} onChange={v => set('exerciseButtons', v)} />
       </Row>
     </Section>
   </>
@@ -429,16 +430,16 @@ function PushCard({ S, update, toast }) {
         : null}
     >
       <Row icon="bell" iconTint="var(--red)" title={t('Push notifications')} subtitle={t('Rest-timer alerts, even if GymTask is closed.')}>
-        <Switch checked={on} disabled={busy} onChange={toggle} />
+        <Switch checked={on} disabled={busy} label={t('Push notifications')} onChange={toggle} />
       </Row>
       {on && (
         <Row icon="calendar" iconTint="var(--orange)" title={t('Workout day reminder')}>
-          <Switch checked={!!S.reminder?.on} onChange={() => update(s => { s.reminder = { ...(s.reminder || DEF.reminder), on: !s.reminder?.on, tz: localTZ() } })} />
+          <Switch checked={!!S.reminder?.on} label={t('Workout day reminder')} onChange={() => update(s => { s.reminder = { ...(s.reminder || DEF.reminder), on: !s.reminder?.on, tz: localTZ() } })} />
         </Row>
       )}
       {on && S.reminder?.on && (
         <Row icon="clock" iconTint="var(--purple)" title={t('Reminder time')}>
-          <input type="time" className="timef" value={S.reminder?.time || DEF.reminder.time}
+          <input type="time" className="timef" aria-label={t('Reminder time')} value={S.reminder?.time || DEF.reminder.time}
             onChange={e => update(s => { s.reminder = { ...(s.reminder || DEF.reminder), time: e.target.value, tz: localTZ() } })} />
         </Row>
       )}
@@ -462,7 +463,7 @@ function EquipmentCard({ S, update }) {
   })
   return <Section title={t('Equipment')} footer={t('Filters the exercise library and picker, and flags routine exercises that need something you don’t have in the active profile.')}>
     {profiles.length > 0 && <Row icon="dumbbell" iconTint="var(--acc)" title={t('Filter by equipment')}>
-      <Switch checked={!!S.equipFilterOn} onChange={v => update(s => { s.equipFilterOn = v })} />
+      <Switch checked={!!S.equipFilterOn} label={t('Filter by equipment')} onChange={v => update(s => { s.equipFilterOn = v })} />
     </Row>}
     {profiles.length > 0 && <SelectRow icon="list" iconTint="var(--blue)" title={t('Active profile')}
       value={S.activeEquipId || ''} onChange={v => update(s => { s.activeEquipId = v })}
