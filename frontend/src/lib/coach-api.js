@@ -42,18 +42,38 @@ const local = async () => {
   return localMod
 }
 
-export const coachStatus = async () => DEMO ? (await demo()).demoStatus() : LOCAL() ? (await local()).localStatus() : api('/api/coach/status')
-export const requestReview = async note => DEMO ? (await demo()).demoReview(S()) : LOCAL() ? (await local()).localReview(S(), note) : api('/api/coach/review', { method: 'POST', body: JSON.stringify({ note: note || '' }) })
-export const requestPlan = async intake => DEMO ? (await demo()).demoPlan(S(), intake) : LOCAL() ? (await local()).localPlan(S(), intake) : api('/api/coach/plan', { method: 'POST', body: JSON.stringify({ intake }) })
-export const refinePlan = async text => DEMO ? (await demo()).demoRefine(S()) : LOCAL() ? (await local()).localRefine(S(), text) : api('/api/coach/plan', { method: 'POST', body: JSON.stringify({ refine: text }) })
-export const requestDebrief = async workoutId => DEMO ? (await demo()).demoDebrief(S(), workoutId) : LOCAL() ? (await local()).localDebrief(S(), workoutId) : api('/api/coach/debrief', { method: 'POST', body: JSON.stringify({ workoutId: workoutId || null }) })
+/* The server branch's own call. Unset (the default) → api(), byte-identical to before this
+   dispatch existed. Set → the deployed Cloud Function's URL (VITE_COACH_FUNCTION_URL), an
+   origin of its own: appBase() must NOT be prepended to it — a subpath deployment would
+   corrupt the absolute URL (issue #238) — so this branch repeats api()'s request/response
+   handling instead of passing an absolute URL through a helper that resolves against the
+   page: same JSON headers, same throw of {message, status, data}. Demo and BYOK-local
+   answer before this is ever reached. */
+const FN = () => {
+  try { return (import.meta.env?.VITE_COACH_FUNCTION_URL || '').replace(/\/+$/, '') } catch { return '' }
+}
+const server = async (path, opts) => {
+  const base = FN()
+  if (!base) return api(path, opts)
+  const headers = Object.assign({ 'Content-Type': 'application/json' }, opts && opts.headers)
+  const r = await fetch(base + path, Object.assign({}, opts, { headers }))
+  const data = await r.json().catch(() => ({}))
+  if (!r.ok) { const e = new Error(data.error || ('HTTP ' + r.status)); e.status = r.status; e.data = data; throw e }
+  return data
+}
+
+export const coachStatus = async () => DEMO ? (await demo()).demoStatus() : LOCAL() ? (await local()).localStatus() : server('/api/coach/status')
+export const requestReview = async note => DEMO ? (await demo()).demoReview(S()) : LOCAL() ? (await local()).localReview(S(), note) : server('/api/coach/review', { method: 'POST', body: JSON.stringify({ note: note || '' }) })
+export const requestPlan = async intake => DEMO ? (await demo()).demoPlan(S(), intake) : LOCAL() ? (await local()).localPlan(S(), intake) : server('/api/coach/plan', { method: 'POST', body: JSON.stringify({ intake }) })
+export const refinePlan = async text => DEMO ? (await demo()).demoRefine(S()) : LOCAL() ? (await local()).localRefine(S(), text) : server('/api/coach/plan', { method: 'POST', body: JSON.stringify({ refine: text }) })
+export const requestDebrief = async workoutId => DEMO ? (await demo()).demoDebrief(S(), workoutId) : LOCAL() ? (await local()).localDebrief(S(), workoutId) : server('/api/coach/debrief', { method: 'POST', body: JSON.stringify({ workoutId: workoutId || null }) })
 // The room: anonymous medians across the profiles on this instance that opted in. Only a
 // server has a room; a phone with its own key and the demo both answer locally.
-export const cohortStats = async () => DEMO ? (await demo()).demoCohort(S()) : LOCAL() ? { ok: false, enabled: false } : api('/api/coach/cohort')
-export const setCohortShare = async share => (DEMO || LOCAL()) ? { ok: true, sharing: !!share } : api('/api/coach/cohort/share', { method: 'POST', body: JSON.stringify({ share: !!share }) })
-export const resolvePending = async body => DEMO ? (await demo()).demoResolve() : LOCAL() ? (await local()).localResolve(body) : api('/api/coach/pending/resolve', { method: 'POST', body: JSON.stringify(body) })
-export const forgetCoach = async () => DEMO ? (await demo()).demoResolve() : LOCAL() ? (await local()).localForget() : api('/api/coach/forget', { method: 'POST', body: '{}' })
-export const disclosure = async () => DEMO ? (await demo()).demoDisclosure() : LOCAL() ? (await local()).localDisclosure() : api('/api/coach/disclosure')
+export const cohortStats = async () => DEMO ? (await demo()).demoCohort(S()) : LOCAL() ? { ok: false, enabled: false } : server('/api/coach/cohort')
+export const setCohortShare = async share => (DEMO || LOCAL()) ? { ok: true, sharing: !!share } : server('/api/coach/cohort/share', { method: 'POST', body: JSON.stringify({ share: !!share }) })
+export const resolvePending = async body => DEMO ? (await demo()).demoResolve() : LOCAL() ? (await local()).localResolve(body) : server('/api/coach/pending/resolve', { method: 'POST', body: JSON.stringify(body) })
+export const forgetCoach = async () => DEMO ? (await demo()).demoResolve() : LOCAL() ? (await local()).localForget() : server('/api/coach/forget', { method: 'POST', body: '{}' })
+export const disclosure = async () => DEMO ? (await demo()).demoDisclosure() : LOCAL() ? (await local()).localDisclosure() : server('/api/coach/disclosure')
 
 /* Whose provider account this profile is about to spend. Its own call because the constraint is
    that the Coach screen states it too, not just the admin card — and because in instance mode a
