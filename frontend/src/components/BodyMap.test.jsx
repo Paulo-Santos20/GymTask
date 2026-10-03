@@ -33,7 +33,7 @@ async function renderMap(props = {}) {
     root.render(<BodyMap load={{ chest: 2 }} {...props} />)
   })
   await vi.waitFor(() => expect(container.querySelectorAll('.bm-v')).toHaveLength(2))
-  return container.querySelector('.bm-m[aria-label="Chest"]')
+  return container.querySelector(".bm-m[aria-label='Chest']")
 }
 
 describe('BodyMap interaction semantics', () => {

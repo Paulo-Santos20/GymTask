@@ -56,7 +56,7 @@ function itemFor(name) {
 }
 
 function moveButton(name, direction) {
-  return itemFor(name).querySelector(`button[aria-label="${direction}"]`)
+  return itemFor(name).querySelector(`button[aria-label='${direction}']`)
 }
 
 function pointerActivateArea(button) {

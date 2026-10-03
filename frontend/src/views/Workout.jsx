@@ -195,10 +195,10 @@ function ExerciseBlock({ entryIdx, compact, dense, onToggle, onToggleSide, onFie
   const wc = workoutControls(S)
   const cell = (s, i, col, cls) => (
     <div className={'stp ' + cls + (wc.steppers ? '' : ' plain')}>
-      {wc.steppers && <button aria-label="Decrease" onClick={() => bump(s, i, col, -1)}><Icon name="minus" /></button>}
+      {wc.steppers && <button aria-label={t('Decrease')} onClick={() => bump(s, i, col, -1)}><Icon name="minus" /></button>}
       <span className="val"><NumberField decimal={col.dec} nullable={col.opt} value={s[col.f] ?? ''}
         onChange={v => onField(i, col.f, v)} /></span>
-      {wc.steppers && <button aria-label="Increase" onClick={() => bump(s, i, col, 1)}><Icon name="plus" /></button>}
+      {wc.steppers && <button aria-label={t('Increase')} onClick={() => bump(s, i, col, 1)}><Icon name="plus" /></button>}
     </div>
   )
   // Everything about this exercise that is not a set you are logging right now lives behind one
@@ -275,9 +275,9 @@ function ExerciseBlock({ entryIdx, compact, dense, onToggle, onToggleSide, onFie
     return (
       <div className={'stp effcell-stp' + (wc.steppers ? '' : ' plain')}
         style={color ? { color, borderColor: color, background: `color-mix(in srgb, ${color} 20%, var(--surface-2))` } : undefined}>
-        {wc.steppers && <button aria-label="Decrease" data-aria="decrease" onClick={() => step(-1)}><Icon name="minus" /></button>}
+        {wc.steppers && <button aria-label={t('Decrease')} data-aria="decrease" onClick={() => step(-1)}><Icon name="minus" /></button>}
         <button className="val" aria-label={col.hd} onClick={open}>{fmtNum(v)}</button>
-        {wc.steppers && <button aria-label="Increase" data-aria="increase" onClick={() => step(1)}><Icon name="plus" /></button>}
+        {wc.steppers && <button aria-label={t('Increase')} data-aria="increase" onClick={() => step(1)}><Icon name="plus" /></button>}
       </div>
     )
   }
@@ -296,10 +296,10 @@ function ExerciseBlock({ entryIdx, compact, dense, onToggle, onToggleSide, onFie
   }
   const sideCell = (sd, i, side, col, cls) => (
     <div className={'stp ' + cls + (wc.steppers ? '' : ' plain')}>
-      {wc.steppers && <button aria-label="Decrease" onClick={() => sideBump(i, side, col, -1)}><Icon name="minus" /></button>}
+      {wc.steppers && <button aria-label={t('Decrease')} onClick={() => sideBump(i, side, col, -1)}><Icon name="minus" /></button>}
       <span className="val"><NumberField decimal={col.dec} value={sd[col.f] ?? ''}
         onChange={v => setSide(i, side, col.f, v)} /></span>
-      {wc.steppers && <button aria-label="Increase" onClick={() => sideBump(i, side, col, 1)}><Icon name="plus" /></button>}
+      {wc.steppers && <button aria-label={t('Increase')} onClick={() => sideBump(i, side, col, 1)}><Icon name="plus" /></button>}
     </div>
   )
   const sideEffortCell = (sd, i, side, col) => {
@@ -316,9 +316,9 @@ function ExerciseBlock({ entryIdx, compact, dense, onToggle, onToggleSide, onFie
     return (
       <div className={'stp effcell-stp' + (wc.steppers ? '' : ' plain')}
         style={color ? { color, borderColor: color, background: `color-mix(in srgb, ${color} 20%, var(--surface-2))` } : undefined}>
-        {wc.steppers && <button aria-label="Decrease" data-aria="decrease" onClick={() => step(-1)}><Icon name="minus" /></button>}
+        {wc.steppers && <button aria-label={t('Decrease')} data-aria="decrease" onClick={() => step(-1)}><Icon name="minus" /></button>}
         <button className="val" aria-label={col.hd} onClick={open}>{fmtNum(v)}</button>
-        {wc.steppers && <button aria-label="Increase" data-aria="increase" onClick={() => step(1)}><Icon name="plus" /></button>}
+        {wc.steppers && <button aria-label={t('Increase')} data-aria="increase" onClick={() => step(1)}><Icon name="plus" /></button>}
       </div>
     )
   }
@@ -362,9 +362,9 @@ function ExerciseBlock({ entryIdx, compact, dense, onToggle, onToggleSide, onFie
   // live "+ Drop"/"+ Burst" tap) already put on the row, not typing into a fresh field.
   const miniStepper = (value, step, dec, onChange, snapWeightStep = false) => (
     <div className="stp mini">
-      <button aria-label="Decrease" onClick={() => onChange(snapWeightStep ? stepWeight(value, step, -1) : Math.max(0, Math.round(((value || 0) - step) * 100) / 100))}><Icon name="minus" /></button>
+      <button aria-label={t('Decrease')} onClick={() => onChange(snapWeightStep ? stepWeight(value, step, -1) : Math.max(0, Math.round(((value || 0) - step) * 100) / 100))}><Icon name="minus" /></button>
       <span className="val"><NumberField decimal={dec} value={value ?? ''} onChange={onChange} /></span>
-      <button aria-label="Increase" onClick={() => onChange(snapWeightStep ? stepWeight(value, step, 1) : Math.max(0, Math.round(((value || 0) + step) * 100) / 100))}><Icon name="plus" /></button>
+      <button aria-label={t('Increase')} onClick={() => onChange(snapWeightStep ? stepWeight(value, step, 1) : Math.max(0, Math.round(((value || 0) + step) * 100) / 100))}><Icon name="plus" /></button>
     </div>
   )
   return <>

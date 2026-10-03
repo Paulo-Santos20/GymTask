@@ -66,7 +66,7 @@ describe('Stepper', () => {
   }
   const mountStepper = (value, onChange, step = 1) => {
     act(() => root.render(<Host initial={value} step={step} onChange={onChange} />))
-    return host.querySelector('button[aria-label="Increase"]')
+    return host.querySelector("button[aria-label='Increase']")
   }
 
   it('steps once for a short tap (pointerdown, pointerup, click)', () => {

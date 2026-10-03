@@ -1331,4 +1331,16 @@ export default {
   'this isn’t a GymTask plan file': 'isto não é um ficheiro de plano do GymTask',
   '…': '…',
 
+  'Clear': 'Limpar',
+  'Decrease': 'Diminuir',
+  'Increase': 'Aumentar',
+  'QR code': 'Código QR',
+  'minus 0.1': 'menos 0,1',
+  'plus 0.1': 'mais 0,1',
+  'delete': 'Eliminar',
+  'Previous month': 'Mês anterior',
+  'Next month': 'Próximo mês',
+  'Previous week': 'Semana anterior',
+  'Next week': 'Próxima semana',
+
 }

@@ -173,7 +173,7 @@ async function pressProgression(index = 0) {
 }
 
 async function requestDiscard() {
-  const button = container.querySelector('button[aria-label="Discard"]')
+  const button = container.querySelector("button[aria-label='Discard']")
   expect(button).toBeTruthy()
   await act(async () => { button.dispatchEvent(new dom.Event('click', { bubbles: true })) })
 }
@@ -504,7 +504,7 @@ describe('Workout add exercise flow', () => {
 describe('active workout weight controls', () => {
   const press = async (label, selector) => {
     const control = container.querySelector(selector)
-    const button = control?.querySelector(`button[aria-label="${label}"]`)
+    const button = control?.querySelector(`button[aria-label='${label}']`)
     expect(button).toBeTruthy()
     await act(async () => { button.dispatchEvent(new dom.Event('click', { bubbles: true })) })
     await rerender()
@@ -835,14 +835,14 @@ describe('effort cell (colour-coded RIR/RPE quick picker)', () => {
   // does not re-render on its own; each step is checked from its own mount rather than chained.
   const clickStep = async label => {
     await act(async () => {
-      effCellList()[0].querySelector(`button[aria-label="${label}"]`)
+      effCellList()[0].querySelector(`button[aria-label='${label}']`)
         .dispatchEvent(new dom.Event('click', { bubbles: true }))
     })
   }
 
   it('steps a logged rating up 0.5 on the scale with the + button, not through the picker', async () => {
     await mountEffort([2])
-    expect(effCellList()[0].querySelectorAll('button[aria-label="Increase"],button[aria-label="Decrease"]')).toHaveLength(2)
+    expect(effCellList()[0].querySelectorAll("button[aria-label='Increase'],button[aria-label='Decrease']")).toHaveLength(2)
     await clickStep('Increase')
     expect(mocks.S.active.entries[0].sets[0].rir).toBe(2.5)
     expect(mocks.effortPickerSheet).not.toHaveBeenCalled()
@@ -958,7 +958,7 @@ describe('superset actionable-set centring', () => {
 describe('active workout whole-unit move controls', () => {
   // These exercise-level buttons are opt-in now (Settings → Workout controls); the menu path is covered below.
   const mountLegacy = (entries, cur) => mount(entries, cur, { wc: { exerciseButtons: true } })
-  const action = label => container.querySelector(`button[aria-label="${label}"]`)
+  const action = label => container.querySelector(`button[aria-label='${label}']`)
 
   it('shows labelled controls and moves the selected standalone exercise one unit', async () => {
     const selected = exercise('duplicate', [false], {
@@ -1020,7 +1020,7 @@ describe('active exercise swap control', () => {
   it('opens the swap flow for the selected duplicate occurrence', async () => {
     await mountLegacy([exercise('bench', [false]), exercise('bench', [false]), exercise('row', [false])], 1)
 
-    const swap = container.querySelector('button[aria-label="Swap exercise"]')
+    const swap = container.querySelector("button[aria-label='Swap exercise']")
     expect(swap).toBeTruthy()
     await act(async () => { swap.dispatchEvent(new dom.Event('click', { bubbles: true })) })
 
@@ -1195,7 +1195,7 @@ describe('workout compact view', () => {
     expect(container.textContent).not.toContain('Last time')
     // The sets card and the ⋯ menu button survive — nothing is truly unreachable.
     expect(container.querySelector('.setrow')).toBeTruthy()
-    expect(container.querySelector('button[aria-label="More"]')).toBeTruthy()
+    expect(container.querySelector("button[aria-label='More']")).toBeTruthy()
   })
 
   it('keeps those same elements in list mode (the strip is compact-only)', async () => {
@@ -1226,7 +1226,7 @@ describe('workout compact view', () => {
 
 describe('workout view header menu', () => {
   const openMenu = async () => {
-    const btn = container.querySelector('button[aria-label="Workout view"]')
+    const btn = container.querySelector("button[aria-label='Workout view']")
     expect(btn).toBeTruthy()
     await act(async () => { btn.dispatchEvent(new dom.Event('click', { bubbles: true })) })
     return mocks.menuSheet.mock.calls.at(-1)[0]
@@ -1272,8 +1272,8 @@ describe('workout controls: the more menu and the set menu', () => {
 
   it('shows one More button per exercise and no legacy button rows by default', async () => {
     await mount([exercise('plain-bench', [false]), exercise('plain-row', [false])])
-    expect(container.querySelector('button[aria-label="More"]')).toBeTruthy()
-    for (const label of ['Move up', 'Swap exercise']) expect(container.querySelector(`button[aria-label="${label}"]`)).toBeNull()
+    expect(container.querySelector("button[aria-label='More']")).toBeTruthy()
+    for (const label of ['Move up', 'Swap exercise']) expect(container.querySelector(`button[aria-label='${label}']`)).toBeNull()
     expect([...container.querySelectorAll('button')].some(b => b.textContent.trim() === 'Remove exercise')).toBe(false)
     expect([...container.querySelectorAll('button')].some(b => b.textContent.trim() === '+ Drop')).toBe(false)
     expect([...container.querySelectorAll('button')].some(b => b.textContent.trim() === 'Add set')).toBe(true)
@@ -1281,7 +1281,7 @@ describe('workout controls: the more menu and the set menu', () => {
 
   it('routes swap, move, remove, warm-up and details through the More menu of that exercise', async () => {
     await mount([exercise('plain-bench', [false]), exercise('plain-row', [false])], 0)
-    await act(async () => { container.querySelector('button[aria-label="More"]').dispatchEvent(new dom.Event('click', { bubbles: true })) })
+    await act(async () => { container.querySelector("button[aria-label='More']").dispatchEvent(new dom.Event('click', { bubbles: true })) })
     expect(mocks.menuSheet).toHaveBeenCalledOnce()
     expect(lastMenu().items.filter(Boolean).map(it => it.label)).toEqual(expect.arrayContaining([
       'Add note', 'Details', 'Add warm-up set', 'Make superset with next', 'Swap exercise', 'Move up', 'Move down', 'Remove exercise',
@@ -1303,7 +1303,7 @@ describe('workout controls: the more menu and the set menu', () => {
   it('opens the exercise history sheet from the More menu, for the tapped exercise', async () => {
     // the screen shows one exercise at a time, so "the tapped exercise" is the current one
     await mount([exercise('plain-bench', [false]), exercise('plain-row', [false])], 1)
-    await act(async () => { container.querySelector('button[aria-label="More"]').dispatchEvent(new dom.Event('click', { bubbles: true })) })
+    await act(async () => { container.querySelector("button[aria-label='More']").dispatchEvent(new dom.Event('click', { bubbles: true })) })
     const history = item('History')
     expect(history.icon).toBe('history')
     history.onClick()
@@ -1312,13 +1312,13 @@ describe('workout controls: the more menu and the set menu', () => {
 
   it('opens a per-set menu from the set number with drop, burst and remove', async () => {
     await mount([exercise('plain-bench', [false, false])])
-    await act(async () => { container.querySelector('button[aria-label="Set 2"]').dispatchEvent(new dom.Event('click', { bubbles: true })) })
+    await act(async () => { container.querySelector("button[aria-label='Set 2']").dispatchEvent(new dom.Event('click', { bubbles: true })) })
     expect(lastMenu().items.filter(Boolean).map(it => it.label)).toEqual(['Drop set', 'Rest-pause burst', 'Remove this set'])
 
     await act(async () => { item('Drop set').onClick() })
     expect(mocks.S.active.entries[0].sets[1].drops?.length).toBe(1)
 
-    await act(async () => { container.querySelector('button[aria-label="Set 2"]').dispatchEvent(new dom.Event('click', { bubbles: true })) })
+    await act(async () => { container.querySelector("button[aria-label='Set 2']").dispatchEvent(new dom.Event('click', { bubbles: true })) })
     await act(async () => { item('Remove this set').onClick() })
     expect(mocks.S.active.entries[0].sets.length).toBe(1)
   })
@@ -1333,7 +1333,7 @@ describe('workout controls: the more menu and the set menu', () => {
 
   it('drops the +/- buttons when steppers are off and keeps the number field', async () => {
     await mount([exercise('plain-bench', [false])], 0, { wc: { steppers: false } })
-    expect(container.querySelector('.setrow .stp button[aria-label="Increase"]')).toBeNull()
+    expect(container.querySelector(".setrow .stp button[aria-label='Increase']")).toBeNull()
     expect(container.querySelector('.setrow .stp.plain .num')).toBeTruthy()
   })
 })
