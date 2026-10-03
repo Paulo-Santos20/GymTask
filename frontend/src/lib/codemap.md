@@ -29,8 +29,7 @@ training logic, nutrition, exercise catalogue, coach state, persistence, import/
 - **Session lifecycle:** `session-start.buildSessionEntries`, `session-merge`, `backfill`,
   `finish-workout.buildCompletedWorkout`, `workout-date` (move a logged session to another
   date/time: re-files history in date order, keeps session length, re-derives PR badges),
-  `session-routines` (copy a saved workout's flat exercise setup into a routine — explicit
-  action only, never on finish), plus `active-workout-order`, `active-exercise-swap`,
+  plus `active-workout-order`, `active-exercise-swap`,
   `workout-controls`, `rep-range`, `effort` (RIR summary/histogram), `bar` (`plateSplit`),
   `plates` (plate/stack weights loaded from `S.plates`), `starter`, `plan-share`
   (`buildPlanBundle`/`parsePlan`) → mostly `sheets.jsx`.
