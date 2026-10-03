@@ -406,8 +406,8 @@ exports.nutritionProxy = onRequest({ region: REGION, timeoutSeconds: 30 }, async
  * functions/README.md), so this function stores NO device tokens and reads NO
  * Firestore — one topic, one message, done.
  *
- * firebase-admin is initialized the Cloud-Functions-safe way: admin.initializeApp()
- * with no arguments picks up the runtime's default credentials — no service-account
+ * firebase-admin is initialized the Cloud-Functions-safe way: initializeApp() with
+ * no arguments picks up the runtime's default credentials — no service-account
  * file to manage on GCF. Init is lazy (first run builds it once per instance) and
  * every failure path is caught + console.error'd, never thrown: a scheduled function
  * that throws just crash-loops on a schedule nobody can fix at 09:00.
@@ -416,7 +416,14 @@ exports.nutritionProxy = onRequest({ region: REGION, timeoutSeconds: 30 }, async
  * DAILY_REMINDER_ENABLED in functions/.env is the runtime kill switch — unset means
  * on (see .env.example).
  */
-const admin = require('firebase-admin');
+/* firebase-admin v14 removed the legacy namespace services (`admin.apps`,
+ * `admin.messaging()`) from the main export — reading them here made
+ * messagingOrNull() throw-and-skip on EVERY enabled run after the v14 upgrade
+ * (caught + logged as "could not initialize", so the reminder silently never
+ * sent). The modular entry points below are the supported equivalent; caught by
+ * test/handlers.test.js's enabled-path control. */
+const { getApps, initializeApp } = require('firebase-admin/app');
+const { getMessaging } = require('firebase-admin/messaging');
 
 const REMINDER_TOPIC = 'gytask-daily';
 const REMINDER_TITLE = 'GymTask';
@@ -435,8 +442,8 @@ let messagingClient = null;
 function messagingOrNull() {
   if (messagingClient) return messagingClient;
   try {
-    if (!admin.apps.length) admin.initializeApp();
-    messagingClient = admin.messaging();
+    if (!getApps().length) initializeApp();
+    messagingClient = getMessaging();
   } catch (e) {
     console.error('pushDailyReminder: firebase-admin could not initialize — skipping this run: ' + String((e && e.message) || e).slice(0, 300));
   }
