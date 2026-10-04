@@ -85,6 +85,23 @@ export const useNutritionStore = create(
         for (const k of Object.keys(totals)) totals[k] = Math.round(totals[k])
         return totals
       },
+
+      // Same reader, narrowed to one meal of one day: what the per-meal protein bar asks.
+      // The rounding contract is totalsFor's own (whole grams/kcal), a missing meal or a
+      // missing day answers zeros so the bar renders at 0 without a branch, and totalsFor
+      // itself is untouched — the day-level bars read the day, this reads a section.
+      mealTotalsFor: (date, meal) => {
+        const day = (get().log[date] || []).filter(e => e.meal === meal)
+        const totals = { kcal: 0, protein: 0, carbs: 0, fat: 0 }
+        for (const e of day) {
+          totals.kcal += e.kcal || 0
+          totals.protein += e.protein || 0
+          totals.carbs += e.carbs || 0
+          totals.fat += e.fat || 0
+        }
+        for (const k of Object.keys(totals)) totals[k] = Math.round(totals[k])
+        return totals
+      },
     }),
     {
       name: 'gym_nutrition_v1',

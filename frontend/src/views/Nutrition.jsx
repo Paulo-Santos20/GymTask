@@ -25,6 +25,10 @@ const GOALS = [
   { v: 'ganhar', k: 'Gain weight' },
 ]
 const RESULT_SRC = { usda: 'USDA', off: 'Open Food Facts', nutritionix: 'Nutritionix' }
+// Per-meal protein floor: 0.3 g per kg of body weight — the lower bound of the 0.3–0.4 g/kg
+// per-meal band, against profile.peso (kg, the same basis targets.protein uses). Displayed in
+// the bar's goal text so the number on screen is never a mystery.
+const PER_MEAL_PROTEIN_G_PER_KG = 0.3
 
 export default function Nutrition() {
   const [date, setDate] = useState(todayISO())
@@ -46,9 +50,11 @@ export default function Nutrition() {
   const undoRemove = useNutritionStore(s => s.undoRemove)
   const clearRemoved = useNutritionStore(s => s.clearRemoved)
   const totalsFor = useNutritionStore(s => s.totalsFor)
+  const mealTotalsFor = useNutritionStore(s => s.mealTotalsFor)
 
   const day = useMemo(() => log[date] || [], [log, date])
   const totals = useMemo(() => totalsFor(date), [totalsFor, log, date])
+  const proteinGoal = Math.round(PER_MEAL_PROTEIN_G_PER_KG * (Number(profile.peso) || 0))
   const local = useMemo(() => (query.trim() ? searchFoods(query, 12) : []), [query])
   // Adaptive maintenance from paired weigh-in + food days — informational only; the
   // value is adopted strictly by the tap below (never auto-applied), through setProfile.
@@ -256,99 +262,116 @@ export default function Nutrition() {
         </div>
       )}
 
-      {MEALS.map(meal => (
-        <div key={meal}>
-          <Section title={t(MEAL_KEYS[meal])}>
-            {day
-              .filter(e => e.meal === meal)
-              .map(e => (
-                <Row key={e.id} title={e.name} subtitle={`${fmtNum(e.grams)} g`}>
-                  <span className="nut-ek">
-                    {fmtNum(e.kcal)}
-                    <i>kcal</i>
+      {MEALS.map(meal => {
+        // Read on every render — the day it reads changes whenever the log does.
+        const mt = mealTotalsFor(date, meal)
+        const pct = proteinGoal > 0 ? Math.min(100, Math.round((mt.protein / proteinGoal) * 100)) : 0
+        return (
+          <div key={meal}>
+            <Section title={t(MEAL_KEYS[meal])}>
+              <div className="nut-meal-pro">
+                <div className="nut-bar-h">
+                  <span>{t('Protein')}</span>
+                  <span className="dim">
+                    {fmtNum(mt.protein)} / {fmtNum(proteinGoal)} g
                   </span>
-                  <button className="iconbtn nut-del" onClick={() => onRemove(e)} aria-label={t('Delete')}>
-                    <Icon name="trash" />
-                  </button>
-                </Row>
-              ))}
-            <Row icon="plus" title={t('Add food')} onClick={() => openAdd(meal)} />
-          </Section>
-
-          {adding === meal && (
-            <div className="nut-add">
-              <div className="nut-add-h">
-                <b>{t('Add food')}</b>
-                <button className="iconbtn" onClick={closeAdd} aria-label={t('Cancel')}>
-                  <Icon name="xmark" />
-                </button>
-              </div>
-              {!picked ? (
-                <>
-                  <SearchField
-                    value={query}
-                    onChange={e => setQuery(e.target.value)}
-                    onClear={() => setQuery('')}
-                    placeholder={t('Search foods')}
-                    aria-label={t('Search foods')}
-                  />
-                  {!!q && local.length > 0 && <Section title={t('Local foods')}>{local.map(resultRow)}</Section>}
-                  {q.length >= 2 && (onlineState === 'loading' || onlineState === 'error' || online.length > 0) && (
-                    <Section title={t('Online results')}>
-                      {onlineState === 'loading' && <div className="nut-st">{t('Searching…')}</div>}
-                      {onlineState === 'error' && <div className="nut-st err">{t('Could not search online')}</div>}
-                      {onlineState === 'done' && online.map(resultRow)}
-                    </Section>
-                  )}
-                  {q.length >= 2 &&
-                    onlineState !== 'loading' &&
-                    onlineState !== 'error' &&
-                    !local.length &&
-                    !online.length && <div className="nut-st">{t('No matches for {0}', q)}</div>}
-                </>
-              ) : (
-                <div className="nut-pick">
-                  <div className="nut-pick-h">
-                    <button className="iconbtn" onClick={() => setPicked(null)} aria-label={t('Back')}>
-                      <Icon name="chevronLeft" />
-                    </button>
-                    <b>{picked.name}</b>
-                  </div>
-                  <div className="nut-lbl">{t('Meal')}</div>
-                  <div className="nut-chips">
-                    {MEALS.map(m => (
-                      <button key={m} className={'chip' + (adding === m ? ' on' : '')} onClick={() => setAdding(m)}>
-                        {t(MEAL_KEYS[m])}
-                      </button>
-                    ))}
-                  </div>
-                  <Stepper label={t('Grams')} unit="g" step={5} decimal={false} value={grams} onChange={setGrams} />
-                  <div className="nut-sum-l" style={{ marginTop: 14 }}>
-                    {t('Portion')}
-                  </div>
-                  <div className="nut-pick-m">
-                    <span className="nut-pick-k">
-                      <b>{fmtNum(Math.round((picked.per100g.kcal * grams) / 100))}</b> kcal
-                    </span>
-                    <span>
-                      {t('Protein')} <b>{fmtNum(Math.round((picked.per100g.protein * grams) / 100))} g</b>
-                    </span>
-                    <span>
-                      {t('Carbs')} <b>{fmtNum(Math.round((picked.per100g.carbs * grams) / 100))} g</b>
-                    </span>
-                    <span>
-                      {t('Fat')} <b>{fmtNum(Math.round((picked.per100g.fat * grams) / 100))} g</b>
-                    </span>
-                  </div>
-                  <Button variant="primary" icon="plus" onClick={confirmAdd}>
-                    {t('Add')}
-                  </Button>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-      ))}
+                <div className="nut-bar-t">
+                  <i style={{ width: pct + '%', background: 'var(--teal)' }} />
+                </div>
+                <div className="nut-sum-l">{t('Per-meal protein goal: {0} g (0.3 g per kg)', proteinGoal)}</div>
+              </div>
+              {day
+                .filter(e => e.meal === meal)
+                .map(e => (
+                  <Row key={e.id} title={e.name} subtitle={`${fmtNum(e.grams)} g`}>
+                    <span className="nut-ek">
+                      {fmtNum(e.kcal)}
+                      <i>kcal</i>
+                    </span>
+                    <button className="iconbtn nut-del" onClick={() => onRemove(e)} aria-label={t('Delete')}>
+                      <Icon name="trash" />
+                    </button>
+                  </Row>
+                ))}
+              <Row icon="plus" title={t('Add food')} onClick={() => openAdd(meal)} />
+            </Section>
+
+            {adding === meal && (
+              <div className="nut-add">
+                <div className="nut-add-h">
+                  <b>{t('Add food')}</b>
+                  <button className="iconbtn" onClick={closeAdd} aria-label={t('Cancel')}>
+                    <Icon name="xmark" />
+                  </button>
+                </div>
+                {!picked ? (
+                  <>
+                    <SearchField
+                      value={query}
+                      onChange={e => setQuery(e.target.value)}
+                      onClear={() => setQuery('')}
+                      placeholder={t('Search foods')}
+                      aria-label={t('Search foods')}
+                    />
+                    {!!q && local.length > 0 && <Section title={t('Local foods')}>{local.map(resultRow)}</Section>}
+                    {q.length >= 2 && (onlineState === 'loading' || onlineState === 'error' || online.length > 0) && (
+                      <Section title={t('Online results')}>
+                        {onlineState === 'loading' && <div className="nut-st">{t('Searching…')}</div>}
+                        {onlineState === 'error' && <div className="nut-st err">{t('Could not search online')}</div>}
+                        {onlineState === 'done' && online.map(resultRow)}
+                      </Section>
+                    )}
+                    {q.length >= 2 &&
+                      onlineState !== 'loading' &&
+                      onlineState !== 'error' &&
+                      !local.length &&
+                      !online.length && <div className="nut-st">{t('No matches for {0}', q)}</div>}
+                  </>
+                ) : (
+                  <div className="nut-pick">
+                    <div className="nut-pick-h">
+                      <button className="iconbtn" onClick={() => setPicked(null)} aria-label={t('Back')}>
+                        <Icon name="chevronLeft" />
+                      </button>
+                      <b>{picked.name}</b>
+                    </div>
+                    <div className="nut-lbl">{t('Meal')}</div>
+                    <div className="nut-chips">
+                      {MEALS.map(m => (
+                        <button key={m} className={'chip' + (adding === m ? ' on' : '')} onClick={() => setAdding(m)}>
+                          {t(MEAL_KEYS[m])}
+                        </button>
+                      ))}
+                    </div>
+                    <Stepper label={t('Grams')} unit="g" step={5} decimal={false} value={grams} onChange={setGrams} />
+                    <div className="nut-sum-l" style={{ marginTop: 14 }}>
+                      {t('Portion')}
+                    </div>
+                    <div className="nut-pick-m">
+                      <span className="nut-pick-k">
+                        <b>{fmtNum(Math.round((picked.per100g.kcal * grams) / 100))}</b> kcal
+                      </span>
+                      <span>
+                        {t('Protein')} <b>{fmtNum(Math.round((picked.per100g.protein * grams) / 100))} g</b>
+                      </span>
+                      <span>
+                        {t('Carbs')} <b>{fmtNum(Math.round((picked.per100g.carbs * grams) / 100))} g</b>
+                      </span>
+                      <span>
+                        {t('Fat')} <b>{fmtNum(Math.round((picked.per100g.fat * grams) / 100))} g</b>
+                      </span>
+                    </div>
+                    <Button variant="primary" icon="plus" onClick={confirmAdd}>
+                      {t('Add')}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
 
       <Section title={t('Profile')} footer={t('Basal {0} kcal · Maintenance {1} kcal', targets.bmr, targets.tdee)}>
         <div className="nut-pad">

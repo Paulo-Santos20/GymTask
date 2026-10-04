@@ -983,6 +983,7 @@ export const PT_BR_OVERRIDES = {
   'Adaptive estimate appears after {0} days with weigh-ins and food logged.':
     'A estimativa adaptativa aparece após {0} dias com pesagens e refeições registradas.',
   'Calorie target updated': 'Meta de calorias atualizada',
+  'Per-meal protein goal: {0} g (0.3 g per kg)': 'Meta de proteína por refeição: {0} g (0,3 g por kg)',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

@@ -1647,4 +1647,5 @@ export default {
   'Adaptive estimate appears after {0} days with weigh-ins and food logged.':
     'A estimativa adaptativa aparece após {0} dias com pesagens e refeições registadas.',
   'Calorie target updated': 'Meta calórica atualizada',
+  'Per-meal protein goal: {0} g (0.3 g per kg)': 'Meta de proteína por refeição: {0} g (0,3 g por kg)',
 }
