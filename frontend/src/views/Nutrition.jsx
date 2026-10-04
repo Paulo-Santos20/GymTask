@@ -14,6 +14,7 @@ import { useUI } from '../store/useUI.js'
 import CameraScan from '../components/CameraScan.jsx'
 import Icon from '../components/Icon.jsx'
 import LineChart from '../components/LineChart.jsx'
+import RecipesSection from './Recipes.jsx'
 import '../nutrition.css'
 
 const MEAL_KEYS = { cafe: 'Breakfast', almoco: 'Lunch', lanche: 'Snack', jantar: 'Dinner' }
@@ -474,6 +475,10 @@ export default function Nutrition() {
           </div>
         )
       })}
+
+      {/* Recipes (RF7): list, editor and the one-tap split into diary entries. Sits after
+          the meal sections and before the profile so the day's log stays on top. */}
+      <RecipesSection date={date} />
 
       <Section title={t('Profile')} footer={t('Basal {0} kcal · Maintenance {1} kcal', targets.bmr, targets.tdee)}>
         <div className="nut-pad">

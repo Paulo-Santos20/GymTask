@@ -248,3 +248,37 @@
   padding: 14px 14px 16px;
   margin: 0;
 }
+
+/* ---------- recipes ---------- */
+/* Ingredient table: the food-entry fields, one row per ingredient. Scrolls sideways on a
+   narrow screen instead of squeezing six numeric columns into it. */
+.nut-ing {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-x: auto;
+  margin-bottom: 10px;
+}
+.nut-ing-row,
+.nut-ing-head {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 1fr) repeat(5, 3.9rem) 28px;
+  gap: 6px;
+  align-items: center;
+}
+.nut-ing-head {
+  font-size: 11px;
+  color: var(--label-3);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.nut-ing-row .field,
+.nut-ing-row .num {
+  width: 100%;
+}
+.nut-ing-x {
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+}
