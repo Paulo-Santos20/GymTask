@@ -15,7 +15,8 @@ export async function scanCode() {
 }
 
 // Decode a barcode out of an image the user picked — BarcodeDetector/jsQR in lib/scan-web.js.
-export async function importCodeFromImage(file) {
+// `formats` picks which symbologies the native detector may read (default QR only).
+export async function importCodeFromImage(file, formats) {
   if (!file) return null
-  return (await import('./scan-web.js')).importCodeFromImageWeb(file)
+  return (await import('./scan-web.js')).importCodeFromImageWeb(file, formats)
 }

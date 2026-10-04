@@ -19,15 +19,23 @@ async function loadJsQr() {
   return _jsqr
 }
 
-let _detector = null
-function nativeDetector() {
-  if (_detector !== null) return _detector
-  try {
-    _detector = typeof BarcodeDetector === 'function' ? new BarcodeDetector({ formats: ['qr_code'] }) : false
-  } catch (e) {
-    _detector = false
+// One detector per requested format set: the check-in path reads QR only, the food scanner
+// (views/Nutrition.jsx) additionally asks for retail 1D symbologies. A browser that doesn't
+// support a requested format throws in the constructor — cached as false → jsQR fallback.
+const _formats = new Map()
+function nativeDetector(formats) {
+  const wanted = formats && formats.length ? formats : ['qr_code']
+  const key = wanted.join(',')
+  if (!_formats.has(key)) {
+    let det = false
+    try {
+      det = typeof BarcodeDetector === 'function' ? new BarcodeDetector({ formats: wanted }) : false
+    } catch (e) {
+      det = false
+    }
+    _formats.set(key, det)
   }
-  return _detector
+  return _formats.get(key)
 }
 
 // { data, width, height } (an ImageData or anything shaped like one) → { value, fmt } | null.
@@ -41,10 +49,12 @@ export async function decodeImageData(img) {
 
 // Decode from anything drawImage accepts: <video>, <img>, ImageBitmap, canvas. The source is
 // scaled down to at most MAX px on its long edge — plenty for a QR, and it keeps jsQR fast enough
-// to run on every few video frames on a phone. Reuses one canvas across calls.
+// to run on every few video frames on a phone. Reuses one canvas across calls. `formats` picks
+// what the native detector may read (default QR only — the check-in contract); the jsQR fallback
+// underneath is QR-only either way.
 const MAX = 800
 let _canvas = null
-export async function decodeSource(source) {
+export async function decodeSource(source, formats) {
   const sw = source.videoWidth || source.naturalWidth || source.width || 0
   const sh = source.videoHeight || source.naturalHeight || source.height || 0
   if (!sw || !sh) return null
@@ -57,7 +67,7 @@ export async function decodeSource(source) {
   const ctx = _canvas.getContext('2d', { willReadFrequently: true })
   ctx.drawImage(source, 0, 0, w, h)
 
-  const det = nativeDetector()
+  const det = nativeDetector(formats)
   if (det) {
     try {
       const found = await det.detect(_canvas)
@@ -71,8 +81,9 @@ export async function decodeSource(source) {
 }
 
 // A picked File → { value, fmt } | null. createImageBitmap honours EXIF orientation where the
-// browser supports it, which matters for photos of a card taken in portrait.
-export async function importCodeFromImageWeb(file) {
+// browser supports it, which matters for photos of a card taken in portrait. `formats` is passed
+// through to decodeSource (see above).
+export async function importCodeFromImageWeb(file, formats) {
   if (!file) return null
   let bmp
   if (typeof createImageBitmap === 'function') {
@@ -86,7 +97,7 @@ export async function importCodeFromImageWeb(file) {
     })
   }
   try {
-    return await decodeSource(bmp)
+    return await decodeSource(bmp, formats)
   } finally {
     if (bmp.close) bmp.close()
   }

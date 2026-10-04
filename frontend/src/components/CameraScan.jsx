@@ -4,13 +4,17 @@ import { decodeSource } from '../lib/scan-web.js'
 import { Button } from '../components/ui.jsx'
 
 // Live camera scanner for the browser/PWA (the app build uses ML Kit's own UI instead — see
-// lib/scan.js). Opens the rear camera into a <video>, decodes a frame every ~150 ms until a QR
+// lib/scan.js). Opens the rear camera into a <video>, decodes a frame every ~150 ms until a code
 // shows up, then hands { value, fmt } to onFound. Cancel (or unmount) stops the camera.
+//
+// Optional props: `formats` widens what the detector may read beyond QR (the food scanner asks
+// for retail barcodes — views/Nutrition.jsx); `hint` replaces the QR instruction line, passed in
+// already translated. Defaults keep the check-in contract exactly as it was.
 //
 // Errors are shown in place rather than thrown: a denied permission or a browser without
 // getUserMedia leaves the sheet up with a message, and the add-card form underneath still offers
 // photo import and typing.
-export default function CameraScan({ onFound, onCancel }) {
+export default function CameraScan({ onFound, onCancel, formats, hint }) {
   const videoRef = useRef(null)
   const [error, setError] = useState(null)
 
@@ -54,7 +58,7 @@ export default function CameraScan({ onFound, onCancel }) {
         if (v.readyState >= 2) {
           let code = null
           try {
-            code = await decodeSource(v)
+            code = await decodeSource(v, formats)
           } catch (e) {
             /* keep trying */
           }
@@ -88,7 +92,7 @@ export default function CameraScan({ onFound, onCancel }) {
             <div className="cam-frame" aria-hidden="true" />
           </div>
           <div className="muted small" style={{ textAlign: 'center', margin: '12px 0 16px' }}>
-            {t('Point the camera at the QR code')}
+            {hint || t('Point the camera at the QR code')}
           </div>
         </>
       )}

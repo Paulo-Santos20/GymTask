@@ -805,6 +805,9 @@ export const PT_BR_OVERRIDES = {
   'Gym check-in': 'Check-in na academia',
   'Show a card on Home with your membership QR codes.': 'Mostra no Início um cartão com seus códigos QR de sócio.',
   'Point the camera at the QR code': 'Aponte a câmera para o código QR',
+  'Point the camera at the barcode': 'Aponte a câmera para o código de barras',
+  'Scan barcode': 'Escanear código de barras',
+  'No barcode found in that image': 'Nenhum código de barras encontrado na imagem',
   'Camera is not available here — import a photo or type the code instead.':
     'A câmera não está disponível aqui — importe uma foto ou digite o código.',
   'Camera access was denied — allow it in your browser and try again.':
