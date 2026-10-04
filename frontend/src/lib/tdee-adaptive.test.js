@@ -18,7 +18,9 @@ const NO_DATA = { ok: false, reason: 'insufficient-data' }
 
 // n consecutive ISO dates starting at `start` (UTC math — no timezone dependence).
 const daySeq = (start, n) =>
-  Array.from({ length: n }, (_, i) => new Date(Date.parse(start + 'T00:00:00Z') + i * 86400000).toISOString().slice(0, 10))
+  Array.from({ length: n }, (_, i) =>
+    new Date(Date.parse(start + 'T00:00:00Z') + i * 86400000).toISOString().slice(0, 10),
+  )
 
 // A fully paired history: one weigh-in + food entries per date. `weight(i)` is the kg
 // value for day i (converted into lb when unit is 'lb' so both storages describe the
@@ -86,7 +88,7 @@ describe('adaptiveTDEE — estimation', () => {
     dates.forEach((d, i) => {
       log[d] = [
         { id: 'a', kcal: 1500 },
-        { id: 'b', kcal: (2000 + (i % 2) * 200) - 1500 },
+        { id: 'b', kcal: 2000 + (i % 2) * 200 - 1500 },
       ]
     })
     const res = adaptiveTDEE(S, log)
