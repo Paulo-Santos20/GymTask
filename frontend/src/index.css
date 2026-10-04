@@ -250,6 +250,16 @@ h4.sec{
 .sect-b{background:var(--surface);border-radius:var(--r-card);overflow:hidden}
 .sect-f{font-size:13px;color:var(--label-2);padding:7px 4px 0;line-height:1.38}
 
+/* volume-landmark editor (Settings): two labels that sit exactly over the two NumberFields in
+   every muscle row below — same 14px gutters, same 12px gap, same fixed 3.5ch field width. The
+   flexible first span is the .lrow-m of the rows, so the columns line up row after row. */
+.lm-head{
+  display:flex;gap:12px;padding:2px 14px 8px;
+  font-size:13px;color:var(--label-2);
+}
+.lm-head span:first-child{flex:1}
+.lm-head span{width:3.5ch;text-align:center;box-sizing:border-box}
+
 .lrow{
   display:flex;align-items:center;gap:12px;width:100%;text-align:left;
   padding:11px 14px;min-height:46px;position:relative;color:var(--label);

@@ -1648,4 +1648,14 @@ export default {
     'A estimativa adaptativa aparece após {0} dias com pesagens e refeições registadas.',
   'Calorie target updated': 'Meta calórica atualizada',
   'Per-meal protein goal: {0} g (0.3 g per kg)': 'Meta de proteína por refeição: {0} g (0,3 g por kg)',
+  '{0} / {1} sets': '{0} / {1} séries',
+  'Below minimum': 'Abaixo do mínimo',
+  'Above maximum': 'Acima do máximo',
+  'In range': 'Na faixa',
+  'Volume landmarks': 'Metas de volume',
+  'Weekly working sets per muscle: the minimum that keeps it and the maximum that grows it.':
+    'Séries efetivas por semana em cada músculo: o mínimo que o mantém e o máximo que o faz crescer.',
+  Minimum: 'Mínimo',
+  Maximum: 'Máximo',
+  'Reset to defaults': 'Redefinir para os padrões',
 }

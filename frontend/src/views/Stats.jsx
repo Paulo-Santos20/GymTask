@@ -10,7 +10,7 @@ import LineChart from '../components/LineChart.jsx'
 import Heatmap from '../components/Heatmap.jsx'
 import Icon from '../components/Icon.jsx'
 import BodyMap, { BodyMapLegend } from '../components/BodyMap.jsx'
-import { loadOfWorkouts, muscleBalanceWindow, rankOf, MUSCLE_NAME, musclesOf } from '../lib/muscles.js'
+import { loadOfWorkouts, landmarksFor, muscleBalanceWindow, rankOf, MUSCLE_NAME, musclesOf } from '../lib/muscles.js'
 import { fatigueOf, strengthOf, STRENGTH_FLOOR, LB_TO_KG } from '../lib/recovery.js'
 import { strengthExerciseRowsForMuscle } from '../lib/strength-exercises.js'
 import { fatigueStateOf } from '../lib/recovery-view.js'
@@ -138,7 +138,25 @@ function MuscleBalance({ S }) {
   const detrained = strengthOrder.filter(slug => strength[slug] < 1)
   const top = worked.slice(0, 4)
   const max = worked.length ? load[worked[0]] : 0
-  const sets = m => fmtNum(Math.round((load[m] || 0) * 10) / 10)
+  const setsCount = m => Math.round((load[m] || 0) * 10) / 10
+  const sets = m => fmtNum(setsCount(m))
+  // A landmark is a WEEKLY number: it reads against the week window's working sets only — not
+  // against a 30/90-day total, and not against the hard-sets mode, where a set counts only when
+  // it was taken near failure (a different question than "did this muscle get its volume").
+  // Each muscle's bounds come from the profile's override map, falling back to the preset.
+  const withLandmarks = win === 7 && !on
+  const balanceValue = m => {
+    const done = setsCount(m)
+    // Zero stays zero: an untrained muscle's row keeps saying what it always said — a landmark
+    // is a judgement about training that did not happen, and the plan keeps that row's semantics.
+    if (!withLandmarks || !(done > 0)) return t('{0} sets', fmtNum(done))
+    const { mev, mav } = landmarksFor(m, S.muscleTargets)
+    const verdict = done < mev ? t('Below minimum') : done > mav ? t('Above maximum') : t('In range')
+    return <>
+      {t('{0} / {1} sets', fmtNum(done), mav)}
+      <span className="dim small" style={{ display: 'block', fontWeight: 400 }}>{verdict}</span>
+    </>
+  }
 
   return <div className="card">
     <Segmented className="seg-range" value={view} onChange={setView}
@@ -157,12 +175,13 @@ function MuscleBalance({ S }) {
         <BodyMapLegend />
         {sel && <div className="mrow" style={{ borderTop: 'var(--hair) solid var(--sep)', marginTop: 4, paddingTop: 10 }}>
           <span className="nm"><b>{t(MUSCLE_NAME[sel])}</b></span>
-          <span className="v">{sets(sel) ? t('{0} sets', sets(sel)) : on ? t('no hard sets') : t('not trained')}</span>
+          <span className="v">{withLandmarks ? balanceValue(sel)
+            : sets(sel) ? t('{0} sets', sets(sel)) : on ? t('no hard sets') : t('not trained')}</span>
         </div>}
         {!sel && top.map(m => <div key={m} className="mrow">
           <span className="nm">{t(MUSCLE_NAME[m])}</span>
           <span className="bar"><i style={{ width: Math.round(load[m] / max * 100) + '%', background: on ? 'var(--yellow)' : undefined }} /></span>
-          <span className="v">{t('{0} sets', sets(m))}</span>
+          <span className="v">{balanceValue(m)}</span>
         </div>)}
         {missed.length > 0 && <>
           <h4 className="sec" style={{ marginTop: 12 }}>{on ? t('No hard sets in this period') : t('Not trained in this period')}</h4>
