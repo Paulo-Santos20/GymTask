@@ -562,3 +562,48 @@ describe('Stats volume landmarks', () => {
     expect(muscleCard().textContent).toContain('3 sets') // the plain count comes back
   })
 })
+
+/* The tile beside the streak: this week's sessions over the days the effective plan actually
+   has — dayPlan included — the same denominator Home's "x / y this week" line reads. Fixed
+   week: 2026-01-19 (Mon) .. 2026-01-25, today is Thu the 22nd under the fake clock. */
+describe('Stats weekly adherence tile', () => {
+  const mon = workout('mon', Date.UTC(2026, 0, 19, 12), [entry('0025', [set(true)])])
+  const wed = workout('wed', Date.UTC(2026, 0, 21, 12), [entry('0025', [set(true)])])
+  const adhesionTile = () => [...container.querySelectorAll('.tile')].find(el => el.textContent.includes('Adherence'))
+
+  beforeEach(() => {
+    mocks.S.week = { 1: ['r1'], 3: ['r1'], 5: ['r1'] } // Mon / Wed / Fri
+    mocks.S.dayPlan = {}
+    mocks.S.routines = [{ id: 'r1', name: 'Push', ex: [] }]
+  })
+  afterEach(() => {
+    delete mocks.S.week
+    delete mocks.S.dayPlan
+    mocks.S.routines = []
+  })
+
+  it('shows sessions over planned days as a percentage, with the pair underneath', async () => {
+    resetFixture([mon, wed])
+    await mountStats()
+    const tile = adhesionTile()
+    expect(tile).toBeTruthy()
+    expect(tile.textContent).toContain('67%')
+    expect(tile.textContent).toContain('2 / 3 this week')
+  })
+
+  it('drops a day the profile marked rest, exactly like the Home line does', async () => {
+    mocks.S.dayPlan = { '2026-01-23': 'rest' } // the Friday of this week
+    resetFixture([mon])
+    await mountStats()
+    const tile = adhesionTile()
+    expect(tile.textContent).toContain('50%')
+    expect(tile.textContent).toContain('1 / 2 this week')
+  })
+
+  it('stays off the screen when the profile plans no training days at all', async () => {
+    mocks.S.week = {}
+    resetFixture([mon])
+    await mountStats()
+    expect(adhesionTile()).toBeUndefined()
+  })
+})

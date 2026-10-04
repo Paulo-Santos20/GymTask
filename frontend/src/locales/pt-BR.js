@@ -994,6 +994,7 @@ export const PT_BR_OVERRIDES = {
   Minimum: 'Mínimo',
   Maximum: 'Máximo',
   'Reset to defaults': 'Redefinir para os padrões',
+  Adherence: 'Aderência',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }
