@@ -22,7 +22,8 @@ import {
   menuSheet,
 } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
-import { Section, Row, SelectRow, Switch, Segmented, Button } from '../components/ui.jsx'
+import { Section, Row, SelectRow, Switch, Segmented, Button, NumberField } from '../components/ui.jsx'
+import { MUSCLES, MUSCLE_NAME, landmarksFor } from '../lib/muscles.js'
 
 export default function Settings() {
   const nav = useNavigate()
@@ -565,6 +566,65 @@ export default function Settings() {
 
       {/* ---------- equipment ---------- */}
       <EquipmentCard S={S} update={update} />
+
+      {/* ---------- volume landmarks ---------- */}
+      {/* Per-muscle weekly working-set bounds. Statistics reads this week against them, so the
+        profile override is the only thing living here: empty means "the built-in preset", and
+        the fields always show the effective number — preset where nothing was overridden.
+        Clearing a field puts that one bound back on its preset; a muscle with nothing left
+        leaves the map, and an empty map is null again. */}
+      <Section
+        title={t('Volume landmarks')}
+        footer={t('Weekly working sets per muscle: the minimum that keeps it and the maximum that grows it.')}
+      >
+        <div className="lm-head">
+          <span />
+          <span>{t('Minimum')}</span>
+          <span>{t('Maximum')}</span>
+        </div>
+        {MUSCLES.map(slug => {
+          const { mev, mav } = landmarksFor(slug, S.muscleTargets)
+          const name = t(MUSCLE_NAME[slug])
+          const setBound = key => v =>
+            update(s => {
+              const own = { ...(s.muscleTargets?.[slug] || {}) }
+              if (v > 0) own[key] = v
+              else delete own[key]
+              const map = { ...(s.muscleTargets || {}) }
+              if (Object.keys(own).length) map[slug] = own
+              else delete map[slug]
+              s.muscleTargets = Object.keys(map).length ? map : null
+            })
+          return (
+            <Row key={slug} title={name}>
+              <NumberField
+                decimal={false}
+                aria-label={`${name} · ${t('Minimum')}`}
+                style={{ width: '3.5ch', textAlign: 'center' }}
+                value={mev}
+                onChange={setBound('mev')}
+              />
+              <NumberField
+                decimal={false}
+                aria-label={`${name} · ${t('Maximum')}`}
+                style={{ width: '3.5ch', textAlign: 'center' }}
+                value={mav}
+                onChange={setBound('mav')}
+              />
+            </Row>
+          )
+        })}
+        <Row
+          icon="reset"
+          iconTint="var(--grey)"
+          title={t('Reset to defaults')}
+          onClick={() =>
+            update(s => {
+              s.muscleTargets = null
+            })
+          }
+        />
+      </Section>
 
       {/* ---------- appearance ---------- */}
       <Section title={t('Appearance')} footer={DEMO ? undefined : t('synced with your profile')}>

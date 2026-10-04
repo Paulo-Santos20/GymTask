@@ -473,3 +473,92 @@ describe('Stats exercise progress picker', () => {
     expect(card.querySelector('.lrow-v').textContent).toContain('barbell full squat')
   })
 })
+
+/* The Muscle balance rows quote this week's working sets against the muscle's own
+   minimum/maximum landmarks (lib/muscles.js landmarksFor → DEF.muscleTargets) — the plan's
+   "12/18 sets" rows, with the verdict under them. They speak for the WEEK window only: a
+   landmark is a weekly number, so a 30-day count has nothing to be judged against. */
+describe('Stats volume landmarks', () => {
+  // Three completed chest sets in the current week — under every preset, so the default
+  // verdict has something to say.
+  const weekChest = () => [
+    workout('chest-week', BASE_NOW, [
+      entry(
+        '0025',
+        Array.from({ length: 3 }, () => set(true)),
+      ),
+    ]),
+  ]
+
+  beforeEach(() => {
+    mocks.S.muscleTargets = null
+  })
+  afterEach(() => {
+    mocks.S.muscleTargets = null
+  })
+
+  it('shows this week’s sets against the muscle’s MAV with a below-minimum verdict', async () => {
+    resetFixture(weekChest())
+    mocks.S.muscleTargets = { chest: { mev: 4, mav: 10 } }
+    await mountStats()
+    const card = muscleCard()
+    expect(card.textContent).toContain('3 / 10 sets') // chest: 3 done, its MAV overridden to 10
+    expect(card.textContent).toContain('Below minimum') // 3 is under the overridden MEV of 4
+  })
+
+  it('falls back to the built-in preset when the profile has never edited one', async () => {
+    resetFixture(weekChest())
+    mocks.S.muscleTargets = null
+    await mountStats()
+    const card = muscleCard()
+    expect(card.textContent).toContain('3 / 20 sets') // chest preset MAV is 20
+    expect(card.textContent).toContain('Below minimum') // preset MEV is 10
+  })
+
+  it('flips the verdict to in-range and then above-maximum as the bounds move', async () => {
+    // preset first: 3 working sets against chest's MEV of 10 is under the minimum…
+    resetFixture(weekChest())
+    mocks.S.muscleTargets = null
+    await mountStats()
+    expect(muscleCard().textContent).toContain('3 / 20 sets')
+    expect(muscleCard().textContent).toContain('Below minimum')
+    await unmountStats()
+
+    // …the profile override moves the bounds and the same three sets are judged differently
+    mocks.S.muscleTargets = { chest: { mev: 2, mav: 20 } }
+    await mountStats()
+    expect(muscleCard().textContent).toContain('3 / 20 sets')
+    expect(muscleCard().textContent).toContain('In range') // 2 ≤ 3 ≤ 20
+    await unmountStats()
+
+    mocks.S.muscleTargets = { chest: { mev: 2, mav: 2 } }
+    await mountStats()
+    expect(muscleCard().textContent).toContain('3 / 2 sets')
+    expect(muscleCard().textContent).toContain('Above maximum') // 3 is over the MAV of 2
+  })
+
+  it('keeps a zero-set muscle’s row a plain count — no verdict on training that did not happen', async () => {
+    // abs-only week: selecting chest shows a muscle with nothing in the window, which keeps
+    // reading exactly as it always did (no count/target, no below-minimum judgement).
+    resetFixture([workout('abs-only', BASE_NOW, [entry('1002', [set(true)])])])
+    mocks.S.muscleTargets = { chest: { mev: 4, mav: 10 } }
+    await mountStats()
+    await click(muscleCard().querySelector('[data-muscle="chest"]'))
+    const card = muscleCard()
+    expect(card.textContent).toContain('0 sets')
+    expect(card.textContent).not.toContain('0 / 10 sets')
+    expect(card.textContent).not.toContain('Below minimum')
+  })
+
+  it('speaks only for the week window — a 30-day count is not a weekly landmark', async () => {
+    resetFixture(weekChest())
+    mocks.S.muscleTargets = { chest: { mev: 4, mav: 10 } }
+    await mountStats()
+    expect(muscleCard().textContent).toContain('3 / 10 sets')
+
+    await click(balanceRangeButton('30d'))
+    expect(muscleCard().textContent).not.toContain('3 / 10 sets')
+    expect(muscleCard().textContent).not.toContain('Below minimum')
+    expect(muscleCard().textContent).toContain('3 sets') // the plain count comes back
+  })
+})
