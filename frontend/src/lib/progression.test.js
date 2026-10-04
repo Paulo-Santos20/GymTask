@@ -1618,3 +1618,302 @@ describe('a weight off the increment grid keeps its offset when it goes up (issu
     expect(p.weight).toBe(62.5)
   })
 })
+
+// RF2 (roadmap-features todo 2): automatic deload triggers + periodization hooks. Both hooks
+// are opt-in per exercise or routine (`deloadEvery` = planned block cadence, `deloadAfter` =
+// fail-streak threshold); absent, zero or invalid they must return byte-for-byte what the
+// engine returned before they existed, which the LEGACY_TARGETS battery pins. Pure lib — no
+// view ships with this, no history/streakWeeks semantics change.
+describe('automatic deload + periodization hooks (RF2)', () => {
+  const lin = { id: LIFT, sets: 3, reps: 5, weight: 60, prog: 'linear' }
+  const gs = { id: LIFT, sets: 3, reps: 5, weight: 60, prog: 'greyskull' }
+  const dbl = { id: LIFT, sets: 3, reps: 12, repsMin: 8, weight: 40, prog: 'double' }
+  const timeCfg = { id: LIFT, mode: 'time', sets: 2, sec: 45, prog: 'time' }
+  const bwCfg = { id: LIFT, sets: 3, reps: 10, weight: 0, prog: 'linear', bodyweight: true }
+  const twelve = { sets: 3, reps: 12 }
+  const timed = rows => ({
+    unit: 'kg',
+    workouts: rows.map((row, i) => ({
+      d: '2026-06-0' + (i + 1),
+      entries: [
+        { id: LIFT, target: { mode: 'time', sets: 2, sec: 45 }, sets: row.map(sec => ({ sec, w: 0, done: true })) },
+      ],
+    })),
+  })
+  // History on one routine line, the way sessions saved since #216 carry it.
+  const routineHist = rows => ({
+    unit: 'kg',
+    workouts: rows.map((row, i) => ({
+      d: '2026-07-0' + (i + 1),
+      routineIds: ['r'],
+      entries: [
+        {
+          id: LIFT,
+          rid: 'r',
+          target: { sets: 3, reps: 5, weight: row[0] },
+          sets: row.slice(1).map(r => ({ w: row[0], r, done: true })),
+        },
+      ],
+    })),
+  })
+  const R = { id: 'r', ex: [] }
+  const legacyCases = () => [
+    ['first', { unit: 'kg', workouts: [] }, lin],
+    ['linear up', hist(LIFT, [[60, 5, 5, 5]]), lin],
+    ['linear hold', hist(LIFT, [[60, 5, 5, 3]]), lin],
+    [
+      'linear stall deload',
+      hist(LIFT, [
+        [60, 4, 4, 4],
+        [60, 4, 4, 4],
+        [60, 4, 4, 4],
+      ]),
+      lin,
+    ],
+    ['greyskull deload', hist(LIFT, [[60, 5, 5, 3]]), gs],
+    ['greyskull double jump', hist(LIFT, [[60, 5, 5, 10]]), gs],
+    ['double in-range hold', hist(LIFT, [[40, 10, 9, 9]], twelve), dbl],
+    ['double top up', hist(LIFT, [[40, 12, 12, 12]], twelve), dbl],
+    [
+      'double stall deload',
+      hist(
+        LIFT,
+        [
+          [40, 9, 9, 9],
+          [40, 9, 9, 9],
+          [40, 9, 9, 9],
+        ],
+        twelve,
+      ),
+      dbl,
+    ],
+    ['time up', timed([[45, 45]]), timeCfg],
+    [
+      'time stall deload',
+      timed([
+        [45, 30],
+        [45, 32],
+        [45, 31],
+      ]),
+      timeCfg,
+    ],
+    ['bodyweight climb', hist(LIFT, [[0, 10, 10, 10]], { sets: 3, reps: 10 }), bwCfg],
+    ['policy off', hist(LIFT, [[60, 5, 5, 5]]), { ...lin, prog: 'off' }],
+  ]
+  // Captured from the pre-feature engine (see evidence task-2): every value is the exact
+  // JSON.stringify of nextPrescription for that scenario before the hooks existed.
+  const LEGACY_TARGETS = {
+    first: '{"policy":"linear","kind":"first","why":["Nothing logged yet — this session sets the baseline."]}',
+    'linear up': '{"policy":"linear","kind":"up","weight":62.5,"why":["Every rep last time — {0} {1} more.",2.5,"kg"]}',
+    'linear hold':
+      '{"policy":"linear","kind":"hold","weight":60,"why":["Missed reps last time — same weight again ({0} of {1} to go).",2,3]}',
+    'linear stall deload':
+      '{"policy":"linear","kind":"deload","weight":55,"reps":5,"sets":3,"target1RM":63,"deloadFactor":0.9,"why":["Stalled {0} sessions — Epley deload to {1} {2} for {3} reps.",3,55,"kg",5]}',
+    'greyskull deload':
+      '{"policy":"greyskull","kind":"deload","weight":55,"why":["Missed reps — reset to {0} {1} and work back up.",55,"kg"]}',
+    'greyskull double jump':
+      '{"policy":"greyskull","kind":"up","weight":65,"why":["Last set hit {0} reps — twice the target, so take a double jump of {1} {2}.",10,5,"kg"]}',
+    'double in-range hold':
+      '{"policy":"double","kind":"hold","weight":40,"reps":10,"why":["Same weight — aim for {0} reps this time.",10]}',
+    'double top up':
+      '{"policy":"double","kind":"up","weight":42.5,"reps":8,"why":["Top of the rep range in every set — {0} {1} more, back to {2} reps.",2.5,"kg",8]}',
+    'double stall deload':
+      '{"policy":"double","kind":"deload","weight":40,"reps":8,"sets":3,"target1RM":50.4,"deloadFactor":0.9,"why":["Stalled {0} sessions — hold {1} {2} and use {3} reps.",3,40,"kg",8]}',
+    'time up':
+      '{"policy":"time","kind":"up","sec":50,"why":["Held every set for the full time — target up by {0}s.",5]}',
+    'time stall deload':
+      '{"policy":"time","kind":"deload","sec":40,"why":["Short {0} sessions in a row — back off to {1}s and build up again.",3,40]}',
+    'bodyweight climb':
+      '{"policy":"linear","kind":"up","weight":0,"reps":11,"why":["Bodyweight — every rep last time, so go for {0} this time.",11]}',
+    'policy off': '{"policy":"off","kind":"off"}',
+  }
+
+  it('feature off (absent / zero / invalid) → byte-identical legacy targets', () => {
+    for (const [name, S, cfg] of legacyCases()) {
+      const base = JSON.stringify(nextPrescription(S, cfg))
+      const zeroed = JSON.stringify(nextPrescription(S, { ...cfg, deloadEvery: 0, deloadAfter: 0 }))
+      const invalid = JSON.stringify(nextPrescription(S, { ...cfg, deloadEvery: 'x', deloadAfter: -1 }))
+      expect(base, `${name} (default)`).toBe(LEGACY_TARGETS[name])
+      expect(zeroed, `${name} (explicitly off)`).toBe(LEGACY_TARGETS[name])
+      expect(invalid, `${name} (invalid values)`).toBe(LEGACY_TARGETS[name])
+    }
+  })
+
+  it('exposes both periodization hooks with opt-in validation', async () => {
+    const mod = await import('./progression.js')
+    expect(mod.deloadEveryOf?.({ deloadEvery: 3 })).toBe(3)
+    expect(mod.deloadEveryOf?.({ deloadEvery: 0 })).toBe(0)
+    expect(mod.deloadEveryOf?.({ deloadEvery: 2.5 })).toBe(0)
+    expect(mod.deloadEveryOf?.({})).toBe(0)
+    expect(mod.deloadAfterOf?.({ deloadAfter: 2 }, null, 'linear')).toBe(2)
+    expect(mod.deloadAfterOf?.({}, null, 'greyskull')).toBe(1)
+    expect(mod.deloadAfterOf?.({ deloadAfter: 0 }, null, 'linear')).toBe(3)
+    expect(mod.deloadAfterOf?.({}, null, 'nonsense')).toBe(3)
+  })
+
+  it('deloads on the last session of a block (planned cadence)', () => {
+    const S = hist(LIFT, [
+      [60, 5, 5, 5],
+      [60, 5, 5, 5],
+      [60, 5, 5, 5],
+    ])
+    const p = nextPrescription(S, { ...lin, deloadEvery: 3 })
+    expect(p).toMatchObject({ kind: 'deload', weight: 55 }) // 60 × 0.9 = 54 → nearest 2.5 step
+    expect(p.why).toEqual(['Planned deload every {0} sessions — down to {1} {2} and build back up.', 3, 55, 'kg'])
+  })
+
+  it('says nothing mid-block — the legacy answer stands until the block ends', () => {
+    expect(nextPrescription(hist(LIFT, [[60, 5, 5, 5]]), { ...lin, deloadEvery: 3 })).toMatchObject({
+      kind: 'up',
+      weight: 62.5,
+    })
+    expect(
+      nextPrescription(
+        hist(LIFT, [
+          [60, 5, 5, 5],
+          [60, 5, 5, 5],
+        ]),
+        { ...lin, deloadEvery: 3 },
+      ),
+    ).toMatchObject({ kind: 'up', weight: 62.5 })
+  })
+
+  it('takes the configured deload factor as the magnitude', () => {
+    const S = hist(LIFT, [
+      [60, 5, 5, 5],
+      [60, 5, 5, 5],
+      [60, 5, 5, 5],
+    ])
+    expect(nextPrescription(S, { ...lin, deloadEvery: 3, deloadFactor: 0.8 })).toMatchObject({
+      kind: 'deload',
+      weight: 47.5, // 60 × 0.8 = 48 → nearest 2.5 step
+    })
+  })
+
+  it('repeats on every block (session 6), not between', () => {
+    const six = Array.from({ length: 6 }, () => [60, 5, 5, 5])
+    const cfg = { ...lin, deloadEvery: 3 }
+    expect(nextPrescription(hist(LIFT, six.slice(0, 4)), cfg)).toMatchObject({ kind: 'up' })
+    expect(nextPrescription(hist(LIFT, six.slice(0, 5)), cfg)).toMatchObject({ kind: 'up' })
+    expect(nextPrescription(hist(LIFT, six), cfg)).toMatchObject({ kind: 'deload', weight: 55 })
+  })
+
+  it('gives the block end precedence over a Greyskull double jump', () => {
+    const S = hist(LIFT, [
+      [60, 5, 5, 10],
+      [60, 5, 5, 10],
+      [60, 5, 5, 10],
+    ])
+    expect(nextPrescription(S, gs)).toMatchObject({ kind: 'up', weight: 65 }) // legacy, no block
+    expect(nextPrescription(S, { ...gs, deloadEvery: 3 })).toMatchObject({ kind: 'deload', weight: 55 })
+  })
+
+  it('ends a compliant double-progression block at the bottom of the range', () => {
+    const S = hist(
+      LIFT,
+      [
+        [40, 8, 8, 8],
+        [40, 8, 8, 8],
+        [40, 8, 8, 8],
+      ],
+      { sets: 3, reps: 8 },
+    )
+    expect(nextPrescription(S, dbl)).toMatchObject({ kind: 'hold', reps: 9 }) // legacy mid-range aim
+    expect(nextPrescription(S, { ...dbl, deloadEvery: 3 })).toMatchObject({ kind: 'deload', weight: 35, reps: 8 })
+  })
+
+  it('leaves a short session to the fail-streak trigger, even at the block boundary', () => {
+    const S = hist(LIFT, [
+      [60, 5, 5, 5],
+      [60, 5, 5, 5],
+      [60, 5, 5, 3],
+    ])
+    expect(nextPrescription(S, { ...lin, deloadEvery: 3 })).toMatchObject({ kind: 'hold', weight: 60 })
+  })
+
+  it('takes the easier direction on an assistance machine', () => {
+    const cfg = { id: '0017', sets: 3, reps: 5, weight: 30, prog: 'linear', inc: 5 }
+    const S = hist('0017', [
+      [30, 5, 5, 5],
+      [30, 5, 5, 5],
+      [30, 5, 5, 5],
+    ])
+    const p = nextPrescription(S, { ...cfg, deloadEvery: 3 })
+    expect(p).toMatchObject({ kind: 'deload', weight: 35 }) // more of the stack's help
+    expect(p.why).toEqual([
+      'Planned deload every {0} sessions — {1} {2} more help while you build back up.',
+      3,
+      35,
+      'kg',
+    ])
+  })
+
+  it('reads the hooks from the routine when the exercise carries none', () => {
+    const clean = routineHist([
+      [60, 5, 5, 5],
+      [60, 5, 5, 5],
+      [60, 5, 5, 5],
+    ])
+    expect(nextPrescription(clean, lin, { ...R, deloadEvery: 3 })).toMatchObject({ kind: 'deload', weight: 55 })
+    expect(nextPrescription(clean, lin, R)).toMatchObject({ kind: 'up', weight: 62.5 })
+    const stalled = routineHist([
+      [60, 4, 4, 4],
+      [60, 4, 4, 4],
+    ])
+    expect(nextPrescription(stalled, lin, R)).toMatchObject({ kind: 'hold' }) // legacy needs 3 misses
+    expect(nextPrescription(stalled, lin, { ...R, deloadAfter: 2 })).toMatchObject({ kind: 'deload', weight: 55 })
+  })
+
+  it('honours a fail-streak threshold override on the exercise', () => {
+    const two = hist(LIFT, [
+      [60, 4, 4, 4],
+      [60, 4, 4, 4],
+    ])
+    expect(nextPrescription(two, lin)).toMatchObject({ kind: 'hold', weight: 60 }) // legacy needs 3
+    const p = nextPrescription(two, { ...lin, deloadAfter: 2 })
+    expect(p).toMatchObject({ kind: 'deload', weight: 55 })
+    expect(p.why.slice(0, 2)).toEqual(['Stalled {0} sessions — Epley deload to {1} {2} for {3} reps.', 2])
+    // Invalid values fall back to the policy's default instead of deleting the deload.
+    expect(nextPrescription(two, { ...lin, deloadAfter: 0 })).toMatchObject({ kind: 'hold' })
+    expect(nextPrescription(two, { ...lin, deloadAfter: 'x' })).toMatchObject({ kind: 'hold' })
+    expect(nextPrescription(two, { ...lin, deloadAfter: 2.5 })).toMatchObject({ kind: 'hold' })
+  })
+
+  it('applies the threshold override to timed holds too', () => {
+    const p = nextPrescription(
+      timed([
+        [45, 30],
+        [45, 32],
+      ]),
+      { ...timeCfg, deloadAfter: 2 },
+    )
+    expect(p).toMatchObject({ kind: 'deload', sec: 40 })
+    expect(p.why[0]).toBe('Short {0} sessions in a row — back off to {1}s and build up again.')
+  })
+
+  it('keeps the planned block out of timed and bodyweight progressions', () => {
+    expect(
+      nextPrescription(
+        timed([
+          [45, 45],
+          [45, 45],
+          [45, 45],
+        ]),
+        { ...timeCfg, deloadEvery: 3 },
+      ),
+    ).toMatchObject({
+      kind: 'up',
+      sec: 50,
+    })
+    const bwRows = [
+      [0, 10, 10, 10],
+      [0, 10, 10, 10],
+      [0, 10, 10, 10],
+    ]
+    expect(nextPrescription(hist(LIFT, bwRows, { sets: 3, reps: 10 }), { ...bwCfg, deloadEvery: 3 })).toMatchObject({
+      kind: 'up',
+      reps: 11,
+      weight: 0,
+    })
+  })
+})
