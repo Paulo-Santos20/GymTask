@@ -5,6 +5,8 @@
  *   coach              HTTPS — xAI Grok call, mirroring api/coach's prompt/message shape
  *   nutritionProxy     HTTPS — Nutritionix search proxy (the app key never reaches a client)
  *   pushDailyReminder  scheduled — one FCM topic push a day (see functions/README.md)
+ *   weeklyReview       scheduled — the opted-in weekly review, held as a pending proposal in
+ *                      the same store the app resolves (api/coach/jobs.js contract)
  *
  * CommonJS on purpose: firebase-functions' documented default and the shape every deployed
  * example uses, and this package is its own npm root (its own package.json, no "type" field).
@@ -23,6 +25,9 @@
  */
 const { onRequest } = require('firebase-functions/v2/https')
 const { onSchedule } = require('firebase-functions/v2/scheduler')
+const fs = require('node:fs')
+const path = require('node:path')
+const crypto = require('node:crypto')
 
 const REGION = 'us-central1'
 
@@ -609,6 +614,639 @@ exports.pushDailyReminder = onSchedule(
       console.error(
         'pushDailyReminder: send failed — nothing delivered this run: ' + String((e && e.message) || e).slice(0, 300),
       )
+    }
+  },
+)
+
+/* --------------------------- weekly review (RF8) --------------------------- */
+
+/* The scheduled weekly review: one tick a day at 18:00 SP, each opted-in profile reviewed on
+ * the weekday it chose, the answer held as a pending proposal in the SAME per-profile store
+ * the app already serves (GET /api/coach/status) and clears (POST /api/coach/pending/resolve
+ * - api/coach/jobs.js resolvePending). Composes with the api's own in-process scheduler
+ * (api/coach/cadence.js): both skip while a proposal waits or a review is fresh, and this run
+ * appends the history lines jobs.finish would, so cadence reads my reviews as its own.
+ *
+ * Self-contained like the rest of this file: every store/payload/validate fact below is
+ * duplicated from api/coach and cites its source (file header). Known ceilings, taken on
+ * purpose:
+ *   - the sheet's chosen TIME is honoured only for the default 18:00; other times still land
+ *     on the chosen DAY (the in-process cadence ticks every 60s and honours the minute);
+ *   - no planHash: fingerprinting needs canonicalPlan's modeOf/isBw over the exercise
+ *     catalogue (api/coach/core/payload.js:128-167), which cannot ship here - markStale's
+ *     per-change before check still guards every scalar change (coach.js:231);
+ *   - no cohort block: api/coach/cohort.js derives the medians from every profile's state
+ *     (share opt-in, jobs.js:468-469); this function sends none, so a non-sharer gets exactly
+ *     what the api would show them (the trade is symmetric by construction) and a sharer just
+ *     loses the comparison context;
+ *   - one attempt, no repair round: an answer that fails validation is recorded as
+ *     failed/unusable - paid for, and counted as reviewed by cadence.js:76-78 - and the next
+ *     attempt is next week's tick. ponytail: add a repair pass only if the job log shows
+ *     validation failures costing real reviews. */
+
+const REVIEW_NAMES = require('./coach-names.js')
+
+const REVIEW_HISTORY_MAX = 20 // api/coach/jobs.js:44 HISTORY_MAX
+const REVIEW_PENDING_DAYS = 14 // api/coach/jobs.js:43 PENDING_DAYS (FR-33)
+const REVIEW_MAX_CHANGES = 25 // api/coach/core/validate.js MAX_CHANGES
+const REVIEW_WINDOW_WEEKS = 12 // api/coach/core/payload.js MAX_WEEKS
+const REVIEW_SESSIONS = 12 // the last dozen sessions, all compact (see wWorkoutLine)
+const REVIEW_DAYS = 7 // one review per profile per rolling week
+const REVIEW_MAX_PER_RUN = 10 // ponytail: household-scale instance; raise when a run must serve more
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+// api/coach/core/validate.js CHANGE_TYPES minus add-exercise / swap-exercise / superset /
+// add-routine: those need the exercise catalogue, which does not ship with functions/.
+const REVIEW_TYPES = [
+  'remove-exercise',
+  'sets',
+  'reps',
+  'repsMin',
+  'repsMax',
+  'sec',
+  'cardio',
+  'reorder',
+  'routine-prog',
+  'exercise-prog',
+  'inc',
+  'remove-routine',
+  'rename-routine',
+  'week',
+]
+const REVIEW_NEEDS_EX = ['remove-exercise', 'sets', 'reps', 'repsMin', 'repsMax', 'sec', 'cardio', 'exercise-prog', 'inc']
+const REVIEW_POLICIES = ['off', 'linear', 'greyskull', 'double', 'time'] // validate.js POLICIES
+const REVIEW_MAX_INC = 50
+const REVIEW_MAX_SPEED = 60
+
+/* Tiny validators, byte-identical to validate.js:57-60. */
+const isStr = v => typeof v === 'string' && v.trim().length > 0
+const isNum = v => typeof v === 'number' && Number.isFinite(v)
+const isInt = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi
+const clampStr = (v, n) => String(v == null ? '' : v).slice(0, n)
+
+/* ---------- the store: DATA_DIR/coach/<uid>.json, the api's own layout ----------
+ * Duplicated from api/coach/jobs.js:36-65 and :99-107 (see the file header). Read per run,
+ * not at load: DATA_DIR is the api's variable (same default /data) and the deploy decides
+ * where the shared store lives - functions/README.md documents that this must be the SAME
+ * directory the api serves, or the proposal lands where nobody resolves it. */
+const safeUid = uid => String(uid).replace(/[^a-zA-Z0-9_-]/g, '') // jobs.js:48
+const wStateFile = (dir, uid) => path.join(dir, 'state-' + safeUid(uid) + '.json')
+const wCoachFile = (dir, uid) => path.join(dir, 'coach', safeUid(uid) + '.json')
+const wRead = file => {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'))
+  } catch {
+    return null
+  }
+}
+function wListUids(dir) {
+  try {
+    return fs
+      .readdirSync(dir)
+      .filter(f => /^state-[a-zA-Z0-9_-]+\.json$/.test(f))
+      .map(f => f.slice(6, -5))
+  } catch {
+    return []
+  }
+}
+/** jobs.js:50-57 readUser - absent file is the EMPTY record, never an error. */
+const wReadCoach = (dir, uid) => ({
+  daily: null,
+  current: null,
+  pending: null,
+  history: [],
+  ...(wRead(wCoachFile(dir, uid)) || {}),
+})
+/** jobs.js:59-65 writeUser - dir 0700, tmp + rename, file 0600. */
+function wWriteCoach(dir, uid, rec) {
+  const coachDir = path.join(dir, 'coach')
+  fs.mkdirSync(coachDir, { recursive: true, mode: 0o700 })
+  const file = wCoachFile(dir, uid)
+  const tmp = file + '.tmp'
+  fs.writeFileSync(tmp, JSON.stringify(rec), { mode: 0o600 })
+  fs.renameSync(tmp, file)
+}
+
+/* ---------- due gates: cadence.js:21-47, day-level tick ---------- */
+
+/** When this profile was last read by a review: the client-stamped lastReview, or the
+ *  history lines jobs.finish writes (ready / nochange / failed-unusable) - cadence.js:69-81. */
+function wReviewedAt(S, rec) {
+  const lines = (rec.history || [])
+    .filter(
+      h =>
+        h.kind === 'review' &&
+        (h.outcome === 'ready' || h.outcome === 'nochange' || (h.outcome === 'failed' && h.errorClass === 'unusable')),
+    )
+    .map(h => h.at || 0)
+  return Math.max(0, S?.coach?.lastReview?.at || 0, ...lines)
+}
+
+/** Weekday index in the profile's own timezone, as cadence.js derives it (WEEKDAYS order). */
+function wWeekdayIndex(tz, at) {
+  try {
+    return WEEKDAYS.indexOf(new Intl.DateTimeFormat('en-US', { timeZone: tz || 'America/Sao_Paulo', weekday: 'long' }).format(new Date(at)))
+  } catch {
+    return new Date(at).getUTCDay()
+  }
+}
+
+function wWeeklyDue(S, rec, now) {
+  const coach = S && S.coach
+  if (!coach?.consent?.agreedAt) return { due: false, why: 'no consent' } // jobs.js:300
+  const cadence = coach.cadence
+  // 'off', absent, or everyWorkouts-only: the in-process cadence owns that mode.
+  if (!cadence || typeof cadence !== 'object' || !cadence.weekly || typeof cadence.weekly !== 'object')
+    return { due: false, why: 'weekly cadence is off' }
+  if (rec.pending) return { due: false, why: 'a proposal is already waiting' } // cadence.js:64-65
+  if (rec.current) return { due: false, why: 'a review job is already running' } // cadence.js:65 st.job
+  const reviewedAt = wReviewedAt(S, rec)
+  if (now - reviewedAt < REVIEW_DAYS * 86400000) return { due: false, why: 'already reviewed this week' }
+  const wantDay = Number.isInteger(cadence.weekly.day) ? cadence.weekly.day : 0
+  const today = wWeekdayIndex(S.reminder?.tz, now)
+  if (today !== wantDay) return { due: false, why: 'not the chosen weekday (' + WEEKDAYS[wantDay] + ')' }
+  // Nothing new to read - cadence.js:26-34, same end-vs-reviewedAt rule (the date stands in
+  // for a workout with no end; the phone's local day can run ahead of the server's UTC day).
+  const since = (S.workouts || []).filter(
+    w => !reviewedAt || (w?.end ? w.end > reviewedAt : w?.d > new Date(reviewedAt).toISOString().slice(0, 10)),
+  )
+  if (!since.length) return { due: false, why: 'no new workouts since the last review' }
+  return { due: true }
+}
+
+/* ---------- the payload: payload.js:574-590 review branch, compact ---------- */
+
+/* Duplicated in spirit from api/coach/prompts/review.md + common.md (the canonical rules the
+ * in-process pipeline assembles through buildPromptParts): the prompt library cannot ship
+ * with functions/ (file header), so this states the same decision rules plus the exact
+ * contract wValidate enforces. The api keeps the full text. */
+const REVIEW_RULES = [
+  'Task: review their training against the plan in the payload and either propose plan changes or say there is nothing to change.',
+  'Read `window` (the sessions they actually did, most recent last), `bodyweight`, `coachProfile`, `previouslyDeclined` if present, and `plan` (what is prescribed: routines with named exercises, and the weekday `week` map).',
+  'One session is not a trend: with fewer than three sessions in `window`, act only on clear evidence in the data or something the user wrote - otherwise answer nochange.',
+  'Change nothing when nothing warrants it. Prefer few, high-conviction changes - about six at most. Never invent a change to look useful.',
+  'You may only adjust what already exists: prescription numbers (sets/reps/time/increment/progression), remove an exercise or a routine, rename a routine, move a plan to another weekday, or reorder a routine.',
+  'You may NOT add or swap an exercise, add a routine, or link a superset: this review channel has no exercise catalogue, so those types are rejected.',
+  'Return exactly one JSON object and nothing else - no prose, no markdown fence.',
+  'Nothing to change: {"coach_contract":1,"nochange":true,"reading":"<a short honest paragraph on how the block went>"}',
+  'Otherwise: {"coach_contract":1,"summary":"<2-4 sentences: what you saw and what you are proposing>","evidence":{"from":"YYYY-MM-DD","to":"YYYY-MM-DD","sessions":<count>},"changes":[{"id":"c1","type":"<type>","target":{"routineId":"<id>","exId":"<id>","weekday":<0-6>},"after":<value>,"why":"<the evidence behind it, max 600 chars>"}]}',
+  'Allowed types: remove-exercise, sets, reps, repsMin, repsMax, sec, cardio, reorder, routine-prog, exercise-prog, inc, remove-routine, rename-routine, week.',
+  'after by type: sets 1-10 whole; reps 1-100 whole (an even total when the exercise is per-side); repsMin and repsMax 1-100 with min <= max; sec 5-3600; inc > 0 and <= 50; routine-prog and exercise-prog one of off, linear, greyskull, double, time; cardio an object with min (1-180) and/or speed (> 0, <= 60); rename-routine the new name (max 40 chars); remove-exercise and remove-routine omit after; week sets target.weekday (0-6) and after to a routine id, "rest", or null; reorder sets after to exactly that routine\'s exercise ids, each once, in the new order.',
+  'target must name a routineId from `plan`; any type touching an exercise must name its exId inside that routine.',
+  'Every change needs a unique id ("c1", "c2", ...) and a why. Do not send before - the app reads current values from the live plan.',
+  'No two changes may reschedule the same weekday. A routine cannot be removed and changed in the same answer. A reorder cannot sit in a routine that also has an exercise removed.',
+].join('\n\n')
+
+const wEffort = S => {
+  const e = S && S.effort
+  return e === 'none' || e === 'rir' || e === 'rpe' ? e : S && S.showRir ? 'rir' : 'none' // payload.js:188-191
+}
+
+/** The model never sees the raw uid: a stable per-profile pseudonym (payload.js meta.profile
+ *  role; api uses an HMAC with the instance secret this function does not have). */
+const wHandle = uid => crypto.createHash('sha256').update(String(uid)).digest('hex').slice(0, 16)
+
+/** payload.js:56-61 - a warmup set is not training data. */
+const wIsWarmup = s => {
+  const ph = typeof s?.phase === 'string' ? s.phase.trim().toLowerCase() : ''
+  if (ph) return ph === 'warmup' || ph === 'warm-up' || ph === 'warm_up'
+  return s?.warmup === true
+}
+
+/** payload.js:196-203 reviewWindow, sliced to REVIEW_SESSIONS sessions, all compact. */
+function wReviewWindow(S, since) {
+  const all = (S.workouts || []).filter(w => w && w.d)
+  const cutoffDate = new Date()
+  cutoffDate.setDate(cutoffDate.getDate() - REVIEW_WINDOW_WEEKS * 7)
+  const cutoff = cutoffDate.toISOString().slice(0, 10)
+  const from = since && since > cutoff ? since : cutoff
+  return all.filter(w => w.d >= from).slice(-REVIEW_SESSIONS)
+}
+
+/** One session as the model reads it: every done set, warmups dropped, ids resolved to names
+ *  through the shipped name map (library ids are 4-digit strings - coach-names.js). */
+function wWorkoutLine(w, custom) {
+  return {
+    d: w.d || null,
+    name: w.name || null,
+    ...(w.end && w.start ? { minutes: Math.round((w.end - w.start) / 60000) } : {}),
+    entries: (w.entries || []).map(en => ({
+      id: en.id || null,
+      name: custom.get(en.id) || REVIEW_NAMES[en.id] || null,
+      sets: (en.sets || [])
+        .filter(s => s && s.done && !wIsWarmup(s))
+        .map(s => ({
+          ...(s.w != null ? { w: s.w } : {}),
+          ...(s.r != null ? { r: s.r } : {}),
+          ...(s.rir != null ? { rir: s.rir } : {}),
+          ...(s.rpe != null ? { rpe: s.rpe } : {}),
+          ...(s.sec != null ? { sec: s.sec } : {}),
+          ...(s.min != null ? { min: s.min } : {}),
+          ...(s.speed != null ? { speed: s.speed } : {}),
+        })),
+    })),
+  }
+}
+
+/** payload.js:500-632 build() for kind 'review': meta, profile, plan, window, bodyweight,
+ *  previouslyDeclined - without aggregates/library/cohort, which need the catalogue. */
+function wPayload(S, uid, now) {
+  const coach = S.coach || {}
+  const profile = coach.profile || null
+  const since = coach.lastReview?.at ? new Date(coach.lastReview.at).toISOString().slice(0, 10) : null
+  const workouts = wReviewWindow(S, since)
+  const custom = new Map((S.customEx || []).map(c => [c.id, c.name]))
+  const declined = (coach.log || []) // payload.js:540-543 (FR-26)
+    .flatMap(e => (e.decisions || []).filter(d => d.status === 'rejected').map(d => ({ type: d.type, why: d.why })))
+    .slice(-15)
+  const from = workouts[0]?.d || null
+  return {
+    coach_contract: 1,
+    task: 'review',
+    meta: {
+      profile: wHandle(uid),
+      lang: S.lang || 'en',
+      unit: S.unit || 'kg',
+      effortScale: wEffort(S),
+      today: new Date(now).toISOString().slice(0, 10),
+    },
+    coachProfile: profile
+      ? {
+          goal: profile.goal || null,
+          experience: profile.experience || null,
+          daysPerWeek: profile.daysPerWeek || null,
+          preferredDays: profile.preferredDays || [],
+          sessionMin: profile.sessionMin || null,
+          equipment: profile.equipment || [],
+          limitations: profile.limitations || '',
+          likes: profile.likes || '',
+          dislikes: profile.dislikes || '',
+          notes: profile.notes || '',
+        }
+      : null,
+    plan: {
+      routines: (S.routines || []).map(r => ({
+        id: r.id,
+        name: r.name || '',
+        ...(r.prog ? { prog: r.prog } : {}),
+        ex: (r.ex || []).map(e => ({
+          id: e.id,
+          name: custom.get(e.id) || REVIEW_NAMES[e.id] || null,
+          ...(e.sets != null ? { sets: e.sets } : {}),
+          ...(e.reps != null ? { reps: e.reps } : {}),
+          ...(e.sec != null ? { sec: e.sec } : {}),
+          ...(e.min != null ? { min: e.min } : {}),
+          ...(e.speed != null ? { speed: e.speed } : {}),
+          ...(e.weight ? { weight: e.weight } : {}),
+          ...(e.prog ? { prog: e.prog } : {}),
+          ...(e.inc != null ? { inc: e.inc } : {}),
+          ...(e.repsMin != null ? { repsMin: e.repsMin } : {}),
+          ...(e.repsMax != null ? { repsMax: e.repsMax } : {}),
+          ...(e.side ? { side: true } : {}),
+        })),
+      })),
+      // payload.js cleanPlan week rule: empty days out, combined days kept, merge order kept.
+      week: Object.fromEntries([1, 2, 3, 4, 5, 6, 0].filter(d => S.week?.[d]?.length).map(d => [d, [].concat(S.week[d])])),
+    },
+    window: {
+      from,
+      to: workouts[workouts.length - 1]?.d || null,
+      workouts: workouts.map(w => wWorkoutLine(w, custom)),
+    },
+    bodyweight: {
+      goal: S.targetW ?? null,
+      series: (S.bodyweight || []).filter(b => b && b.d && (!from || b.d >= from)).map(b => ({ d: b.d, w: b.w })),
+    },
+    ...(declined.length ? { previouslyDeclined: declined } : {}),
+  }
+}
+
+/* ---------- the gate: validateReview (validate.js:257-620), catalogue-free types ---------- */
+
+/** What the plan says right now - validate.js:717-742 currentOf, coach.js:177 currentValue.
+ *  Read off the plan, never taken from the answer: markStale compares it to the live plan. */
+function wCurrentOf(type, routine, planned, S, target) {
+  switch (type) {
+    case 'sets':
+      return planned?.sets ?? null
+    case 'reps':
+      return planned?.reps ?? null
+    case 'repsMin':
+      return planned?.repsMin ?? null
+    case 'repsMax':
+      return planned?.repsMax ?? null
+    case 'sec':
+      return planned?.sec ?? null
+    case 'inc':
+      return planned?.inc ?? null
+    case 'exercise-prog':
+      return planned?.prog ?? null
+    case 'routine-prog':
+      return routine?.prog ?? null
+    case 'rename-routine':
+      return routine?.name ?? null
+    case 'week':
+      return S.week?.[target?.weekday] ?? null
+    default:
+      return null
+  }
+}
+
+/** Per-type checks on `after` - validate.js:350-530 for the supported types. Returns an
+ *  error string or null, normalising `after` the way the api does where it must. */
+function wCheckAfter(out, routine, planned, routines) {
+  const where = `change "${out.id}"`
+  switch (out.type) {
+    case 'remove-exercise':
+    case 'remove-routine':
+      out.after = null
+      return null
+    case 'sets':
+      return isInt(out.after, 1, 10) ? null : `${where}.after must be a whole number of sets (1-10)`
+    case 'reps': {
+      if (!isInt(out.after, 1, 100)) return `${where}.after must be a whole number of reps (1-100)`
+      if (planned?.side && out.after % 2) return `${where}.after must be an even total for a per-side exercise`
+      return null
+    }
+    case 'repsMin': {
+      if (!isInt(out.after, 1, 100)) return `${where}.after must be a whole number (1-100)`
+      if (planned?.repsMax != null && out.after > planned.repsMax) return `${where}.after must stay at or below the exercise's repsMax`
+      return null
+    }
+    case 'repsMax': {
+      if (!isInt(out.after, 1, 100)) return `${where}.after must be a whole number (1-100)`
+      if (planned?.repsMin != null && out.after < planned.repsMin) return `${where}.after must stay at or above the exercise's repsMin`
+      return null
+    }
+    case 'sec':
+      return isInt(out.after, 5, 3600) ? null : `${where}.after must be seconds (5-3600)`
+    case 'cardio': {
+      const a = out.after || {}
+      if (!isInt(a.min, 1, 180) && !isNum(a.speed)) return `${where}.after must carry min and/or speed`
+      out.after = {
+        ...(isInt(a.min, 1, 180) ? { min: a.min } : {}),
+        ...(isNum(a.speed) && a.speed > 0 && a.speed <= REVIEW_MAX_SPEED ? { speed: a.speed } : {}),
+      }
+      return null
+    }
+    case 'inc':
+      return isNum(out.after) && out.after > 0 && out.after <= REVIEW_MAX_INC
+        ? null
+        : `${where}.after must be a positive increment no larger than ${REVIEW_MAX_INC}`
+    case 'routine-prog':
+    case 'exercise-prog':
+      return REVIEW_POLICIES.includes(out.after) ? null : `${where}.after must be one of ${REVIEW_POLICIES.join(', ')}`
+    case 'reorder': {
+      const order = Array.isArray(out.after) ? out.after : null
+      if (!order) return `${where}.after must be an array of exercise ids in the new order`
+      const have = (routine.ex || []).map(e => e.id)
+      // Same ids, each exactly once (validate.js:488-510): a list that duplicates one id and
+      // omits another would delete an exercise on apply with nothing on screen to show it.
+      if (order.length !== have.length || new Set(order).size !== order.length || order.some(id => !have.includes(id)))
+        return `${where}.after must list exactly the ${have.length} exercise ids already in "${routine.name}", each once, reordered`
+      out.after = order
+      return null
+    }
+    case 'rename-routine':
+      if (!isStr(out.after)) return `${where}.after must be the new routine name`
+      out.after = clampStr(out.after, 40)
+      return null
+    case 'week': {
+      if (!isInt(out.target.weekday, 0, 6)) return `${where}.target.weekday must be 0-6`
+      if (out.after != null && out.after !== 'rest' && !routines.has(out.after))
+        return `${where}.after must be a routine id from the plan, "rest", or null`
+      out.after = out.after ?? null
+      return null
+    }
+  }
+  return null
+}
+
+/** Structural twin of validateReview for REVIEW_TYPES (see the section header). Same target
+ *  rules, same after ranges, same coherence pass minus the catalogue-bound kinds. */
+function wValidate(data, S) {
+  if (!data || typeof data !== 'object') return { ok: false, errors: ['the answer was not an object'] }
+  if (data.nochange) return { ok: true, nochange: true, reading: clampStr(data.reading || data.summary || '', 1200) }
+  const list = Array.isArray(data.changes) ? data.changes : null
+  if (!list) return { ok: false, errors: ['changes must be an array (or set "nochange": true with a "reading")'] }
+
+  const errors = []
+  const routines = new Map((S.routines || []).map(r => [r.id, r]))
+  const changes = []
+  const seenIds = new Set()
+  list.slice(0, REVIEW_MAX_CHANGES).forEach((c, i) => {
+    const where = `changes[${i}]`
+    if (!c || typeof c !== 'object') {
+      errors.push(`${where} is not an object`)
+      return
+    }
+    if (!REVIEW_TYPES.includes(c.type)) {
+      errors.push(`${where}.type "${c.type}" is not supported by this review - use one of: ${REVIEW_TYPES.join(', ')}`)
+      return
+    }
+    if (!isStr(c.why)) {
+      errors.push(`${where}.why is required - every change must cite the evidence behind it`)
+      return
+    }
+    const target = c.target || {}
+    const routine = target.routineId ? routines.get(target.routineId) : null
+    // Everything but week must name a routine that exists (validate.js:292-297).
+    if (c.type !== 'week' && !routine) {
+      errors.push(`${where}.target.routineId "${target.routineId}" is not one of the routines in the plan`)
+      return
+    }
+    let planned = null
+    if (REVIEW_NEEDS_EX.includes(c.type)) {
+      if (!target.exId) {
+        errors.push(`${where}.target.exId is required for type "${c.type}"`)
+        return
+      }
+      planned = (routine.ex || []).find(e => e.id === target.exId) || null
+      if (!planned) {
+        errors.push(`${where}.target.exId "${target.exId}" is not in routine "${routine.name}"`)
+        return
+      }
+    }
+    // Two changes under one id share a checkbox on the review screen (validate.js:324-328).
+    let cid = isStr(c.id) ? clampStr(c.id, 40) : 'c' + i
+    if (seenIds.has(cid)) cid = `${cid}-${i}`
+    seenIds.add(cid)
+
+    const out = {
+      id: cid,
+      type: c.type,
+      target: {
+        ...(isStr(target.routineId) ? { routineId: clampStr(target.routineId, 40) } : {}),
+        ...(isStr(target.exId) ? { exId: clampStr(target.exId, 40) } : {}),
+        ...(isInt(target.weekday, 0, 6) ? { weekday: target.weekday } : {}),
+      },
+      why: clampStr(c.why, 600),
+      ...(routine ? { routineName: clampStr(routine.name || '', 40) } : {}),
+      before: wCurrentOf(c.type, routine, planned, S, target),
+      after: c.after ?? null,
+    }
+    const bad = wCheckAfter(out, routine, planned, routines)
+    if (bad) {
+      errors.push(bad)
+      return
+    }
+    changes.push(out)
+  })
+  if (errors.length) return { ok: false, errors }
+
+  // Coherence (validate.js:624-664): each change validated alone, the SET has to make sense
+  // on one screen - the user approves a screen, not a change.
+  const SCALAR = ['sets', 'reps', 'repsMin', 'repsMax', 'sec', 'inc', 'routine-prog', 'exercise-prog', 'rename-routine', 'week']
+  const sameValue = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
+  // A scalar whose after equals the plan is dropped, not refused; all gone = honest nochange.
+  const kept = changes.filter(ch => !(SCALAR.includes(ch.type) && sameValue(ch.before, ch.after)))
+  const byRoutine = new Map()
+  const weekdays = new Set()
+  const removed = new Set()
+  kept.forEach(ch => {
+    const rid = ch.target.routineId
+    if (rid) {
+      if (!byRoutine.has(rid)) byRoutine.set(rid, [])
+      byRoutine.get(rid).push(ch.type)
+    }
+    if (ch.type === 'remove-routine') removed.add(rid)
+    if (ch.type === 'week') {
+      const d = ch.target.weekday
+      if (weekdays.has(d)) errors.push(`two changes both reschedule weekday ${d} - only one can win`)
+      weekdays.add(d)
+    }
+  })
+  byRoutine.forEach((types, rid) => {
+    if (types.includes('reorder') && types.includes('remove-exercise'))
+      errors.push(
+        `routine "${routines.get(rid)?.name || rid}" is both reordered and restructured in one review - propose the reorder next time, against the list it will actually have`,
+      )
+    if (removed.has(rid) && types.some(t => t !== 'remove-routine'))
+      errors.push(`routine "${routines.get(rid)?.name || rid}" is removed and also changed in the same review`)
+  })
+  if (errors.length) return { ok: false, errors }
+  if (!kept.length) return { ok: true, nochange: true, reading: clampStr(data.summary || data.reading || '', 1200) }
+  return {
+    ok: true,
+    proposal: {
+      summary: clampStr(data.summary || '', 1200),
+      evidence: {
+        from: isStr(data.evidence?.from) ? clampStr(data.evidence.from, 40) : null,
+        to: isStr(data.evidence?.to) ? clampStr(data.evidence.to, 40) : null,
+        sessions: isInt(data.evidence?.sessions, 0, 10000) ? data.evidence.sessions : null,
+      },
+      changes: kept,
+      notes: (Array.isArray(data.notes) ? data.notes : [])
+        .filter(isStr)
+        .slice(0, 6)
+        .map(n => clampStr(n, 600)),
+    },
+  }
+}
+
+/* ---------- the schedule ---------- */
+
+exports.weeklyReview = onSchedule(
+  {
+    // Daily tick, per-profile WEEKDAY honoured below (the sheet's day choice, default Sunday).
+    // Time is best-effort: 18:00 SP matches the default choice exactly; another chosen minute
+    // still runs on the right DAY at 18:00 (section header). The in-process cadence.js honours
+    // the minute when that server runs.
+    schedule: 'every day 18:00',
+    timeZone: 'America/Sao_Paulo',
+    region: REGION,
+    timeoutSeconds: 300, // up to REVIEW_MAX_PER_RUN sequential 60s calls
+  },
+  async () => {
+    const key = process.env.XAI_API_KEY
+    if (!key) {
+      console.log('weeklyReview: XAI_API_KEY is not configured - skipping the run')
+      return
+    }
+    const dataDir = process.env.DATA_DIR || '/data' // jobs.js:36, read per run
+    const now = Date.now()
+    let asked = 0
+    for (const uid of wListUids(dataDir).sort()) {
+      if (asked >= REVIEW_MAX_PER_RUN) break
+      try {
+        const S = wRead(wStateFile(dataDir, uid))
+        if (!S) continue
+        const rec = wReadCoach(dataDir, uid)
+        const due = wWeeklyDue(S, rec, now)
+        if (!due.due) {
+          console.log('weeklyReview: skip ' + uid + ' - ' + due.why)
+          continue
+        }
+        const built = buildMessages({ system: REVIEW_RULES, payload: wPayload(S, uid, now) })
+        if (built.error) {
+          console.error('weeklyReview: payload for ' + uid + ' rejected - ' + built.error)
+          continue
+        }
+        asked++
+        const out = await callGrok({
+          key,
+          model: process.env.XAI_MODEL || DEFAULT_XAI_MODEL,
+          messages: built.messages,
+          temperature: 0, // a plan review is a reading of the data, not a creativity test
+        })
+        const attemptId = crypto.randomBytes(8).toString('hex') // jobs.js pending id form
+        // One history line, in the shape jobs.finish writes (jobs.js:396-411): ready with the
+        // proposal, nochange with its reading, failed/unusable when the answer could not be
+        // read - all three are what cadence.js:69-81 counts as reviewed.
+        const record = (extra, pending) => {
+          const r = wReadCoach(dataDir, uid)
+          const line = {
+            id: attemptId,
+            kind: 'review',
+            trigger: 'scheduled',
+            errorClass: null,
+            ...extra,
+            at: Date.now(),
+          }
+          const history = [...(r.history || []), line].slice(-REVIEW_HISTORY_MAX)
+          wWriteCoach(dataDir, uid, { ...r, ...(pending !== undefined ? { pending } : {}), history })
+        }
+        // Never reached a usable answer (timeout / transport / HTTP error): retried next week
+        // by the weekday gate, not recorded as reviewed - cadence.js:66-68 records only what
+        // was actually paid for and read.
+        if (out.timeout || out.unreachable || out.status != null) {
+          console.error(
+            'weeklyReview: ' + uid + ' model call failed - ' + String(out.timeout ? 'timeout' : out.unreachable || out.error).slice(0, 200),
+          )
+          continue
+        }
+        const ans = out.text ? extractJson(out.text) : null
+        if (!ans) {
+          console.error('weeklyReview: ' + uid + ' answer unusable - recording failed/unusable')
+          record({ outcome: 'failed', errorClass: 'unusable' })
+          continue
+        }
+        const checked = wValidate(ans, S)
+        if (checked.ok && checked.nochange) {
+          console.log('weeklyReview: ' + uid + ' - nothing to change')
+          record({ outcome: 'nochange', reading: checked.reading })
+          continue
+        }
+        if (!checked.ok) {
+          console.error('weeklyReview: ' + uid + ' answer failed validation - ' + checked.errors.join('; ').slice(0, 300))
+          record({ outcome: 'failed', errorClass: 'unusable' })
+          continue
+        }
+        // jobs.js:507-520 pending shape, minus planHash (section header).
+        const pending = {
+          id: attemptId,
+          kind: 'review',
+          createdAt: Date.now(),
+          expiresAt: Date.now() + REVIEW_PENDING_DAYS * 86400000,
+          iteration: 1,
+          ...checked.proposal,
+        }
+        record({ outcome: 'ready' }, pending)
+        console.log('weeklyReview: proposal for ' + uid + ' (' + checked.proposal.changes.length + ' changes)')
+      } catch (e) {
+        // One bad profile must not cost the other nine their review.
+        console.error('weeklyReview: ' + uid + ' failed - ' + String((e && e.message) || e).slice(0, 300))
+      }
     }
   },
 )
