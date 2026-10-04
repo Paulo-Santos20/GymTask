@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { getTargets, DEFAULT_PROFILE } from '../lib/tdee.js'
+import { getTargets, calcMacros, DEFAULT_PROFILE } from '../lib/tdee.js'
 
 export const MEALS = ['cafe', 'almoco', 'lanche', 'jantar']
 
@@ -9,18 +9,38 @@ const mergeProfile = (saved = {}, base = DEFAULT_PROFILE) => {
   return { ...DEFAULT_PROFILE, ...profile }
 }
 
+// Formula targets, with an applied adaptive estimate on top: when the user has tapped
+// Apply (profile.kcalTarget — persisted with the profile like every other preference),
+// that number IS the calorie target and the macro split is recomputed from it, exactly
+// as getTargets would from a formula kcal. No profile.kcalTarget → pure formula, so
+// nothing changes for anyone who never tapped Apply (the adaptive estimate is never
+// auto-applied — see lib/tdee-adaptive.js).
+const deriveTargets = profile => {
+  const base = getTargets(profile)
+  const applied = Number(profile.kcalTarget)
+  if (!(applied > 0)) return base
+  const macros = calcMacros(applied, profile)
+  return {
+    ...base,
+    kcal: Math.round(applied),
+    protein: Math.round(macros.protein),
+    carbs: Math.round(macros.carbs),
+    fat: Math.round(macros.fat),
+  }
+}
+
 export const useNutritionStore = create(
   persist(
     (set, get) => ({
       profile: { ...DEFAULT_PROFILE },
-      targets: getTargets(DEFAULT_PROFILE),
+      targets: deriveTargets(DEFAULT_PROFILE),
       log: {},
       lastRemoved: null,
 
       setProfile: patch =>
         set(state => {
           const profile = { ...state.profile, ...patch }
-          return { profile, targets: getTargets(profile) }
+          return { profile, targets: deriveTargets(profile) }
         }),
 
       addEntry: (date, entry) =>
@@ -77,7 +97,7 @@ export const useNutritionStore = create(
         return {
           ...current,
           profile,
-          targets: getTargets(profile),
+          targets: deriveTargets(profile),
           log: persisted?.log || {},
           lastRemoved: null,
         }

@@ -1642,4 +1642,9 @@ export default {
   'Next month': 'Próximo mês',
   'Previous week': 'Semana anterior',
   'Next week': 'Próxima semana',
+  'Adaptive maintenance': 'Manutenção adaptativa',
+  Apply: 'Aplicar',
+  'Adaptive estimate appears after {0} days with weigh-ins and food logged.':
+    'A estimativa adaptativa aparece após {0} dias com pesagens e refeições registadas.',
+  'Calorie target updated': 'Meta calórica atualizada',
 }
