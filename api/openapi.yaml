@@ -583,8 +583,7 @@ paths:
   # User surface of the AI Coach (api/coach/routes.js). Enqueue → 202 {job:{id}} →
   # poll /api/coach/status. The demo build and the BYOK device mode run the same
   # core client-side and never reach these routes. The /api/admin/coach* handlers
-  # that still live in routes.js are not registered by server.js and are not
-  # documented here.
+  # were deleted from routes.js and are not documented here.
 
   /api/coach/disclosure:
     get:

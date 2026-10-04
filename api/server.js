@@ -808,10 +808,12 @@ const routes = {
   // Routes live in coach/routes.js and are handed the helpers above rather than importing
   // them: they are closures over db and SECRET, and passing them in keeps that module free of
   // a cycle. Every one of them is inert while the feature is unconfigured.
-  // coach/routes.js stays byte-identical and still exports upstream /api/admin/coach/* handlers;
-  // drop those keys here — with the admin panel gone nothing calls them (requireAdmin went too).
-  // Keys are 'METHOD /path' (that is how the listener dispatches them), so the path is what gets
-  // matched: testing the raw key never sees '/api/admin/' and silently keeps every admin route.
+  // coach/routes.js no longer exports the upstream /api/admin/coach/* handlers (deleted as
+  // unreachable — the admin panel is gone and requireAdmin went with them), but this spread is
+  // generic over whatever the module exports: the filter stays as cheap defense-in-depth so a
+  // reintroduced admin key can never mount. Keys are 'METHOD /path' (that is how the listener
+  // dispatches them), so the path is what gets matched: testing the raw key never sees
+  // '/api/admin/' and silently keeps every admin route.
   ...Object.fromEntries(Object.entries(coachRoutes({ json, readBody, readSession }))
     .filter(([k]) => !k.slice(k.indexOf(' ') + 1).startsWith('/api/admin/')))
 };

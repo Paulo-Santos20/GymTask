@@ -53,8 +53,8 @@ credentialFor(uid))`, register an `AbortController` (used by `forget`) →
 env, cwd: jobDir, timeoutMs})` → `{code, stdout, stderr, timedOut}` → `text = stdout` → back in
 `core/pipeline.js` the result is classified: `code 0` → parse/validate; `timedOut` → `timeout`;
 `spawnError` (e.g. CLI absent, missing key) → `missing`; non-zero + `/auth|401|403|api key/` →
-`auth`, otherwise `provider`. `check()` answers `GET /api/admin/coach` (dead in this build) and
-`jobs.testRun()` — "is the runtime there", never "run a job".
+`auth`, otherwise `provider`. `check()` answered `GET /api/admin/coach` (route deleted in this
+build) and still backs `jobs.testRun()` — "is the runtime there", never "run a job".
 
 ## Integration
 
