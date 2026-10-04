@@ -1666,4 +1666,6 @@ export default {
   Maximum: 'Máximo',
   'Reset to defaults': 'Redefinir para os padrões',
   Adherence: 'Aderência',
+  'Weight, intake and volume': 'Peso, ingestão e volume',
+  Intake: 'Ingestão',
 }

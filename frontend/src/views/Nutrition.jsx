@@ -6,11 +6,14 @@ import { adaptiveTDEE, MIN_PAIRED_DAYS } from '../lib/tdee-adaptive.js'
 import { searchFoods } from '../lib/foods.js'
 import { searchExternal } from '../lib/foodApis.js'
 import { importCodeFromImage } from '../lib/scan.js'
-import { todayISO, isoOf, fmtDate, fmtNum, uid } from '../lib/format.js'
+import { todayISO, isoOf, fmtDate, fmtNum, uid, weekStartOf } from '../lib/format.js'
+import { LB_TO_KG } from '../lib/recovery.js'
+import { buildCombinedSeries } from '../lib/combined-chart.js'
 import { Section, Row, Button, Stepper, Segmented, SearchField } from '../components/ui.jsx'
 import { useUI } from '../store/useUI.js'
 import CameraScan from '../components/CameraScan.jsx'
 import Icon from '../components/Icon.jsx'
+import LineChart from '../components/LineChart.jsx'
 import '../nutrition.css'
 
 const MEAL_KEYS = { cafe: 'Breakfast', almoco: 'Lunch', lanche: 'Snack', jantar: 'Dinner' }
@@ -69,6 +72,37 @@ export default function Nutrition() {
   const adaptive = useMemo(() => adaptiveTDEE(S, log), [S, log])
   const q = query.trim()
   const today = todayISO()
+  // Bodyweight, daily intake and weekly training volume over one shared date axis (RF5).
+  // A day with no weigh-in or no food stays null so the line breaks there instead of
+  // dropping to zero, and weight is shown back in the profile's own scale (the builder
+  // normalizes to kg, the same basis the adaptive estimates and targets use).
+  const combined = useMemo(() => {
+    // The window ends on the last day anything was recorded rather than on today, so a
+    // user who has not opened the app since yesterday still sees their recent days instead
+    // of an empty right edge. No history at all falls back to today and renders the empty
+    // state. Reading the latest date also keeps this honest about the data it charts.
+    let latest = ''
+    const see = d => {
+      if (d && d > latest) latest = d
+    }
+    for (const b of S.bodyweight || []) see(b?.d)
+    for (const d of Object.keys(log || {})) see(d)
+    for (const w of S.workouts || []) see(w?.d)
+    const s = buildCombinedSeries({
+      bodyweight: S.bodyweight,
+      log,
+      workouts: S.workouts,
+      unit: S.unit,
+      ws: weekStartOf(S),
+      today: latest || today,
+    })
+    const shown = p => (p.y == null ? p : { ...p, y: S.unit === 'lb' ? p.y / LB_TO_KG : p.y })
+    return [
+      { label: t('Weight'), unit: S.unit, color: 'var(--blue)', points: s.weight.map(shown) },
+      { label: t('Intake'), unit: 'kcal', color: 'var(--orange)', points: s.intake },
+      { label: t('Volume'), unit: '', color: 'var(--acc)', points: s.volume },
+    ]
+  }, [S, log, today])
   const over = totals.kcal > targets.kcal
   const diff = Math.abs(targets.kcal - totals.kcal)
 
@@ -523,6 +557,24 @@ export default function Nutrition() {
               {t('Adaptive estimate appears after {0} days with weigh-ins and food logged.', MIN_PAIRED_DAYS)}
             </div>
           )}
+          <div className="nut-lbl">{t('Weight, intake and volume')}</div>
+          <div className="chart">
+            <LineChart series={combined} h={150} />
+          </div>
+          <div className="cal-legend">
+            <span>
+              <i style={{ background: 'var(--blue)' }} />
+              {`${t('Weight')} · ${S.unit}`}
+            </span>
+            <span>
+              <i style={{ background: 'var(--orange)' }} />
+              {`${t('Intake')} · kcal`}
+            </span>
+            <span>
+              <i style={{ background: 'var(--acc)' }} />
+              {t('Volume')}
+            </span>
+          </div>
           <div className="nut-note">{t('Estimates for guidance — not medical advice.')}</div>
         </div>
       </Section>
