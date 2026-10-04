@@ -299,7 +299,16 @@ test('an unknown workout id falls back to the latest session', () => {
 
 test('workoutMeta counts done work sets, keeps the stored volume and the PR count', () => {
   const m = payload.workoutMeta(debriefState(), 'w2')
-  assert.deepEqual(m, { id: 'w2', d: '2026-07-20', name: 'Full body A', minutes: 45, vol: 600, sets: 2, prs: 1 })
+  assert.deepEqual(m, {
+    id: 'w2',
+    d: '2026-07-20',
+    name: 'Full body A',
+    minutes: 45,
+    vol: 600,
+    sets: 2,
+    prs: 1,
+    prDetail: [{ id: '0001', name: '3/4 sit-up', load: 20 }],
+  })
   assert.equal(payload.workoutMeta(sampleState({ workouts: [] }), 'w2'), null)
   // No stored volume: computed from the work sets.
   const S = sampleState({
@@ -353,6 +362,178 @@ test('a refine with no plan to refine is a fresh plan with a note, never refine.
   const q = payload.build(S, { handle: handleFor('u1'), kind: 'create', refine: 'shorter', previous: { routines: [] } })
   assert.deepEqual(q.refine, { text: 'shorter', previous: { routines: [] } })
   assert.equal(q.userNote, undefined)
+})
+
+/* ---------- C1: the Coach remembers recent training (todo 5, top5-features) ----------
+
+   The create kind used to ship nothing about what the lifter actually did — only the best
+   weight per exercise. It now carries a compact `recent` block (the last few sessions, dates
+   + exercise ids + working sets) and every PR count site carries the {id, name, load} detail
+   behind the count. Counts stay; everything here is additive. */
+
+const isoDaysAgo = n => {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d.toISOString().slice(0, 10)
+}
+
+// Six exercises per session, with a warm-up and an unfinished set in the mix so "working
+// sets" has something to exclude. Sessions 2 and newest carry a PR badge.
+const recentState = (n = 7) =>
+  sampleState({
+    workouts: Array.from({ length: n }, (_, i) => ({
+      id: 's' + i,
+      d: isoDaysAgo((n - 1 - i) * 3),
+      name: 'Full body A',
+      start: 1000,
+      end: 1000 + 45 * 60000,
+      prs: i === 2 ? ['0001'] : i === n - 1 ? ['0007'] : [],
+      entries: [
+        {
+          id: '0001',
+          target: { sets: 3, reps: 10, weight: 20 },
+          sets: [
+            { w: 40, r: 10, done: true, warmup: true },
+            { w: 20, r: 10, done: true },
+            { w: 20, r: 9, done: true },
+            { w: 20, r: 8, done: false },
+          ],
+        },
+        {
+          id: '0007',
+          target: { sets: 3, sec: 45 },
+          sets: [
+            { sec: 45, done: true },
+            { sec: 45, done: true },
+            { sec: 40, done: false },
+          ],
+        },
+        {
+          id: '0025',
+          target: { sets: 4, reps: 8, weight: 60 },
+          sets: [
+            { w: 60, r: 8, done: true },
+            { w: 60, r: 8, done: true },
+            { w: 60, r: 7, done: true },
+            { w: 60, r: 7, done: true },
+          ],
+        },
+        {
+          id: '0043',
+          target: { sets: 3, reps: 10, weight: 40 },
+          sets: [
+            { w: 40, r: 10, done: true },
+            { w: 40, r: 9, done: true },
+            { w: 40, r: 8, done: true },
+            { w: 40, r: 8, done: false },
+          ],
+        },
+        {
+          id: '0067',
+          target: { sets: 3, reps: 5, weight: 80 },
+          sets: [
+            { w: 80, r: 5, done: true },
+            { w: 80, r: 4, done: true },
+            { w: 80, r: 4, done: true },
+          ],
+        },
+        {
+          id: '0648',
+          target: { sets: 3, reps: 12, weight: 30 },
+          sets: [
+            { w: 30, r: 12, done: true },
+            { w: 30, r: 11, done: true },
+            { w: 30, r: 10, done: true },
+          ],
+        },
+      ],
+    })),
+  })
+
+test('the create payload carries a recent block — the last five sessions, compact', () => {
+  const S = recentState()
+  const p = payload.build(S, { handle: handleFor('u1'), kind: 'create' })
+  assert.ok(Array.isArray(p.recent), 'a recent block rides on the create payload')
+  assert.equal(payload.RECENT_SESSIONS, 5, 'the cap is five sessions')
+  assert.equal(p.recent.length, 5, 'seven logged, five remembered')
+  assert.deepEqual(
+    p.recent.map(r => r.d),
+    S.workouts.slice(-5).map(w => w.d),
+    'the newest five, in order',
+  )
+
+  // Compact means compact: a date, the exercise ids, and how many working sets each had.
+  const plain = p.recent.find(r => !r.prDetail)
+  assert.ok(plain, 'some of the five set no PR')
+  assert.deepEqual(Object.keys(plain), ['d', 'entries'], 'date + entries, nothing else')
+  assert.deepEqual(Object.keys(plain.entries[0]), ['id', 'sets'], 'an id and a working-set count')
+  assert.deepEqual(
+    plain.entries.map(e => e.id),
+    ['0001', '0007', '0025', '0043', '0067', '0648'],
+  )
+  assert.equal(plain.entries[0].sets, 2, 'the warm-up and the unfinished set are not working sets')
+  assert.equal(plain.entries[1].sets, 2)
+  assert.equal(plain.entries[2].sets, 4)
+  assert.equal(plain.entries[4].sets, 3)
+
+  // …and the sessions inside recent that set a badge carry the detail beside it, same as the
+  // review window does — this is the block the create prompt reads the last weeks from.
+  const withBadge = p.recent.filter(r => r.prDetail)
+  assert.equal(withBadge.length, 2, 'the two badges inside recent carry their detail')
+  assert.deepEqual(withBadge[0].prDetail, [{ id: '0001', name: '3/4 sit-up', load: 20 }])
+  assert.deepEqual(withBadge[1].prDetail, [{ id: '0007', name: 'alternate lateral pulldown', load: 0 }])
+
+  // Additive: everything the create payload carried before still travels.
+  assert.equal(p.history.workingWeights.find(w => w.id === '0001').best, 20, 'workingWeights stay')
+  assert.ok(Array.isArray(p.library) && p.library.length > 0, 'the library stays')
+  // …and it is a create-only block: a review ships its window instead.
+  const review = payload.build(S, { handle: handleFor('u1'), kind: 'review' })
+  assert.equal('recent' in review, false, 'a review carries the training window, not recent')
+})
+
+test('PRs carry {id, name, load} detail at the three count sites — the counts remain', () => {
+  const S = recentState()
+  const review = payload.build(S, { handle: handleFor('u1'), kind: 'review' })
+  const w = review.window.workouts
+
+  // Site 1 — compactWorkout: an older session in the window, summarised to one line per
+  // exercise. Its PR badge (session 2) still reports a count, now with the detail beside it.
+  const compact = w[2]
+  assert.equal(compact.compact, true, 'session 2 is older than the full-detail tail')
+  assert.equal(compact.prs, 1, 'the count is still a count')
+  assert.deepEqual(
+    compact.prDetail,
+    [{ id: '0001', name: '3/4 sit-up', load: 20 }],
+    'name from the catalogue, load from the session — the 40 kg warm-up does not count',
+  )
+
+  // Site 2 — cleanWorkout: the newest sessions keep full set detail, and carry PR detail too.
+  const full = w[w.length - 1]
+  assert.equal(full.compact, undefined)
+  assert.equal(full.prs, 1)
+  assert.deepEqual(
+    full.prDetail,
+    [{ id: '0007', name: 'alternate lateral pulldown', load: 0 }],
+    'a timed PR has no load to report — 0, not a guess',
+  )
+
+  // A session with no badge gets no detail block at all: the count alone travels.
+  assert.equal('prDetail' in w[3], false)
+  assert.equal(w[3].prs, 0)
+
+  // Site 3 — workoutMeta: the little card the debrief reads its numbers from.
+  const m = payload.workoutMeta(S, 's2')
+  assert.equal(m.prs, 1, 'the count is still a count')
+  assert.deepEqual(m.prDetail, [{ id: '0001', name: '3/4 sit-up', load: 20 }])
+})
+
+test('the recent block stays inside its 4 000-character budget on a sixty-session fixture', () => {
+  const S = recentState(60)
+  const p = payload.build(S, { handle: handleFor('u1'), kind: 'create' })
+  assert.equal(p.recent.length, 5, 'sixty sessions logged, five remembered')
+  const json = JSON.stringify(p.recent)
+  assert.ok(json.length <= 4000, `recent block serialized to ${json.length} chars (budget 4000)`)
+  assert.ok(!json.includes('"done"'), 'no set-by-set detail rides in the block')
 })
 
 test('the last few chat lines travel as conversation — user text and Coach verdicts only, never the message being sent', () => {
