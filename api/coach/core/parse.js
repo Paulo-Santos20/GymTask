@@ -10,22 +10,35 @@
  * that is a provider having a bad day, and a clean failure is a better answer than a clever
  * recovery that guesses at half an object.
  */
-import { CONTRACT } from './payload.js';
+import { CONTRACT } from './payload.js'
 
 export function extractJSON(text) {
-  const raw = String(text || '').trim();
-  if (!raw) return { error: 'the provider returned nothing' };
-  try { return { value: JSON.parse(raw) }; } catch { /* keep looking */ }
-  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const raw = String(text || '').trim()
+  if (!raw) return { error: 'the provider returned nothing' }
+  try {
+    return { value: JSON.parse(raw) }
+  } catch {
+    /* keep looking */
+  }
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
   if (fenced) {
-    try { return { value: JSON.parse(fenced[1]) }; } catch { /* keep looking */ }
+    try {
+      return { value: JSON.parse(fenced[1]) }
+    } catch {
+      /* keep looking */
+    }
   }
-  const first = raw.indexOf('{'), last = raw.lastIndexOf('}');
+  const first = raw.indexOf('{'),
+    last = raw.lastIndexOf('}')
   if (first >= 0 && last > first) {
-    try { return { value: JSON.parse(raw.slice(first, last + 1)) }; } catch { /* give up */ }
+    try {
+      return { value: JSON.parse(raw.slice(first, last + 1)) }
+    } catch {
+      /* give up */
+    }
   }
-  return { error: 'the answer was not JSON' };
+  return { error: 'the answer was not JSON' }
 }
 
 /** An answer may omit the contract field; it may not claim a different one. */
-export const contractOK = data => !data?.coach_contract || data.coach_contract === CONTRACT;
+export const contractOK = data => !data?.coach_contract || data.coach_contract === CONTRACT

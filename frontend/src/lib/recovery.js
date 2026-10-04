@@ -5,13 +5,13 @@ import { isWarmupRow, dropsOf } from './workout-model.js'
 // A "normal" hard session for one muscle, in primary-set equivalents. The saturation curve
 // 1 - exp(-stimulus / REF) maps any session size onto [0,1) so volume raises the starting
 // fatigue level without ever pinning it, and the value can then fade asymptotically.
-export const FATIGUE_REF_VOLUME = 2000  // default reference: kg of intensity-weighted volume per session
-export const FATIGUE_MIN_SESSIONS = 3  // smoothing horizon for the causal per-muscle reference
+export const FATIGUE_REF_VOLUME = 2000 // default reference: kg of intensity-weighted volume per session
+export const FATIGUE_MIN_SESSIONS = 3 // smoothing horizon for the causal per-muscle reference
 // Computational bound for the stimulus scan, not a semantic cliff: after 30 days (20
 // half-lives) a session contributes below 1e-6 to the accumulated value.
 export const FATIGUE_SCAN_MS = 30 * 24 * 60 * 60 * 1000
-export const BODYWEIGHT_REF_LOAD = 75  // kg assumed for bodyweight exercises when no load is logged
-export const CARDIO_TONNAGE_PER_MIN = 50  // duration proxy for cardio/timed work
+export const BODYWEIGHT_REF_LOAD = 75 // kg assumed for bodyweight exercises when no load is logged
+export const CARDIO_TONNAGE_PER_MIN = 50 // duration proxy for cardio/timed work
 
 // Preserve the shipped set-count signal when a completed custom/imported exercise has no load.
 // Two such sets therefore retain the old 1 - exp(-2 / 3) starting-fatigue reading.
@@ -108,13 +108,16 @@ function kgOf(value, unit) {
 function bodyweightKgFor(workout, opts = {}, stampedLoadUnit) {
   const stamped = numeric(workout?.bw) ?? numeric(workout?.bodyweight)
   if (stamped !== null) {
-    return kgOf(stamped, unitOf(
-      { unit: workout?.bwUnit },
-      { unit: workout?.bodyweightUnit },
-      workout,
-      stampedLoadUnit && { unit: stampedLoadUnit },
-      opts,
-    ))
+    return kgOf(
+      stamped,
+      unitOf(
+        { unit: workout?.bwUnit },
+        { unit: workout?.bodyweightUnit },
+        workout,
+        stampedLoadUnit && { unit: stampedLoadUnit },
+        opts,
+      ),
+    )
   }
   const canonical = numeric(opts.bodyweightKg)
   if (canonical !== null) return Math.max(0, canonical)
@@ -131,9 +134,18 @@ function bodyweightTarget(entry) {
 }
 
 function hasUnitStamp(...records) {
-  return records.some(record => record && typeof record === 'object'
-    && ['unit', 'u', 'weightUnit', 'weight_unit', 'loadUnit'].some(key => Object.prototype.hasOwnProperty.call(record, key)
-      && record[key] !== undefined && record[key] !== null && String(record[key]).trim() !== ''))
+  return records.some(
+    record =>
+      record &&
+      typeof record === 'object' &&
+      ['unit', 'u', 'weightUnit', 'weight_unit', 'loadUnit'].some(
+        key =>
+          Object.prototype.hasOwnProperty.call(record, key) &&
+          record[key] !== undefined &&
+          record[key] !== null &&
+          String(record[key]).trim() !== '',
+      ),
+  )
 }
 
 function bodyweightConfigured(ex, entry, set, workout, opts = {}) {
@@ -144,11 +156,12 @@ function bodyweightConfigured(ex, entry, set, workout, opts = {}) {
   // context is available; a stamped workout or a profile bodyweight makes the intended total-load
   // semantics unambiguous even for old entries.
   const added = kgOf(set?.w, unitOf(set, entry?.target, entry, workout, opts))
-  const hasBodyweightContext = numeric(workout?.bw) !== null
-    || numeric(workout?.bodyweight) !== null
-    || numeric(opts.bodyweightKg) !== null
-    || numeric(opts.bodyweight) !== null
-    || hasUnitStamp(set, entry?.target, entry, workout)
+  const hasBodyweightContext =
+    numeric(workout?.bw) !== null ||
+    numeric(workout?.bodyweight) !== null ||
+    numeric(opts.bodyweightKg) !== null ||
+    numeric(opts.bodyweight) !== null ||
+    hasUnitStamp(set, entry?.target, entry, workout)
   return ex?.eq === 'body weight' && (added === 0 || hasBodyweightContext)
 }
 
@@ -350,10 +363,7 @@ export function strengthOf(workouts, now, opts = {}) {
     if (age <= STRENGTH_FULL_MS) {
       result[slug] = 1
     } else {
-      result[slug] = Math.max(
-        STRENGTH_FLOOR,
-        halfLifeDecay(age - STRENGTH_FULL_MS, STRENGTH_HALF_LIFE_MS),
-      )
+      result[slug] = Math.max(STRENGTH_FLOOR, halfLifeDecay(age - STRENGTH_FULL_MS, STRENGTH_HALF_LIFE_MS))
     }
   }
   return result

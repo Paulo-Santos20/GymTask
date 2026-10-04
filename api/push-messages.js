@@ -15,26 +15,24 @@ const COPY = {
     dayRoutineSuffix: 'hoje',
     dayBody: 'Está no seu plano — vamos treinar 💪',
   },
-};
+}
 
-const copyFor = lang => COPY[lang] || COPY.en;
+const copyFor = lang => COPY[lang] || COPY.en
 
 export function restTimerPush(lang) {
-  const copy = copyFor(lang);
-  return { title: copy.restTitle, body: copy.restBody, tag: 'rest-timer' };
+  const copy = copyFor(lang)
+  return { title: copy.restTitle, body: copy.restBody, tag: 'rest-timer' }
 }
 
 export function testPush(lang) {
-  return { title: 'GymTask', body: copyFor(lang).testBody, tag: 'test' };
+  return { title: 'GymTask', body: copyFor(lang).testBody, tag: 'test' }
 }
 
 export function dayReminderPush(lang, routine) {
-  const copy = copyFor(lang);
+  const copy = copyFor(lang)
   return {
-    title: routine
-      ? `${routine.emoji || '🏋️'} ${routine.name} ${copy.dayRoutineSuffix}`
-      : copy.dayFallbackTitle,
+    title: routine ? `${routine.emoji || '🏋️'} ${routine.name} ${copy.dayRoutineSuffix}` : copy.dayFallbackTitle,
     body: copy.dayBody,
     tag: 'day-reminder',
-  };
+  }
 }

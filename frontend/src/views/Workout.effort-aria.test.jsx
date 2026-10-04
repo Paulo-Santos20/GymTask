@@ -52,7 +52,7 @@ vi.mock('../store/useStore.js', () => {
   return { useStore }
 })
 vi.mock('../store/useUI.js', () => {
-  const useUI = selector => selector ? selector(mocks.uiSnapshot()) : mocks.uiSnapshot()
+  const useUI = selector => (selector ? selector(mocks.uiSnapshot()) : mocks.uiSnapshot())
   useUI.getState = mocks.uiSnapshot
   return { useUI }
 })
@@ -79,7 +79,9 @@ vi.mock('../sheets.jsx', () => ({
 vi.mock('../components/Media.jsx', () => ({ default: () => null }))
 vi.mock('../lib/api.js', () => ({
   api: vi.fn(() => Promise.resolve({})),
-  IS_APPLE: false, IS_ANDROID: false, BIO: 'biometrics',
+  IS_APPLE: false,
+  IS_ANDROID: false,
+  BIO: 'biometrics',
 }))
 
 let dom
@@ -88,8 +90,14 @@ let container
 
 function workout(entries) {
   return {
-    unit: 'kg', restSec: 90, sound: false, effort: 'rir', gifSize: 'full',
-    workouts: [], exWeights: {}, routines: [],
+    unit: 'kg',
+    restSec: 90,
+    sound: false,
+    effort: 'rir',
+    gifSize: 'full',
+    workouts: [],
+    exWeights: {},
+    routines: [],
     active: { id: 'active', name: 'Test workout', start: Date.now(), cur: 0, entries },
   }
 }
@@ -110,18 +118,24 @@ function installDom() {
 // A logged rating renders the stepper (`.effcell-stp`) instead of the empty `.effcell`
 // button — that stepper is exactly what index.css styles.
 async function mountLoggedEffort(rir = 2) {
-  mocks.S = workout([{
-    id: 'plain-bench',
-    target: { mode: 'reps', reps: 5, weight: 60, bodyweight: false },
-    sets: [{ w: 60, r: 5, done: false, rir }],
-  }])
+  mocks.S = workout([
+    {
+      id: 'plain-bench',
+      target: { mode: 'reps', reps: 5, weight: 60, bodyweight: false },
+      sets: [{ w: 60, r: 5, done: false, rir }],
+    },
+  ])
   installDom()
-  await act(async () => { root.render(React.createElement(Workout)) })
+  await act(async () => {
+    root.render(React.createElement(Workout))
+  })
 }
 
 async function unmount() {
   if (!root) return
-  await act(async () => { root.unmount() })
+  await act(async () => {
+    root.unmount()
+  })
   root = null
   container = null
   dom = null
@@ -137,7 +151,8 @@ afterEach(async () => {
 
 describe('effort stepper styling is decoupled from English aria-labels', () => {
   it('index.css contains zero [aria-label=…] attribute selectors', () => {
-    const offenders = cssSource.split('\n')
+    const offenders = cssSource
+      .split('\n')
       .map((line, i) => ({ line, n: i + 1 }))
       .filter(({ line }) => line.includes('[aria-label='))
       .map(({ n, line }) => `${n}: ${line.trim()}`)

@@ -55,11 +55,18 @@ export function useSheetKeyboard(inputRef, enabled = true) {
 
    `pad` mirrors scroll-padding-inline in index.css so a revealed chip is not glued to the edge. */
 export function revealChip(strip, chip, pad = 16) {
-  if (!strip || !chip || typeof strip.getBoundingClientRect !== 'function' || typeof chip.getBoundingClientRect !== 'function') return false
-  const s = strip.getBoundingClientRect(), c = chip.getBoundingClientRect()
+  if (
+    !strip ||
+    !chip ||
+    typeof strip.getBoundingClientRect !== 'function' ||
+    typeof chip.getBoundingClientRect !== 'function'
+  )
+    return false
+  const s = strip.getBoundingClientRect(),
+    c = chip.getBoundingClientRect()
   const width = strip.clientWidth || s.width || 0
   if (!width) return false
-  const left = c.left - s.left + (strip.scrollLeft || 0)   // chip's offset inside the strip's content
+  const left = c.left - s.left + (strip.scrollLeft || 0) // chip's offset inside the strip's content
   const right = left + c.width
   let next = strip.scrollLeft || 0
   if (left - pad < next) next = Math.max(0, left - pad)
@@ -87,11 +94,11 @@ export function tappable(onClick) {
     tabIndex: 0,
     onClick,
     onKeyDown: e => {
-      if (e.target !== e.currentTarget) return   // a nested control handles its own keys
+      if (e.target !== e.currentTarget) return // a nested control handles its own keys
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault()
         onClick(e)
       }
-    }
+    },
   }
 }

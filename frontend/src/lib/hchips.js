@@ -8,7 +8,7 @@
  * along, the way a swipe does on a phone. index.css shows a grab cursor as the hint.
  */
 
-const DRAG_SLOP = 6   // px of travel before a press counts as a drag, not a click
+const DRAG_SLOP = 6 // px of travel before a press counts as a drag, not a click
 
 const doc = () => (typeof document !== 'undefined' ? document : null)
 
@@ -18,7 +18,10 @@ export function installChipDrag(root = doc()) {
   const body = root.body || root.documentElement
   if (!win) return () => {}
 
-  let strip = null, startX = 0, startLeft = 0, dragging = false
+  let strip = null,
+    startX = 0,
+    startLeft = 0,
+    dragging = false
 
   // cursor hint on hover: only rows that actually overflow are draggable
   const onOver = e => {
@@ -42,7 +45,11 @@ export function installChipDrag(root = doc()) {
       dragging = true
       body?.classList.add('chips-dragging')
       win.getSelection?.()?.removeAllRanges?.()
-      try { strip.setPointerCapture?.(e.pointerId) } catch { /* pointer already gone */ }
+      try {
+        strip.setPointerCapture?.(e.pointerId)
+      } catch {
+        /* pointer already gone */
+      }
     }
     strip.scrollLeft = startLeft - dx
     if (e.cancelable) e.preventDefault()
@@ -64,8 +71,8 @@ export function installChipDrag(root = doc()) {
   }
 
   const onDown = e => {
-    if (e.button != null && e.button !== 0) return          // primary button only
-    if (e.pointerType && e.pointerType !== 'mouse') return  // touch / pen already scroll
+    if (e.button != null && e.button !== 0) return // primary button only
+    if (e.pointerType && e.pointerType !== 'mouse') return // touch / pen already scroll
     const s = e.target?.closest?.('.chips')
     if (!s || s.scrollWidth <= s.clientWidth) return
     strip = s

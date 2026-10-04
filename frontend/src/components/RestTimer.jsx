@@ -23,17 +23,24 @@ export default function RestTimer() {
   if (!on) return null
   const pct = (on.left / on.total) * 100
 
-  if (work) return (
-    <div id="timer" className="working">
-      <div className="t">{clock(work.left)}</div>
-      <div className="grow">
-        {work.label && <div className="lbl">{work.label}</div>}
-        <div className="bar"><i style={{ width: pct + '%' }} /></div>
+  if (work)
+    return (
+      <div id="timer" className="working">
+        <div className="t">{clock(work.left)}</div>
+        <div className="grow">
+          {work.label && <div className="lbl">{work.label}</div>}
+          <div className="bar">
+            <i style={{ width: pct + '%' }} />
+          </div>
+        </div>
+        <Button size="sm" onClick={stopWork}>
+          {t('Cancel')}
+        </Button>
+        <Button size="sm" variant="primary" icon="check" onClick={finishWorkEarly}>
+          {t('Done')}
+        </Button>
       </div>
-      <Button size="sm" onClick={stopWork}>{t('Cancel')}</Button>
-      <Button size="sm" variant="primary" icon="check" onClick={finishWorkEarly}>{t('Done')}</Button>
-    </div>
-  )
+    )
   // Three controls plus the clock don't fit one line on a phone — at 360px the bar is left
   // with about 30px and stops saying anything. So the rest variant stacks: clock and bar
   // read at a glance, controls get their own row. −15 and +15 sit together in number-line
@@ -42,12 +49,20 @@ export default function RestTimer() {
     <div id="timer" className="rest">
       <div className="head">
         <div className="t">{clock(timer.left)}</div>
-        <div className="bar"><i style={{ width: pct + '%' }} /></div>
+        <div className="bar">
+          <i style={{ width: pct + '%' }} />
+        </div>
       </div>
       <div className="acts">
-        <Button size="sm" icon="minus" onClick={() => addRest(-15)}>15s</Button>
-        <Button size="sm" icon="plus" onClick={() => addRest(15)}>15s</Button>
-        <Button size="sm" variant="primary" className="skip" onClick={stopRest}>{t('Skip')}</Button>
+        <Button size="sm" icon="minus" onClick={() => addRest(-15)}>
+          15s
+        </Button>
+        <Button size="sm" icon="plus" onClick={() => addRest(15)}>
+          15s
+        </Button>
+        <Button size="sm" variant="primary" className="skip" onClick={stopRest}>
+          {t('Skip')}
+        </Button>
       </div>
     </div>
   )

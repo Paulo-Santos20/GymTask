@@ -1,5 +1,22 @@
 import { describe, expect, test } from 'vitest'
-import { PLATE_SIZES, DEFAULT_PAIRS, inventoryFor, pairsOf, ownsPlates, withPlatePairs, withStandardPlates, loadKindOf, withLoadKind, plateStack, plateDelta, loadKindFor, baseWeightFor, rowLoad, sameLoad, dropGrid } from './plates.js'
+import {
+  PLATE_SIZES,
+  DEFAULT_PAIRS,
+  inventoryFor,
+  pairsOf,
+  ownsPlates,
+  withPlatePairs,
+  withStandardPlates,
+  loadKindOf,
+  withLoadKind,
+  plateStack,
+  plateDelta,
+  loadKindFor,
+  baseWeightFor,
+  rowLoad,
+  sameLoad,
+  dropGrid,
+} from './plates.js'
 import { EXDB } from './exercises-data.js'
 
 const idOf = eq => EXDB.find(e => e.eq === eq).id
@@ -10,11 +27,11 @@ const homeInv = inventoryFor(HOME)
 describe('inventoryFor', () => {
   test('a profile without plates of its own gets the standard set for its unit, plenty of each', () => {
     const lb = inventoryFor({ unit: 'lb' })
-    expect(lb.map(p => p.w)).toEqual([45, 35, 25, 10, 5, 2.5])   // no 15s, no 1.25s in a gym by default
+    expect(lb.map(p => p.w)).toEqual([45, 35, 25, 10, 5, 2.5]) // no 15s, no 1.25s in a gym by default
     expect(lb.every(p => p.n === DEFAULT_PAIRS)).toBe(true)
     const kg = inventoryFor({ unit: 'kg' })
     expect(kg.map(p => p.w)).toEqual([25, 20, 15, 10, 5, 2.5, 1.25])
-    expect(inventoryFor({}).map(p => p.w)).toEqual(kg.map(p => p.w))   // kg when unset
+    expect(inventoryFor({}).map(p => p.w)).toEqual(kg.map(p => p.w)) // kg when unset
   })
 
   test('the editor lists every size, the inventory only what you have', () => {
@@ -26,12 +43,15 @@ describe('inventoryFor', () => {
     expect(pairsOf({ unit: 'lb' }, 45)).toBe(DEFAULT_PAIRS)
   })
 
-  test('zero and junk counts drop out; the other unit\'s inventory is ignored', () => {
+  test("zero and junk counts drop out; the other unit's inventory is ignored", () => {
     const S = { unit: 'kg', plates: { kg: { 20: 2, 10: 0, 5: 'x', 2.5: 1.9 }, lb: { 45: 9 } } }
-    expect(inventoryFor(S)).toEqual([{ w: 20, n: 2 }, { w: 2.5, n: 1 }])
+    expect(inventoryFor(S)).toEqual([
+      { w: 20, n: 2 },
+      { w: 2.5, n: 1 },
+    ])
   })
 
-  test('a list\'s stamp is not a plate, and a stamped list with no sizes is the standard set', () => {
+  test("a list's stamp is not a plate, and a stamped list with no sizes is the standard set", () => {
     expect(inventoryFor({ unit: 'lb', plates: { lb: { 45: 1, _ts: 1700 } } })).toEqual([{ w: 45, n: 1 }])
     expect(ownsPlates({ unit: 'lb', plates: { lb: { 45: 1, _ts: 1700 } } })).toBe(true)
     const reset = { unit: 'lb', plates: { lb: { _ts: 1800 } } }
@@ -51,7 +71,7 @@ describe('stored choices carry the time they were made', () => {
     expect(first).toEqual({ lb: { 45: 1, 35: 6, 25: 6, 10: 6, 5: 6, 2.5: 6, _ts: 100 } })
     const next = withPlatePairs({ unit: 'lb', plates: { ...first, kg: { 20: 2, _ts: 50 } } }, 15, 2.6, 200)
     expect(next.lb).toEqual({ 45: 1, 35: 6, 25: 6, 15: 3, 10: 6, 5: 6, 2.5: 6, _ts: 200 })
-    expect(next.kg).toEqual({ 20: 2, _ts: 50 })   // the other unit is left alone
+    expect(next.kg).toEqual({ 20: 2, _ts: 50 }) // the other unit is left alone
     expect(withPlatePairs({ unit: 'lb', plates: first }, 45, -3, 300).lb[45]).toBe(0)
   })
 
@@ -61,13 +81,13 @@ describe('stored choices carry the time they were made', () => {
     expect(withStandardPlates({ unit: 'kg' }, 200)).toEqual({ kg: { _ts: 200 } })
   })
 
-  test('a load kind is stored with its time; null is the equipment\'s own, stamped too', () => {
+  test("a load kind is stored with its time; null is the equipment's own, stamped too", () => {
     expect(withLoadKind(undefined, 'a', 'single', 100)).toEqual({ a: { kind: 'single', _ts: 100 } })
     expect(withLoadKind({ a: { kind: 'single', _ts: 100 } }, 'a', null, 200)).toEqual({ a: { kind: null, _ts: 200 } })
     expect(withLoadKind({}, 'a', 'weird', 100)).toEqual({ a: { kind: null, _ts: 100 } })
     expect(loadKindOf({ kind: 'none', _ts: 1 })).toBe('none')
     expect(loadKindOf({ kind: null, _ts: 1 })).toBe(null)
-    expect(loadKindOf('pairs')).toBe('pairs')        // how the first builds stored it
+    expect(loadKindOf('pairs')).toBe('pairs') // how the first builds stored it
     expect(loadKindOf('weird')).toBe(null)
     expect(loadKindOf(undefined)).toBe(null)
   })
@@ -81,7 +101,7 @@ describe('plateStack', () => {
     expect(plateStack(21.25, inventoryFor({ unit: 'kg' }))).toEqual({ plates: [20, 1.25], missing: 0 })
   })
 
-  test('the coach ramp on Monday\'s squat, one pair of each', () => {
+  test("the coach ramp on Monday's squat, one pair of each", () => {
     expect(plateStack(12.5, homeInv).plates).toEqual([10, 2.5])
     expect(plateStack(27.5, homeInv).plates).toEqual([25, 2.5])
     expect(plateStack(37.5, homeInv).plates).toEqual([35, 2.5])
@@ -91,14 +111,24 @@ describe('plateStack', () => {
 
   test('when greedy misses, the fewest plates that hit the weight exactly', () => {
     // greedy would take the 35 and be stuck 15 short; two 25s do it
-    expect(plateStack(50, [{ w: 35, n: 1 }, { w: 25, n: 2 }])).toEqual({ plates: [25, 25], missing: 0 })
+    expect(
+      plateStack(50, [
+        { w: 35, n: 1 },
+        { w: 25, n: 2 },
+      ]),
+    ).toEqual({ plates: [25, 25], missing: 0 })
     // 100 with one pair each: 45 + 35 leaves 20 → 15 + 5
     expect(plateStack(100, homeInv)).toEqual({ plates: [45, 35, 15, 5], missing: 0 })
   })
 
   test('what cannot be loaded says how much is missing, from the closest load below', () => {
     expect(plateStack(140, homeInv)).toEqual({ plates: [45, 35, 25, 15, 10, 5, 2.5], missing: 2.5 })
-    expect(plateStack(12.5, [{ w: 10, n: 1 }, { w: 5, n: 1 }])).toEqual({ plates: [10], missing: 2.5 })
+    expect(
+      plateStack(12.5, [
+        { w: 10, n: 1 },
+        { w: 5, n: 1 },
+      ]),
+    ).toEqual({ plates: [10], missing: 2.5 })
     expect(plateStack(1, homeInv)).toEqual({ plates: [], missing: 1 })
   })
 
@@ -129,8 +159,12 @@ describe('plateDelta', () => {
 })
 
 describe('loadKindFor', () => {
-  const barbell = idOf('barbell'), smith = idOf('smith machine'), db = idOf('dumbbell')
-  const bw = idOf('body weight'), weighted = idOf('weighted'), sled = idOf('sled machine')
+  const barbell = idOf('barbell'),
+    smith = idOf('smith machine'),
+    db = idOf('dumbbell')
+  const bw = idOf('body weight'),
+    weighted = idOf('weighted'),
+    sled = idOf('sled machine')
 
   test('bars split per side, added weight and sleds are one stack, the rest is not plate-loaded', () => {
     expect(loadKindFor({}, barbell)).toBe('pairs')
@@ -140,7 +174,7 @@ describe('loadKindFor', () => {
     expect(loadKindFor({}, sled)).toBe('single')
     expect(loadKindFor({}, db)).toBe('none')
     expect(loadKindFor({}, 'no-such-id')).toBe('none')
-    expect(loadKindFor({}, idOf('band'))).toBe('none')             // tension, not plates
+    expect(loadKindFor({}, idOf('band'))).toBe('none') // tension, not plates
     expect(loadKindFor({}, idOf('resistance band'))).toBe('none')
     expect(loadKindFor({}, { id: idOf('band'), bodyweight: true })).toBe('none')
   })
@@ -150,13 +184,13 @@ describe('loadKindFor', () => {
     expect(loadKindFor({}, { id: bw, bodyweight: false })).toBe('none')
   })
 
-  test('the user\'s own choice wins; junk does not', () => {
-    expect(loadKindFor({ loadKind: { [db]: 'single' } }, db)).toBe('single')      // a plate-loaded leg press
+  test("the user's own choice wins; junk does not", () => {
+    expect(loadKindFor({ loadKind: { [db]: 'single' } }, db)).toBe('single') // a plate-loaded leg press
     expect(loadKindFor({ loadKind: { [barbell]: 'none' } }, barbell)).toBe('none')
     expect(loadKindFor({ loadKind: { [barbell]: 'weird' } }, barbell)).toBe('pairs')
   })
 
-  test('a stamped choice reads like a bare one; a stamped null is the equipment\'s own', () => {
+  test("a stamped choice reads like a bare one; a stamped null is the equipment's own", () => {
     expect(loadKindFor({ loadKind: { [db]: { kind: 'single', _ts: 5 } } }, db)).toBe('single')
     expect(loadKindFor({ loadKind: { [barbell]: { kind: 'none', _ts: 5 } } }, barbell)).toBe('none')
     expect(loadKindFor({ loadKind: { [barbell]: { kind: null, _ts: 5 } } }, barbell)).toBe('pairs')
@@ -165,7 +199,8 @@ describe('loadKindFor', () => {
 })
 
 describe('baseWeightFor', () => {
-  const barbell = idOf('barbell'), sled = idOf('sled machine')
+  const barbell = idOf('barbell'),
+    sled = idOf('sled machine')
   test('the bar for bar exercises, 0 for "no bar", the override or 0 for anything else', () => {
     expect(baseWeightFor({ unit: 'lb' }, barbell)).toBe(45)
     expect(baseWeightFor({ unit: 'lb', barWeights: { [barbell]: 0 } }, barbell)).toBe(0)
@@ -178,7 +213,13 @@ describe('baseWeightFor', () => {
 
 describe('rowLoad', () => {
   test('a bar row: per side beyond the bar, as plates', () => {
-    expect(rowLoad('pairs', 145, 45, homeInv)).toEqual({ kind: 'pairs', barOnly: false, perSide: 50, plates: [45, 5], missing: 0 })
+    expect(rowLoad('pairs', 145, 45, homeInv)).toEqual({
+      kind: 'pairs',
+      barOnly: false,
+      perSide: 50,
+      plates: [45, 5],
+      missing: 0,
+    })
     expect(rowLoad('pairs', 70, 45, homeInv).plates).toEqual([10, 2.5])
   })
 
@@ -194,7 +235,13 @@ describe('rowLoad', () => {
   })
 
   test('a single stack takes all of it beyond the base: a belt, a sled', () => {
-    expect(rowLoad('single', 25, 0, homeInv)).toEqual({ kind: 'single', barOnly: false, perSide: 25, plates: [25], missing: 0 })
+    expect(rowLoad('single', 25, 0, homeInv)).toEqual({
+      kind: 'single',
+      barOnly: false,
+      perSide: 25,
+      plates: [25],
+      missing: 0,
+    })
     expect(rowLoad('single', 190, 100, homeInv).plates).toEqual([45, 35, 10])
   })
 
@@ -204,7 +251,9 @@ describe('rowLoad', () => {
   })
 
   test('sameLoad compares stacks, so a run of equal weights shows its plates once', () => {
-    const a = rowLoad('pairs', 145, 45, homeInv), b = rowLoad('pairs', 145, 45, homeInv), c = rowLoad('pairs', 120, 45, homeInv)
+    const a = rowLoad('pairs', 145, 45, homeInv),
+      b = rowLoad('pairs', 145, 45, homeInv),
+      c = rowLoad('pairs', 120, 45, homeInv)
     expect(sameLoad(a, b)).toBe(true)
     expect(sameLoad(a, c)).toBe(false)
     expect(sameLoad(rowLoad('pairs', 45, 45, homeInv), rowLoad('pairs', 40, 45, homeInv))).toBe(true)
@@ -216,8 +265,9 @@ describe('rowLoad', () => {
 
 // QA 1.3.9: a drop-set's weight was rounded to .5 whatever the bar could carry.
 describe('dropGrid', () => {
-  const barbell = idOf('barbell'), db = idOf('dumbbell')
-  test('without a plate inventory of your own: the exercise\'s weight step', () => {
+  const barbell = idOf('barbell'),
+    db = idOf('dumbbell')
+  test("without a plate inventory of your own: the exercise's weight step", () => {
     expect(dropGrid({ unit: 'kg' }, { id: db, inc: 2 })).toBe(2)
     expect(dropGrid({ unit: 'kg' }, { id: barbell, inc: 1.25 })).toBe(1.25)
   })
@@ -228,7 +278,7 @@ describe('dropGrid', () => {
     expect(typeof snap).toBe('function')
     expect(snap(48)).toBe(40)
     expect(snap(64)).toBe(60)
-    expect(snap(15)).toBe(20)      // below the bar: the bar is the lightest you can load
+    expect(snap(15)).toBe(20) // below the bar: the bar is the lightest you can load
   })
   test('a dumbbell is not plate-loaded, so plates do not decide its drop', () => {
     const S = { unit: 'kg', plates: { kg: { 10: 2, _ts: 1 } } }

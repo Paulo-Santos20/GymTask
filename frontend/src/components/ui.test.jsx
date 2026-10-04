@@ -21,7 +21,14 @@ afterEach(() => {
 
 function pointer(target, type, { x = 0, y = 0, button = 0 } = {}) {
   const event = new Event(type, { bubbles: true, cancelable: true })
-  for (const [k, v] of Object.entries({ pointerId: 1, pointerType: 'touch', isPrimary: true, button, clientX: x, clientY: y })) {
+  for (const [k, v] of Object.entries({
+    pointerId: 1,
+    pointerType: 'touch',
+    isPrimary: true,
+    button,
+    clientX: x,
+    clientY: y,
+  })) {
     Object.defineProperty(event, k, { configurable: true, value: v })
   }
   act(() => target.dispatchEvent(event))
@@ -33,17 +40,26 @@ describe('Slider', () => {
   const mountSlider = (value, onChange) => {
     act(() => root.render(<Slider value={value} min={0} max={300} step={1} onChange={onChange} />))
     const el = host.querySelector('.sld')
-    vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({ left: 100, right: 400, width: 300, top: 0, bottom: 20, height: 20, x: 100, y: 0 })
+    vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
+      left: 100,
+      right: 400,
+      width: 300,
+      top: 0,
+      bottom: 20,
+      height: 20,
+      x: 100,
+      y: 0,
+    })
     return el
   }
 
   it('drags relative to the grab point when the touch lands on the knob', () => {
     const onChange = vi.fn()
-    const el = mountSlider(80, onChange)               // knob at x=180
+    const el = mountSlider(80, onChange) // knob at x=180
     pointer(el, 'pointerdown', { x: 180 + SLIDER_GRAB_PX - 2 })
-    expect(onChange).not.toHaveBeenCalled()             // grabbing must not jump
+    expect(onChange).not.toHaveBeenCalled() // grabbing must not jump
     pointer(window, 'pointermove', { x: 180 + SLIDER_GRAB_PX - 2 + 60 })
-    expect(onChange).toHaveBeenLastCalledWith(140)      // moved by 60, not to the finger
+    expect(onChange).toHaveBeenLastCalledWith(140) // moved by 60, not to the finger
     pointer(window, 'pointerup')
   })
 
@@ -62,7 +78,16 @@ describe('Stepper', () => {
   // controlled like every real caller: the parent re-renders with the new value
   function Host({ initial, onChange, step }) {
     const [v, setV] = React.useState(initial)
-    return <Stepper value={v} step={step} onChange={n => { setV(n); onChange(n) }} />
+    return (
+      <Stepper
+        value={v}
+        step={step}
+        onChange={n => {
+          setV(n)
+          onChange(n)
+        }}
+      />
+    )
   }
   const mountStepper = (value, onChange, step = 1) => {
     act(() => root.render(<Host initial={value} step={step} onChange={onChange} />))
@@ -72,7 +97,8 @@ describe('Stepper', () => {
   it('steps once for a short tap (pointerdown, pointerup, click)', () => {
     const onChange = vi.fn()
     const plus = mountStepper(10, onChange)
-    pointer(plus, 'pointerdown'); pointer(plus, 'pointerup')
+    pointer(plus, 'pointerdown')
+    pointer(plus, 'pointerup')
     act(() => plus.click())
     expect(onChange).toHaveBeenCalledTimes(1)
     expect(onChange).toHaveBeenCalledWith(11)
@@ -80,7 +106,9 @@ describe('Stepper', () => {
 
   it('repeats while held and swallows the trailing click', () => {
     let value = 10
-    const onChange = vi.fn(v => { value = v })
+    const onChange = vi.fn(v => {
+      value = v
+    })
     const plus = mountStepper(value, onChange)
     pointer(plus, 'pointerdown')
     act(() => vi.advanceTimersByTime(399))
@@ -96,7 +124,7 @@ describe('Stepper', () => {
     act(() => plus.click())
     expect(onChange).toHaveBeenCalledTimes(3)
     act(() => vi.advanceTimersByTime(1000))
-    expect(onChange).toHaveBeenCalledTimes(3)           // nothing keeps ticking after release
+    expect(onChange).toHaveBeenCalledTimes(3) // nothing keeps ticking after release
   })
 
   it('keeps working from the keyboard (click without a pointer)', () => {

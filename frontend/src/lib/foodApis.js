@@ -43,15 +43,19 @@ const round1 = v => Math.round(v * 10) / 10
 
 // USDA nutrient ids (and the legacy nutrientNumber fallbacks) for the four macros.
 const USDA_KEYS = new Map([
-  [1008, 'kcal'], [208, 'kcal'],
-  [1003, 'protein'], [203, 'protein'],
-  [1005, 'carbs'], [205, 'carbs'],
-  [1004, 'fat'], [204, 'fat'],
+  [1008, 'kcal'],
+  [208, 'kcal'],
+  [1003, 'protein'],
+  [203, 'protein'],
+  [1005, 'carbs'],
+  [205, 'carbs'],
+  [1004, 'fat'],
+  [204, 'fat'],
 ])
 
 export async function searchUSDA(query) {
-  const url = 'https://api.nal.usda.gov/fdc/v1/foods/search'
-    + '?api_key=DEMO_KEY&pageSize=8&query=' + encodeURIComponent(query)
+  const url =
+    'https://api.nal.usda.gov/fdc/v1/foods/search' + '?api_key=DEMO_KEY&pageSize=8&query=' + encodeURIComponent(query)
   const data = await fetchJSON(url)
   const out = []
   for (const f of data.foods || []) {
@@ -59,21 +63,27 @@ export async function searchUSDA(query) {
     const per = { kcal: 0, protein: 0, carbs: 0, fat: 0 }
     let seen = false
     for (const n of f.foodNutrients || []) {
-      const key = USDA_KEYS.get(num(n.nutrientId)) || USDA_KEYS.get(String(n.nutrientNumber ?? n.nutrient?.number ?? ''))
+      const key =
+        USDA_KEYS.get(num(n.nutrientId)) || USDA_KEYS.get(String(n.nutrientNumber ?? n.nutrient?.number ?? ''))
       if (!key) continue
       const v = num(n.value)
-      if (v != null) { per[key] = round1(v); if (key === 'kcal') seen = true }
+      if (v != null) {
+        per[key] = round1(v)
+        if (key === 'kcal') seen = true
+      }
     }
-    if (!seen && !per.protein) continue   // a description with no nutrition at all is noise
+    if (!seen && !per.protein) continue // a description with no nutrition at all is noise
     out.push({ source: 'usda', name: f.description, per100g: per })
   }
   return out
 }
 
 export async function searchOFF(query) {
-  const url = 'https://world.openfoodfacts.org/cgi/search.pl?json=1&action=process&page_size=8'
-    + '&search_simple=1&fields=product_name,generic_name,nutriments'
-    + '&search_terms=' + encodeURIComponent(query)
+  const url =
+    'https://world.openfoodfacts.org/cgi/search.pl?json=1&action=process&page_size=8' +
+    '&search_simple=1&fields=product_name,generic_name,nutriments' +
+    '&search_terms=' +
+    encodeURIComponent(query)
   const data = await fetchJSON(url)
   const out = []
   for (const p of data.products || []) {
@@ -97,12 +107,16 @@ export async function searchOFF(query) {
 }
 
 export const nutritionixProxy = () => {
-  try { return import.meta.env?.VITE_NUTRITION_PROXY_URL || '' } catch { return '' }
+  try {
+    return import.meta.env?.VITE_NUTRITION_PROXY_URL || ''
+  } catch {
+    return ''
+  }
 }
 
 export async function searchNutritionix(query) {
   const base = nutritionixProxy()
-  if (!base) return []   // key arrives later — no proxy configured, nothing to call
+  if (!base) return [] // key arrives later — no proxy configured, nothing to call
   const data = await fetchJSON(base, { method: 'POST', body: JSON.stringify({ query }) })
   const foods = data.foods || data?.result?.foods || []
   const out = []
@@ -134,17 +148,31 @@ export async function searchNutritionix(query) {
 export async function searchExternal(query) {
   const q = String(query || '').trim()
   if (!q) return []
-  const sources = [['usda', searchUSDA], ['off', searchOFF]]
+  const sources = [
+    ['usda', searchUSDA],
+    ['off', searchOFF],
+  ]
   if (nutritionixProxy()) sources.push(['nutritionix', searchNutritionix])
   const failed = []
-  const groups = await Promise.all(sources.map(async ([name, fn]) => {
-    try { return await fn(q) } catch { failed.push(name); return [] }
-  }))
+  const groups = await Promise.all(
+    sources.map(async ([name, fn]) => {
+      try {
+        return await fn(q)
+      } catch {
+        failed.push(name)
+        return []
+      }
+    }),
+  )
   if (failed.length === sources.length) throw new Error('All external food sources failed: ' + failed.join(', '))
   const seen = new Set()
   const out = []
   for (const item of groups.flat()) {
-    const key = item.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+    const key = item.name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
     if (!key || seen.has(key)) continue
     seen.add(key)
     out.push(item)

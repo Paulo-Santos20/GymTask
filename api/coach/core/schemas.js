@@ -7,9 +7,9 @@
  * whether the contents are safe to act on. Fields that may hold any JSON value (`before`,
  * `after`) say so with a type union, which the grammar converter does support.
  */
-const ANY = { type: ['number', 'string', 'boolean', 'object', 'array', 'null'] };
-const STR = { type: 'string' };
-const STRINGS = { type: 'array', items: { type: 'string' } };
+const ANY = { type: ['number', 'string', 'boolean', 'object', 'array', 'null'] }
+const STR = { type: 'string' }
+const STRINGS = { type: 'array', items: { type: 'string' } }
 
 export const REVIEW_SCHEMA = {
   type: 'object',
@@ -20,7 +20,7 @@ export const REVIEW_SCHEMA = {
     summary: STR,
     evidence: {
       type: 'object',
-      properties: { from: STR, to: STR, sessions: { type: 'integer' } }
+      properties: { from: STR, to: STR, sessions: { type: 'integer' } },
     },
     changes: {
       type: 'array',
@@ -31,33 +31,43 @@ export const REVIEW_SCHEMA = {
           type: STR,
           target: {
             type: 'object',
-            properties: { routineId: STR, exId: STR, weekday: { type: 'integer' } }
+            properties: { routineId: STR, exId: STR, weekday: { type: 'integer' } },
           },
           before: ANY,
           after: ANY,
-          why: STR
+          why: STR,
         },
-        required: ['type', 'why']
-      }
+        required: ['type', 'why'],
+      },
     },
-    notes: STRINGS
+    notes: STRINGS,
   },
-  required: ['coach_contract']
-};
+  required: ['coach_contract'],
+}
 
 const EX_SCHEMA = {
   type: 'object',
   properties: {
-    id: STR, sets: { type: 'integer' }, mode: STR,
-    reps: { type: 'integer' }, sec: { type: 'integer' },
-    min: { type: 'integer' }, speed: { type: 'number' },
-    weight: { type: 'number' }, prog: STR, inc: { type: 'number' },
-    repsMin: { type: 'integer' }, repsMax: { type: 'integer' },
-    bodyweight: { type: 'boolean' }, side: { type: 'boolean' },
-    sg: STR, why: STR, position: { type: 'integer' }
+    id: STR,
+    sets: { type: 'integer' },
+    mode: STR,
+    reps: { type: 'integer' },
+    sec: { type: 'integer' },
+    min: { type: 'integer' },
+    speed: { type: 'number' },
+    weight: { type: 'number' },
+    prog: STR,
+    inc: { type: 'number' },
+    repsMin: { type: 'integer' },
+    repsMax: { type: 'integer' },
+    bodyweight: { type: 'boolean' },
+    side: { type: 'boolean' },
+    sg: STR,
+    why: STR,
+    position: { type: 'integer' },
   },
-  required: ['id', 'sets']
-};
+  required: ['id', 'sets'],
+}
 
 // `week` and `routines[].id` are required, not optional: the week is the only thing that says
 // which day trains which routine, and it points at a routine by id. A schema that leaves either
@@ -84,19 +94,23 @@ export const CREATE_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          id: STR, name: STR, emoji: STR, prog: STR, why: STR,
-          ex: { type: 'array', maxItems: 20, items: EX_SCHEMA }
+          id: STR,
+          name: STR,
+          emoji: STR,
+          prog: STR,
+          why: STR,
+          ex: { type: 'array', maxItems: 20, items: EX_SCHEMA },
         },
-        required: ['id', 'name', 'ex']
-      }
+        required: ['id', 'name', 'ex'],
+      },
     },
     customEx: {
       type: 'array',
-      items: { type: 'object', properties: { id: STR, n: STR, bp: STR, desc: STR }, required: ['id', 'n'] }
-    }
+      items: { type: 'object', properties: { id: STR, n: STR, bp: STR, desc: STR }, required: ['id', 'n'] },
+    },
   },
-  required: ['coach_contract', 'week', 'routines']
-};
+  required: ['coach_contract', 'week', 'routines'],
+}
 
 export const DEBRIEF_SCHEMA = {
   type: 'object',
@@ -106,9 +120,9 @@ export const DEBRIEF_SCHEMA = {
     score: { type: 'integer' },
     highlights: STRINGS,
     watch: STRINGS,
-    nextTime: STRINGS
+    nextTime: STRINGS,
   },
-  required: ['coach_contract', 'summary', 'score']
-};
+  required: ['coach_contract', 'summary', 'score'],
+}
 
-export const SCHEMAS = { review: REVIEW_SCHEMA, create: CREATE_SCHEMA, refine: CREATE_SCHEMA, debrief: DEBRIEF_SCHEMA };
+export const SCHEMAS = { review: REVIEW_SCHEMA, create: CREATE_SCHEMA, refine: CREATE_SCHEMA, debrief: DEBRIEF_SCHEMA }

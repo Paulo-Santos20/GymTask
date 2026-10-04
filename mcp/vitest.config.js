@@ -7,6 +7,6 @@ export default defineConfig({
     environment: 'node',
     pool: 'forks',
     isolate: true,
-    reporters: ['default']
-  }
+    reporters: ['default'],
+  },
 })

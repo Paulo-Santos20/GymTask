@@ -11,11 +11,11 @@ export const INSTR_LANGS = ['pt-BR']
 export const EXERCISE_NAME_LANGS = ['pt-BR']
 export const DATE_LOCALES = { 'pt-BR': 'pt-BR' }
 
-let lang = 'pt-BR'              // set only by _setLangState, called from i18n.js setLang
-let dict = {}                   // current locale pack (empty = English source fallback)
-let instr = null                // { exId: [steps] } for the current language, null = English
-let exerciseNames = null        // { exId: translated name }, null = original catalogue name
-let version = 0                 // bumped on every setLang; drives the React subscription selector
+let lang = 'pt-BR' // set only by _setLangState, called from i18n.js setLang
+let dict = {} // current locale pack (empty = English source fallback)
+let instr = null // { exId: [steps] } for the current language, null = English
+let exerciseNames = null // { exId: translated name }, null = original catalogue name
+let version = 0 // bumped on every setLang; drives the React subscription selector
 
 export const getLang = () => lang
 export const dateLocale = () => DATE_LOCALES[lang] || 'pt-BR'
@@ -41,15 +41,13 @@ export const exerciseNameFor = ex => {
   // context. Compared in the active language's own casing rules, not hardcoded to one —
   // this only ever differs from ordinary casing for languages with locale-specific rules
   // (e.g. Turkish dotless i), which does not include any language shipped here today.
-  return translated.toLocaleLowerCase(lang) === ex.n.toLocaleLowerCase('en')
-    ? translated
-    : `${translated} (${ex.n})`
+  return translated.toLocaleLowerCase(lang) === ex.n.toLocaleLowerCase('en') ? translated : `${translated} (${ex.n})`
 }
 
 // Search both the localized and canonical English title without changing persisted data.
 export const exerciseNameSearchText = ex => {
   const translated = exerciseNames && ex && exerciseNames[ex.id]
-  return translated ? `${translated} ${ex.n}` : (ex?.n || '')
+  return translated ? `${translated} ${ex.n}` : ex?.n || ''
 }
 
 // Called by i18n.js's setLang once the locale pack has been loaded — kept here rather than
@@ -58,8 +56,8 @@ export const exerciseNameSearchText = ex => {
 export function _setLangState(newLang, newDict, newInstr, newExerciseNames) {
   lang = LANGS[newLang] ? newLang : 'pt-BR'
   dict = newDict || {}
-  instr = INSTR_LANGS.includes(lang) ? (newInstr || null) : null
-  exerciseNames = EXERCISE_NAME_LANGS.includes(lang) ? (newExerciseNames || null) : null
+  instr = INSTR_LANGS.includes(lang) ? newInstr || null : null
+  exerciseNames = EXERCISE_NAME_LANGS.includes(lang) ? newExerciseNames || null : null
   version++
   return version
 }

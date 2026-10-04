@@ -13,7 +13,7 @@ vi.mock('react-router-dom', () => ({
 }))
 vi.mock('../store/useStore.js', () => {
   const snap = { S: { active: null }, user: { id: 'u', name: 'Tester' }, isGuest: () => false }
-  const useStore = selector => selector ? selector(snap) : snap
+  const useStore = selector => (selector ? selector(snap) : snap)
   return { useStore }
 })
 
@@ -29,7 +29,11 @@ afterEach(() => {
   host.remove()
 })
 
-const mount = path => act(() => { mocks.path = path; root.render(<TabBar onStart={() => {}} />) })
+const mount = path =>
+  act(() => {
+    mocks.path = path
+    root.render(<TabBar onStart={() => {}} />)
+  })
 const tab = label => [...host.querySelectorAll('#tabbar button')].find(b => b.textContent === label)
 
 describe('TabBar aria-current', () => {

@@ -37,11 +37,14 @@ export default function SwipeToDelete({ children, onDelete, deleteLabel, classNa
     el.style.transition = animate ? 'transform .18s ease-out' : 'none'
     el.style.transform = `translateX(${x}px)`
   }
-  const start = (x, y) => { drag.current = { startX: x, startY: y, delta: 0, open: drag.current.open, axis: null } }
+  const start = (x, y) => {
+    drag.current = { startX: x, startY: y, delta: 0, open: drag.current.open, axis: null }
+  }
   const move = (x, y, ev) => {
     const d = drag.current
     if (d.startX === null) return
-    const dx = x - d.startX, dy = y - d.startY
+    const dx = x - d.startX,
+      dy = y - d.startY
     if (d.axis === null) {
       if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
       d.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
@@ -55,7 +58,10 @@ export default function SwipeToDelete({ children, onDelete, deleteLabel, classNa
   const end = () => {
     const d = drag.current
     if (d.startX === null) return
-    if (d.axis !== 'x') { d.startX = null; return }
+    if (d.axis !== 'x') {
+      d.startX = null
+      return
+    }
     const traveled = (d.open ? -REVEAL : 0) + d.delta
     d.open = traveled < -REVEAL / 2
     setX(d.open ? -REVEAL : 0, true)
@@ -71,19 +77,60 @@ export default function SwipeToDelete({ children, onDelete, deleteLabel, classNa
   }, [])
 
   return (
-    <div ref={outerRef} style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--r-card)' }}
-      onTouchStart={e => { if (e.target.closest('button,input')) return; start(e.touches[0].clientX, e.touches[0].clientY) }}
+    <div
+      ref={outerRef}
+      style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--r-card)' }}
+      onTouchStart={e => {
+        if (e.target.closest('button,input')) return
+        start(e.touches[0].clientX, e.touches[0].clientY)
+      }}
       onTouchEnd={end}
-      onMouseDown={e => { if (e.button !== 0 || e.target.closest('button,input')) return; start(e.clientX, e.clientY) }}
-      onMouseMove={e => { if (drag.current.startX !== null && e.buttons === 1) move(e.clientX, e.clientY) }}
+      onMouseDown={e => {
+        if (e.button !== 0 || e.target.closest('button,input')) return
+        start(e.clientX, e.clientY)
+      }}
+      onMouseMove={e => {
+        if (drag.current.startX !== null && e.buttons === 1) move(e.clientX, e.clientY)
+      }}
       onMouseUp={end}
-      onMouseLeave={() => { if (drag.current.startX !== null) end() }}>
-      <button className="swipe-del" aria-label={deleteLabel || t('Delete')}
-        style={{ position: 'absolute', inset: '0 0 0 auto', width: REVEAL, background: 'var(--red)', color: '#fff', fontSize: 12, fontWeight: 600 }}
-        onClick={() => { setX(0, true); drag.current.open = false; onDelete() }}>{t('Delete')}</button>
-      <div ref={rowRef} className={className}
-        onClick={e => { if (drag.current.open) { e.stopPropagation(); setX(0, true); drag.current.open = false; return } onClick && onClick(e) }}
-        style={{ background: 'var(--surface)', position: 'relative' }}>
+      onMouseLeave={() => {
+        if (drag.current.startX !== null) end()
+      }}
+    >
+      <button
+        className="swipe-del"
+        aria-label={deleteLabel || t('Delete')}
+        style={{
+          position: 'absolute',
+          inset: '0 0 0 auto',
+          width: REVEAL,
+          background: 'var(--red)',
+          color: '#fff',
+          fontSize: 12,
+          fontWeight: 600,
+        }}
+        onClick={() => {
+          setX(0, true)
+          drag.current.open = false
+          onDelete()
+        }}
+      >
+        {t('Delete')}
+      </button>
+      <div
+        ref={rowRef}
+        className={className}
+        onClick={e => {
+          if (drag.current.open) {
+            e.stopPropagation()
+            setX(0, true)
+            drag.current.open = false
+            return
+          }
+          onClick && onClick(e)
+        }}
+        style={{ background: 'var(--surface)', position: 'relative' }}
+      >
         {children}
       </div>
     </div>

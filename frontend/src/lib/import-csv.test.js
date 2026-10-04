@@ -78,8 +78,16 @@ describe('imported volume', () => {
 const hevyDay = (title, day, name, w, r) =>
   `"${title}","${day} Mar 2025, 18:00","${day} Mar 2025, 19:00","","${name}",,"",0,normal,${w},${r},,,`
 const HEVY_HEAD = HEVY_WARMUPS.split('\n')[0]
-const EXPORT_A = [HEVY_HEAD, hevyDay('Day A', '02', 'Zorb Roller', 49, 8), hevyDay('Day A', '02', 'Bench Press (Barbell)', 80, 5)].join('\n')
-const EXPORT_B = [HEVY_HEAD, hevyDay('Day A', '02', 'Zorb Roller', 49, 8), hevyDay('Day B', '09', 'Zorb Roller', 30, 15)].join('\n')
+const EXPORT_A = [
+  HEVY_HEAD,
+  hevyDay('Day A', '02', 'Zorb Roller', 49, 8),
+  hevyDay('Day A', '02', 'Bench Press (Barbell)', 80, 5),
+].join('\n')
+const EXPORT_B = [
+  HEVY_HEAD,
+  hevyDay('Day A', '02', 'Zorb Roller', 49, 8),
+  hevyDay('Day B', '09', 'Zorb Roller', 30, 15),
+].join('\n')
 
 describe('mergeImport and custom exercises', () => {
   const fresh = () => ({ workouts: [], customEx: [], exWeights: {}, bodyweight: [] })

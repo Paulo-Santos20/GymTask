@@ -18,14 +18,16 @@ import { fmtSpeed, speedUnitOf } from './speed.js'
 import { MUSCLES, inMuscleOrder } from './muscles.js'
 
 const PLAN_FMT = 1
-const WEEK_DAYS = [1, 2, 3, 4, 5, 6, 0]   // every getDay() index; only the reader's own
-                                          // screen puts them in an order (see weekOrder)
+const WEEK_DAYS = [1, 2, 3, 4, 5, 6, 0] // every getDay() index; only the reader's own
+// screen puts them in an order (see weekOrder)
 const PLAN_UNITS = new Set(['kg', 'lb'])
 
 // A plan's numbers are in the unit that wrote it. Missing unit is deliberately legacy-compatible:
 // old files were read as already being in the recipient's unit, so keep their values unchanged.
-const planUnit = value => value === 'lbs' ? 'lb' : PLAN_UNITS.has(value) ? value : null
-const unitError = () => { throw new Error(t('this isn’t a GymTask plan file')) }
+const planUnit = value => (value === 'lbs' ? 'lb' : PLAN_UNITS.has(value) ? value : null)
+const unitError = () => {
+  throw new Error(t('this isn’t a GymTask plan file'))
+}
 
 function declaredPlanUnit(data) {
   let declared = null
@@ -55,8 +57,8 @@ function convertedBundle(bundle, destinationUnit) {
     unit: destinationUnit,
     routines: (bundle.routines || []).map(r => ({
       ...r,
-      ex: (r.ex || []).map(e => convertedExercise(e, sourceUnit, destinationUnit))
-    }))
+      ex: (r.ex || []).map(e => convertedExercise(e, sourceUnit, destinationUnit)),
+    })),
   }
 }
 
@@ -95,7 +97,7 @@ function cleanEx(e) {
   // only when set, so a plan that never asked for one leaves the recipient's own default
   // timer in charge. parsePlan and mergePlan carry it through by spread.
   if (e.restSec > 0) o.restSec = e.restSec
-  if (e.warmupRestSec > 0) o.warmupRestSec = e.warmupRestSec   // the ramp's own rest travels with the work rest
+  if (e.warmupRestSec > 0) o.warmupRestSec = e.warmupRestSec // the ramp's own rest travels with the work rest
   if (e.sg) o.sg = e.sg
   if (e.note) o.note = e.note
   const warm = cleanWarmupSets(e.warmupSets)
@@ -127,10 +129,18 @@ function cleanRestSec(v) {
 function cleanIntensifier(x) {
   const type = x && x.type
   if (type === 'dropset') {
-    return { type, count: Math.max(1, Math.round(Number(x.count)) || 1), pct: Math.max(5, Math.round(Number(x.pct)) || 20) }
+    return {
+      type,
+      count: Math.max(1, Math.round(Number(x.count)) || 1),
+      pct: Math.max(5, Math.round(Number(x.pct)) || 20),
+    }
   }
   if (type === 'restpause') {
-    return { type, totalReps: Math.max(1, Math.round(Number(x.totalReps)) || 1), restSec: Math.max(5, Math.round(Number(x.restSec)) || 15) }
+    return {
+      type,
+      totalReps: Math.max(1, Math.round(Number(x.totalReps)) || 1),
+      restSec: Math.max(5, Math.round(Number(x.restSec)) || 15),
+    }
   }
   return null
 }
@@ -166,20 +176,22 @@ export function buildPlanBundle(S, name) {
   const unit = planUnit(S.unit == null ? 'kg' : S.unit)
   if (!unit) unitError()
   const routines = (S.routines || []).map(r => ({
-    id: r.id, name: r.name, emoji: r.emoji,
+    id: r.id,
+    name: r.name,
+    emoji: r.emoji,
     ...(r.prog ? { prog: r.prog } : {}),
     ...(r.excludeFromProgression === true ? { excludeFromProgression: true } : {}),
-    ex: (r.ex || []).map(cleanEx)
+    ex: (r.ex || []).map(cleanEx),
   }))
   const usedIds = new Set(routines.flatMap(r => r.ex.map(e => e.id)))
-  const customEx = (S.customEx || [])
-    .filter(c => usedIds.has(c.id))
-    .map(cleanCustom)
+  const customEx = (S.customEx || []).filter(c => usedIds.has(c.id)).map(cleanCustom)
   // A weekday can hold several routines (merge order preserved). `[].concat` normalises a
   // legacy scalar id to a one-element list, so a bundle written before this change and one
   // written after are read the same way at the other end.
   const week = {}
-  WEEK_DAYS.forEach(d => { if (S.week?.[d]?.length) week[d] = [].concat(S.week[d]) })
+  WEEK_DAYS.forEach(d => {
+    if (S.week?.[d]?.length) week[d] = [].concat(S.week[d])
+  })
   return { opengym_plan: PLAN_FMT, exported: todayISO(), name: name || '', unit, week, routines, customEx }
 }
 
@@ -195,30 +207,51 @@ export function buildPlanBundle(S, name) {
 export function parsePlan(raw, destinationUnit = 'kg') {
   const data = typeof raw === 'string' ? JSON.parse(raw) : raw
   const destination = planUnit(destinationUnit)
-  if (!data || typeof data !== 'object' || Array.isArray(data) || !data.opengym_plan || !Array.isArray(data.routines) || !destination) {
+  if (
+    !data ||
+    typeof data !== 'object' ||
+    Array.isArray(data) ||
+    !data.opengym_plan ||
+    !Array.isArray(data.routines) ||
+    !destination
+  ) {
     throw new Error(t('this isn’t a GymTask plan file'))
   }
   const sourceUnit = declaredPlanUnit(data)
   const customEx = (Array.isArray(data.customEx) ? data.customEx : []).filter(c => c && c.id)
   const known = new Set(customEx.map(c => c.id))
   let dropped = 0
-  const routines = data.routines.filter(r => r && Array.isArray(r.ex)).map(r => ({
-    ...r,
-    ex: r.ex.filter(e => {
-      const ok = !!e && (known.has(e.id) || !!EXIDX[e.id])
-      if (!ok) dropped++
-      return ok
-    }).map(e => {
-      // The exercises pass through as written, so the fields that carry numbers into the
-      // planner get the same clamps on the way in that they get on the way out.
-      const warm = cleanWarmupSets(e.warmupSets)
-      const intens = cleanIntensifier(e.intensifier)
-      const rest = cleanRestSec(e.restSec)
-      const warmRest = cleanRestSec(e.warmupRestSec)
-      const { warmupSets, intensifier, restSec, warmupRestSec, ...passthrough } = e
-      return convertedExercise({ ...passthrough, ...(warm ? { warmupSets: warm } : {}), ...(intens ? { intensifier: intens } : {}), ...(rest ? { restSec: rest } : {}), ...(warmRest ? { warmupRestSec: warmRest } : {}) }, sourceUnit || destination, destination)
-    })
-  }))
+  const routines = data.routines
+    .filter(r => r && Array.isArray(r.ex))
+    .map(r => ({
+      ...r,
+      ex: r.ex
+        .filter(e => {
+          const ok = !!e && (known.has(e.id) || !!EXIDX[e.id])
+          if (!ok) dropped++
+          return ok
+        })
+        .map(e => {
+          // The exercises pass through as written, so the fields that carry numbers into the
+          // planner get the same clamps on the way in that they get on the way out.
+          const warm = cleanWarmupSets(e.warmupSets)
+          const intens = cleanIntensifier(e.intensifier)
+          const rest = cleanRestSec(e.restSec)
+          const warmRest = cleanRestSec(e.warmupRestSec)
+          const { warmupSets, intensifier, restSec, warmupRestSec, ...passthrough } = e
+          return convertedExercise(
+            {
+              ...passthrough,
+              ...(warm ? { warmupSets: warm } : {}),
+              ...(intens ? { intensifier: intens } : {}),
+              ...(rest ? { restSec: rest } : {}),
+              ...(warmRest ? { warmupRestSec: warmRest } : {}),
+            },
+            sourceUnit || destination,
+            destination,
+          )
+        }),
+    }))
   return {
     name: (data.name || '').trim(),
     routines,
@@ -232,7 +265,7 @@ export function parsePlan(raw, destinationUnit = 'kg') {
     // that absence means its numbers were intentionally treated as already in `destination`.
     unit: destination,
     sourceUnit: sourceUnit || null,
-    destinationUnit: destination
+    destinationUnit: destination,
   }
 }
 
@@ -251,7 +284,10 @@ export function mergePlan(s, bundle, { schedule } = {}) {
   const exIdMap = {}
   ;(source.customEx || []).forEach(c => {
     const same = s.customEx.find(x => (x.n || '').toLowerCase() === (c.n || '').toLowerCase() && x.bp === c.bp)
-    if (same) { exIdMap[c.id] = same.id; return }
+    if (same) {
+      exIdMap[c.id] = same.id
+      return
+    }
     const nid = uid()
     exIdMap[c.id] = nid
     // Stored exactly as the form would have created it — `custom: true` is what lets the recipient
@@ -269,16 +305,21 @@ export function mergePlan(s, bundle, { schedule } = {}) {
       emoji: r.emoji,
       ...(r.prog ? { prog: r.prog } : {}),
       ...(r.excludeFromProgression === true ? { excludeFromProgression: true } : {}),
-      ex: (r.ex || []).map(e => ({ ...e, id: exIdMap[e.id] || e.id }))
+      ex: (r.ex || []).map(e => ({ ...e, id: exIdMap[e.id] || e.id })),
     })
   })
   if (schedule) {
-    WEEK_DAYS.forEach(d => { delete s.week[d] })
+    WEEK_DAYS.forEach(d => {
+      delete s.week[d]
+    })
     Object.entries(source.week || {}).forEach(([d, val]) => {
       // `[].concat` tolerates a pre-upgrade scalar bundle value. An element whose routine id
       // didn't survive parsing is dropped, not written as undefined; a day that ends up empty
       // is left absent rather than stored as `[]`.
-      const ids = [].concat(val).map(oldId => ridMap[oldId]).filter(Boolean)
+      const ids = []
+        .concat(val)
+        .map(oldId => ridMap[oldId])
+        .filter(Boolean)
       if (ids.length) s.week[d] = ids
     })
   }
@@ -287,8 +328,12 @@ export function mergePlan(s, bundle, { schedule } = {}) {
 
 /* ------------------------------- printable PDF ------------------------------- */
 
-const esc = str => String(str == null ? '' : str)
-  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+const esc = str =>
+  String(str == null ? '' : str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 
 // One exercise's scheme, e.g. "3 × 10 · 60 kg", "3 × 0:45" or "2 × 20 min @ 8 km/h" — the
 // speed printed in the profile's unit (lib/speed.js), like the weight is.
@@ -318,18 +363,22 @@ function units(ex) {
 }
 
 function routineHTML(r, unit, speedUnit) {
-  const rows = units(r.ex).map(u => {
-    const items = u.map(e => {
-      const ex = EXIDX[e.id]
-      const name = ex ? exerciseNameFor(ex) : t('Unknown exercise')
-      const part = ex && ex.bp && ex.bp !== 'cardio' ? `<span class="part">${esc(ex.bp)}</span>` : ''
-      const note = e.note ? `<div class="ex-note">${esc(e.note)}</div>` : ''
-      return `<div class="ex"><div class="ex-row"><div class="ex-n">${esc(name)}${part}</div><div class="ex-s">${esc(scheme(e, unit, speedUnit))}</div></div>${note}</div>`
-    }).join('')
-    return u.length > 1
-      ? `<div class="ss"><div class="ss-tag">${esc(t('Superset'))}</div><div class="ss-items">${items}</div></div>`
-      : items
-  }).join('')
+  const rows = units(r.ex)
+    .map(u => {
+      const items = u
+        .map(e => {
+          const ex = EXIDX[e.id]
+          const name = ex ? exerciseNameFor(ex) : t('Unknown exercise')
+          const part = ex && ex.bp && ex.bp !== 'cardio' ? `<span class="part">${esc(ex.bp)}</span>` : ''
+          const note = e.note ? `<div class="ex-note">${esc(e.note)}</div>` : ''
+          return `<div class="ex"><div class="ex-row"><div class="ex-n">${esc(name)}${part}</div><div class="ex-s">${esc(scheme(e, unit, speedUnit))}</div></div>${note}</div>`
+        })
+        .join('')
+      return u.length > 1
+        ? `<div class="ss"><div class="ss-tag">${esc(t('Superset'))}</div><div class="ss-items">${items}</div></div>`
+        : items
+    })
+    .join('')
   const count = exCount(r.ex.length)
   return `<section class="routine">
     <div class="r-head"><h2>${esc(r.name)}</h2><span class="r-count">${esc(count)}</span></div>
@@ -339,13 +388,16 @@ function routineHTML(r, unit, speedUnit) {
 
 function weekHTML(S) {
   // The printout is read by whoever exported it, so the week runs in their order.
-  const rows = weekOrder(weekStartOf(S)).map(d => {
-    const names = [].concat(S.week?.[d] || [])
-      .map(id => S.routines.find(x => x.id === id)?.name)
-      .filter(Boolean)
-    const val = names.length ? esc(deriveSessionName(names)) : `<span class="rest">${esc(t('Rest'))}</span>`
-    return `<div class="w-row"><div class="w-day">${esc(t(DAYN[d]))}</div><div class="w-r">${val}</div></div>`
-  }).join('')
+  const rows = weekOrder(weekStartOf(S))
+    .map(d => {
+      const names = []
+        .concat(S.week?.[d] || [])
+        .map(id => S.routines.find(x => x.id === id)?.name)
+        .filter(Boolean)
+      const val = names.length ? esc(deriveSessionName(names)) : `<span class="rest">${esc(t('Rest'))}</span>`
+      return `<div class="w-row"><div class="w-day">${esc(t(DAYN[d]))}</div><div class="w-r">${val}</div></div>`
+    })
+    .join('')
   return `<div class="week">${rows}</div>`
 }
 
@@ -428,17 +480,32 @@ export function printPlan(S, owner) {
   ifr.setAttribute('aria-hidden', 'true')
   ifr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;'
   document.body.appendChild(ifr)
-  const cleanup = () => { try { ifr.remove() } catch (e) { /* */ } }
+  const cleanup = () => {
+    try {
+      ifr.remove()
+    } catch (e) {
+      /* */
+    }
+  }
   const run = () => {
     const w = ifr.contentWindow
-    if (!w) { cleanup(); return }
+    if (!w) {
+      cleanup()
+      return
+    }
     w.onafterprint = cleanup
-    setTimeout(cleanup, 60000)   // safety net if afterprint never fires
+    setTimeout(cleanup, 60000) // safety net if afterprint never fires
     w.focus()
-    try { w.print() } catch (e) { cleanup() }
+    try {
+      w.print()
+    } catch (e) {
+      cleanup()
+    }
   }
   const doc = ifr.contentWindow.document
-  doc.open(); doc.write(planPrintHTML(S, owner)); doc.close()
+  doc.open()
+  doc.write(planPrintHTML(S, owner))
+  doc.close()
   // Give the iframe a tick to lay out before printing.
   if (doc.readyState === 'complete') setTimeout(run, 120)
   else ifr.onload = () => setTimeout(run, 120)

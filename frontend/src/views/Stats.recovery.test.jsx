@@ -22,8 +22,13 @@ const mocks = vi.hoisted(() => ({
   mapMounts: 0,
   exerciseHistorySheet: vi.fn(),
   S: {
-    unit: 'kg', body: 'male', effort: 'rir', targetW: null,
-    bodyweight: [], routines: [], workouts: [],
+    unit: 'kg',
+    body: 'male',
+    effort: 'rir',
+    targetW: null,
+    bodyweight: [],
+    routines: [],
+    workouts: [],
   },
 }))
 
@@ -32,9 +37,13 @@ vi.mock('../store/useStore.js', () => ({
 }))
 vi.mock('react-router-dom', () => ({ useNavigate: () => () => {} }))
 vi.mock('../sheets.jsx', () => ({
-  bwSheet: () => {}, goalSheet: () => {}, calendarSheet: () => {}, workoutDetailSheet: () => {},
+  bwSheet: () => {},
+  goalSheet: () => {},
+  calendarSheet: () => {},
+  workoutDetailSheet: () => {},
   exerciseHistorySheet: mocks.exerciseHistorySheet,
-  WorkoutRow: () => React.createElement('div'), bwDeltaColor: () => 'inherit',
+  WorkoutRow: () => React.createElement('div'),
+  bwDeltaColor: () => 'inherit',
 }))
 vi.mock('../components/LineChart.jsx', () => ({ default: () => React.createElement('div') }))
 vi.mock('../components/Heatmap.jsx', () => ({ default: () => React.createElement('div') }))
@@ -49,10 +58,14 @@ vi.mock('../components/BodyMap.jsx', () => ({
     return React.createElement(
       'div',
       { 'data-body-map': true, 'data-selected-muscle': props.selected || '' },
-      React.createElement('button', {
-        'data-muscle': 'chest',
-        onClick: () => props.onMuscle?.('chest'),
-      }, 'Chest'),
+      React.createElement(
+        'button',
+        {
+          'data-muscle': 'chest',
+          onClick: () => props.onMuscle?.('chest'),
+        },
+        'Chest',
+      ),
     )
   },
   BodyMapLegend: () => React.createElement('div', { 'data-balance-legend': true }),
@@ -85,13 +98,16 @@ function lifecycleWorkouts(now = BASE_NOW) {
   // that newer stimulus 30 seconds before its .5 crossing so the real interval update flips it.
   const weightedSet = 640 * (30 / 38) ** 1.5
   const referenceAfterOldSession = 2000 + (weightedSet - 2000) / 3
-  const fatigueEdge = now - (
-    36 * Math.log2((6 * weightedSet / referenceAfterOldSession) / Math.LN2) * HOUR - 30000
-  )
+  const fatigueEdge = now - (36 * Math.log2((6 * weightedSet) / referenceAfterOldSession / Math.LN2) * HOUR - 30000)
   const balanceEdge = now - (30 * DAY - 30000)
   const strengthEdge = now - (14 * DAY - 30000)
   return [
-    workout('fatigue-edge', fatigueEdge, [entry('1254', Array.from({ length: 6 }, () => set(true, { rir: 0 })))]),
+    workout('fatigue-edge', fatigueEdge, [
+      entry(
+        '1254',
+        Array.from({ length: 6 }, () => set(true, { rir: 0 })),
+      ),
+    ]),
     workout('balance-edge', balanceEdge, [entry('1254', [set(true, { rir: 2 })])]),
     workout('strength-edge', strengthEdge, [entry('1001', [set(true, { rir: 2 })])]),
     workout('abs-completed', now - 20 * DAY, [entry('1002', [set(true, { rir: 2 })])]),
@@ -101,13 +117,33 @@ function lifecycleWorkouts(now = BASE_NOW) {
 
 function allFatiguedWorkout(now = BASE_NOW) {
   const ids = [
-    '1018', '1012', '1167', '1013', '3011', '1413', '1399', '1016', '1005',
-    '1010', '1003', '1001', '1511', '1494', '1002', '1000', '1396',
+    '1018',
+    '1012',
+    '1167',
+    '1013',
+    '3011',
+    '1413',
+    '1399',
+    '1016',
+    '1005',
+    '1010',
+    '1003',
+    '1001',
+    '1511',
+    '1494',
+    '1002',
+    '1000',
+    '1396',
   ]
   return workout(
     'all-fatigued',
     now,
-    ids.map(id => entry(id, Array.from({ length: 12 }, () => set(true)))),
+    ids.map(id =>
+      entry(
+        id,
+        Array.from({ length: 12 }, () => set(true)),
+      ),
+    ),
   )
 }
 
@@ -164,12 +200,16 @@ function installDom() {
 
 async function mountStats() {
   installDom()
-  await act(async () => { root.render(React.createElement(React.Fragment, null, React.createElement(Stats), React.createElement(Modals))) })
+  await act(async () => {
+    root.render(React.createElement(React.Fragment, null, React.createElement(Stats), React.createElement(Modals)))
+  })
 }
 
 async function unmountStats() {
   if (!root) return
-  await act(async () => { root.unmount() })
+  await act(async () => {
+    root.unmount()
+  })
   root = null
   container = null
   dom.close()
@@ -179,7 +219,9 @@ async function unmountStats() {
 function muscleCard() {
   return [...container.querySelectorAll('.card')].find(card =>
     [...card.querySelectorAll('.seg button')].some(button =>
-      ['Muscle balance', 'Fatigue', 'Strength'].includes(button.textContent.trim())))
+      ['Muscle balance', 'Fatigue', 'Strength'].includes(button.textContent.trim()),
+    ),
+  )
 }
 
 function buttonWithText(scope, text) {
@@ -196,11 +238,15 @@ function balanceRangeButton(text) {
 
 async function click(button) {
   expect(button, `expected a button named ${button?.textContent || 'unknown'}`).toBeTruthy()
-  await act(async () => { button.dispatchEvent(new dom.MouseEvent('click', { bubbles: true })) })
+  await act(async () => {
+    button.dispatchEvent(new dom.MouseEvent('click', { bubbles: true }))
+  })
 }
 
 async function tick(milliseconds) {
-  await act(async () => { await vi.advanceTimersByTimeAsync(milliseconds) })
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(milliseconds)
+  })
 }
 
 const lastMap = () => mocks.maps.at(-1)
@@ -274,12 +320,13 @@ describe('Stats muscle recovery view runtime', () => {
   })
 
   it('derives a pound-profile bodyweight in kg and passes it into the rendered Fatigue map', async () => {
-    const bodyweightWorkout = workout('bodyweight', BASE_NOW, [
-      entry('0001', [{ done: true, w: 0, r: 10 }]),
-    ])
+    const bodyweightWorkout = workout('bodyweight', BASE_NOW, [entry('0001', [{ done: true, w: 0, r: 10 }])])
     resetFixture([bodyweightWorkout])
     mocks.S.unit = 'lb'
-    mocks.S.bodyweight = [{ d: '2026-01-20', w: 180 }, { d: '2026-01-22', w: 220.462262 }]
+    mocks.S.bodyweight = [
+      { d: '2026-01-20', w: 180 },
+      { d: '2026-01-22', w: 220.462262 },
+    ]
 
     await mountStats()
     await click(viewButton('Fatigue'))
@@ -318,12 +365,17 @@ describe('Stats strength exercise rows', () => {
     resetFixture(exercisePickerWorkouts())
     await mountStats()
     const thrown = []
-    dom.addEventListener('error', e => { thrown.push(e.error || e.message); e.preventDefault() })
+    dom.addEventListener('error', e => {
+      thrown.push(e.error || e.message)
+      e.preventDefault()
+    })
 
     await click(viewButton('Strength'))
     await click(muscleCard().querySelector('[data-muscle="chest"]'))
     expect(muscleCard().textContent).toContain('Exercises · Chest')
-    const row = [...muscleCard().querySelectorAll('.mrow[role="button"]')].find(el => el.textContent.includes('Est. 1RM'))
+    const row = [...muscleCard().querySelectorAll('.mrow[role="button"]')].find(el =>
+      el.textContent.includes('Est. 1RM'),
+    )
     expect(row, 'expected a tappable exercise row for the chest').toBeTruthy()
     expect(row.textContent).toContain('barbell bench press')
 
@@ -333,7 +385,9 @@ describe('Stats strength exercise rows', () => {
     expect(mocks.exerciseHistorySheet).toHaveBeenCalledWith('0025')
 
     // The keyboard path of tappable() must land in the same place.
-    await act(async () => { row.dispatchEvent(new dom.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) })
+    await act(async () => {
+      row.dispatchEvent(new dom.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    })
     expect(thrown).toEqual([])
     expect(mocks.exerciseHistorySheet).toHaveBeenCalledTimes(2)
   })
@@ -345,8 +399,12 @@ describe('Stats exercise progress picker', () => {
     await mountStats()
     expect(EXIDX[LEGACY_SNAPSHOT_ID]).toBeUndefined()
 
-    const card = [...container.querySelectorAll('.card')].find(el => el.querySelector('h2')?.textContent.trim() === 'Exercise progress')
-    const selector = [...card.querySelectorAll('button')].find(button => button.querySelector('.lrow-t')?.textContent.trim() === 'Exercise')
+    const card = [...container.querySelectorAll('.card')].find(
+      el => el.querySelector('h2')?.textContent.trim() === 'Exercise progress',
+    )
+    const selector = [...card.querySelectorAll('button')].find(
+      button => button.querySelector('.lrow-t')?.textContent.trim() === 'Exercise',
+    )
     await click(selector)
 
     const modal = document.querySelector('#modal-root')
@@ -362,11 +420,12 @@ describe('Stats exercise progress picker', () => {
     expect(input.compareDocumentPosition(optionButtons()[0]) & globalThis.Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 
     const setter = Object.getOwnPropertyDescriptor(input.constructor.prototype, 'value').set
-    const setSearch = async value => act(async () => {
-      setter.call(input, value)
-      input.dispatchEvent(new Event('input', { bubbles: true }))
-      input.dispatchEvent(new Event('change', { bubbles: true }))
-    })
+    const setSearch = async value =>
+      act(async () => {
+        setter.call(input, value)
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+        input.dispatchEvent(new Event('change', { bubbles: true }))
+      })
 
     // A focused search can leave a newly narrowed result below the visual viewport. The
     // correction must advance the sheet's own scroll position, not the page behind it.
@@ -405,7 +464,9 @@ describe('Stats exercise progress picker', () => {
     expect(modal.textContent).toContain('barbell full squat')
     expect(modal.textContent).not.toContain('barbell bench press')
 
-    const matching = [...modal.querySelectorAll('button')].find(button => button.textContent.includes('barbell full squat'))
+    const matching = [...modal.querySelectorAll('button')].find(button =>
+      button.textContent.includes('barbell full squat'),
+    )
     await click(matching)
 
     expect(useUI.getState().sheets).toHaveLength(0)

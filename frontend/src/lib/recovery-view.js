@@ -9,9 +9,5 @@ import { FATIGUE_STATES } from './recovery.js'
  * @returns {'ready'|'recovering'|'fatigued'} The stable state label for the UI.
  */
 export function fatigueStateOf(value) {
-  return value < 0.25
-    ? FATIGUE_STATES.READY
-    : value <= 0.5
-      ? FATIGUE_STATES.RECOVERING
-      : FATIGUE_STATES.FATIGUED
+  return value < 0.25 ? FATIGUE_STATES.READY : value <= 0.5 ? FATIGUE_STATES.RECOVERING : FATIGUE_STATES.FATIGUED
 }

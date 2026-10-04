@@ -1,8 +1,8 @@
 /* Anthropic Messages API. */
-import { httpAdapter } from './http.js';
-import { SYSTEM_PROMPT } from '../system-prompt.js';
+import { httpAdapter } from './http.js'
+import { SYSTEM_PROMPT } from '../system-prompt.js'
 
-export const ANTHROPIC_VERSION = '2023-06-01';
+export const ANTHROPIC_VERSION = '2023-06-01'
 
 export const anthropicSpec = {
   id: 'anthropic',
@@ -13,7 +13,7 @@ export const anthropicSpec = {
     'anthropic-version': ANTHROPIC_VERSION,
     // Required for a call made from a browser context. Harmless from a server, and the phone's
     // native HTTP path does not need it either — it is here so a plain-browser dev run works.
-    'anthropic-dangerous-direct-browser-access': 'true'
+    'anthropic-dangerous-direct-browser-access': 'true',
   }),
   // The rules block is marked cacheable: identical for every job of a task, so subsequent
   // jobs read it from Anthropic's prompt cache at a tenth of the input price.
@@ -23,15 +23,23 @@ export const anthropicSpec = {
     system: system
       ? [{ type: 'text', text: SYSTEM_PROMPT + '\n\n' + system, cache_control: { type: 'ephemeral' } }]
       : SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: prompt }]
+    messages: [{ role: 'user', content: prompt }],
   }),
   errorMessage: data => data && data.error && data.error.message,
   readText: data => {
-    if (data.stop_reason === 'refusal') return { error: 'the model declined this request' + (data.stop_details && data.stop_details.explanation ? ': ' + data.stop_details.explanation : '') };
-    const text = (data.content || []).filter(b => b && b.type === 'text').map(b => b.text).join('');
-    return { text, truncated: data.stop_reason === 'max_tokens' };
+    if (data.stop_reason === 'refusal')
+      return {
+        error:
+          'the model declined this request' +
+          (data.stop_details && data.stop_details.explanation ? ': ' + data.stop_details.explanation : ''),
+      }
+    const text = (data.content || [])
+      .filter(b => b && b.type === 'text')
+      .map(b => b.text)
+      .join('')
+    return { text, truncated: data.stop_reason === 'max_tokens' }
   },
-  readModels: data => (data.data || []).map(m => m.id)
-};
+  readModels: data => (data.data || []).map(m => m.id),
+}
 
-export default httpAdapter(anthropicSpec);
+export default httpAdapter(anthropicSpec)

@@ -29,7 +29,8 @@ function renderBw() {
   act(() => root.render(sheet.render(() => useUI.getState().closeSheet(sheet.id))))
   const input = host.querySelector('.bw-read input')
   const slider = host.querySelector('.sld')
-  const button = label => [...host.querySelectorAll('button')].find(b => (b.getAttribute('aria-label') || b.textContent.trim()) === label)
+  const button = label =>
+    [...host.querySelectorAll('button')].find(b => (b.getAttribute('aria-label') || b.textContent.trim()) === label)
   return { host, input, slider, button }
 }
 
@@ -42,7 +43,9 @@ describe('weight read-out is a typable field', () => {
   })
 
   afterEach(() => {
-    act(() => { mounted.splice(0).forEach(root => root.unmount()) })
+    act(() => {
+      mounted.splice(0).forEach(root => root.unmount())
+    })
   })
 
   it('shows the current weight in a decimal field with the unit beside it', () => {

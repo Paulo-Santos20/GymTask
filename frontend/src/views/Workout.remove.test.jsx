@@ -17,7 +17,7 @@ const entry = (id, sg) => ({
   id,
   ...(sg ? { sg } : {}),
   target: { sets: 1, reps: 1 },
-  sets: [{ w: 0, r: 1, done: false }]
+  sets: [{ w: 0, r: 1, done: false }],
 })
 
 let root
@@ -27,10 +27,16 @@ let sheetContainer
 
 function setActive(entries, cur = 0) {
   const S = clone(DEF)
-  S.wc = { ...S.wc, exerciseButtons: true }   // the removal button is opt-in now; the menu path is covered in Workout.test.jsx
+  S.wc = { ...S.wc, exerciseButtons: true } // the removal button is opt-in now; the menu path is covered in Workout.test.jsx
   S.active = {
-    id: 'remove-test', d: '2026-08-11', start: Date.now(), routineId: null,
-    name: 'Remove test', bw: null, cur, entries
+    id: 'remove-test',
+    d: '2026-08-11',
+    start: Date.now(),
+    routineId: null,
+    name: 'Remove test',
+    bw: null,
+    cur,
+    entries,
   }
   useStore.setState({ S, user: null })
 }
@@ -40,7 +46,13 @@ function renderWorkout(entries) {
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
-  act(() => root.render(<MemoryRouter><Workout /></MemoryRouter>))
+  act(() =>
+    root.render(
+      <MemoryRouter>
+        <Workout />
+      </MemoryRouter>,
+    ),
+  )
 }
 
 function removeButton() {
@@ -98,7 +110,9 @@ describe('active-session exercise removal', () => {
     setActive([entry('1001', 'sg-1'), entry('1002', 'sg-1'), entry('1003')], 1)
     expect(useStore.getState().S.active.cur).toBe(1)
     const wrongWrite = vi.fn(elapsed => {
-      useStore.getState().update(s => { s.active.entries[0].sets[0].sec = elapsed })
+      useStore.getState().update(s => {
+        s.active.entries[0].sets[0].sec = elapsed
+      })
     })
     useUI.getState().startWork(5, 'Hold', wrongWrite)
 
@@ -119,7 +133,9 @@ describe('active-session exercise removal', () => {
     useUI.getState().startRest(90, 0)
     expect(useUI.getState().timer).not.toBeNull()
 
-    act(() => { removeActiveExercise(0) })
+    act(() => {
+      removeActiveExercise(0)
+    })
 
     expect(useUI.getState().timer).toBeNull()
     expect(useStore.getState().S.active.entries.map(e => e.id)).toEqual(['1002'])
@@ -129,15 +145,21 @@ describe('active-session exercise removal', () => {
     setActive([entry('1001'), entry('1002'), entry('1003')], 1)
     useUI.getState().startRest(90, 1)
 
-    act(() => { removeActiveExercise(0) })
+    act(() => {
+      removeActiveExercise(0)
+    })
     expect(useUI.getState().timer?.forIdx).toBe(0)
     expect(useStore.getState().S.active.entries.map(e => e.id)).toEqual(['1002', '1003'])
 
-    act(() => { removeActiveExercise(1) })
+    act(() => {
+      removeActiveExercise(1)
+    })
     expect(useUI.getState().timer?.forIdx).toBe(0)
     expect(useStore.getState().S.active.entries.map(e => e.id)).toEqual(['1002'])
 
-    act(() => { removeActiveExercise(0) })
+    act(() => {
+      removeActiveExercise(0)
+    })
     expect(useUI.getState().timer).toBeNull()
   })
 
@@ -145,7 +167,9 @@ describe('active-session exercise removal', () => {
     setActive([entry('1001'), entry('1002')], 0)
     useUI.getState().startRest(90)
 
-    act(() => { removeActiveExercise(0) })
+    act(() => {
+      removeActiveExercise(0)
+    })
     expect(useUI.getState().timer).not.toBeNull()
   })
 
@@ -202,7 +226,7 @@ describe('remove-exercise locale coverage', () => {
     'The sets you logged for this exercise in this session will be lost.',
     'This removes the exercise from your current session.',
     'Remove',
-    'Which exercise in this superset do you want to remove?'
+    'Which exercise in this superset do you want to remove?',
   ]
   const packs = import.meta.glob('../locales/*.js', { eager: true, import: 'default' })
   // pt.js stays as pt-BR's base pack, so the file count is LANGS plus that one — computed from
@@ -220,7 +244,9 @@ describe('remove-exercise locale coverage', () => {
 describe('remove-exercise edge cases', () => {
   it('removing the last remaining exercise leaves an empty, coherent session', () => {
     setActive([entry('a')], 0)
-    act(() => { removeActiveExercise(0) })
+    act(() => {
+      removeActiveExercise(0)
+    })
     const A = useStore.getState().S.active
     expect(A.entries).toHaveLength(0)
     expect(A.cur).toBe(0)
@@ -228,7 +254,9 @@ describe('remove-exercise edge cases', () => {
 
   it('removing one half of a two-member superset dissolves the group', () => {
     setActive([entry('a', 'g1'), entry('b', 'g1'), entry('c')], 0)
-    act(() => { removeActiveExercise(1) })
+    act(() => {
+      removeActiveExercise(1)
+    })
     const A = useStore.getState().S.active
     expect(A.entries.map(e => e.id)).toEqual(['a', 'c'])
     // A superset of one is not a superset.
@@ -237,7 +265,9 @@ describe('remove-exercise edge cases', () => {
 
   it('removing an entry below the active one keeps cur on the same exercise', () => {
     setActive([entry('a'), entry('b'), entry('c')], 2)
-    act(() => { removeActiveExercise(0) })
+    act(() => {
+      removeActiveExercise(0)
+    })
     const A = useStore.getState().S.active
     expect(A.entries.map(e => e.id)).toEqual(['b', 'c'])
     expect(A.entries[A.cur].id).toBe('c')
@@ -249,10 +279,14 @@ describe('remove-exercise edge cases', () => {
     const second = entry('same')
     second.target.marker = 'remove-second'
     setActive([first, second, entry('other')], 1)
-    const workouts = [{ id: 'completed', d: '2026-08-10', entries: [{ id: 'same', sets: [{ w: 42, r: 5, done: true }] }] }]
+    const workouts = [
+      { id: 'completed', d: '2026-08-10', entries: [{ id: 'same', sets: [{ w: 42, r: 5, done: true }] }] },
+    ]
     useStore.setState(state => ({ S: { ...state.S, workouts: clone(workouts) } }))
 
-    act(() => { removeActiveExercise(1) })
+    act(() => {
+      removeActiveExercise(1)
+    })
 
     const persisted = JSON.parse(localStorage.getItem('gym_state_v1'))
     expect(persisted.workouts).toEqual(workouts)

@@ -82,6 +82,6 @@ export const useNutritionStore = create(
           lastRemoved: null,
         }
       },
-    }
-  )
+    },
+  ),
 )

@@ -35,11 +35,15 @@ export function deleteRoutine(s, id) {
     const ids = [].concat(s.week[d])
     if (!ids.includes(id)) return
     const next = ids.filter(rid => rid !== id)
-    if (next.length) s.week[d] = next; else delete s.week[d]
+    if (next.length) s.week[d] = next
+    else delete s.week[d]
   })
   const dropped = {}
   Object.keys(s.dayPlan || {}).forEach(iso => {
-    if (s.dayPlan[iso] === id) { dropped[iso] = id; delete s.dayPlan[iso] }
+    if (s.dayPlan[iso] === id) {
+      dropped[iso] = id
+      delete s.dayPlan[iso]
+    }
   })
   return dropped
 }
@@ -95,7 +99,11 @@ export function replaceSlotExercise(slot, id, S, rid) {
   // holds at what was lifted, or the plan carries on from it. A session saved before plans were
   // stamped has no planned weight, and what was lifted in it is the nearest thing.
   const mode = modeOf(out)
-  const last = S ? sessionsFor(S, id, out, rid).filter(s => s.mode === mode).at(-1) : null
+  const last = S
+    ? sessionsFor(S, id, out, rid)
+        .filter(s => s.mode === mode)
+        .at(-1)
+    : null
   if (last) out.weight = last.planned?.weight ?? last.weight ?? 0
   return out
 }

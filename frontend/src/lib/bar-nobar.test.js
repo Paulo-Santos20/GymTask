@@ -12,7 +12,7 @@ describe('no bar at all', () => {
   it('keeps a stored 0 instead of falling back to the bar type default', () => {
     expect(barWeightFor(S({ sm: 0 }), smith)).toBe(0)
     expect(defaultBarWeight('smith machine', 'kg')).toBe(9)
-    expect(barWeightFor(S({}), smith)).toBe(9)          // no entry still means "use the default"
+    expect(barWeightFor(S({}), smith)).toBe(9) // no entry still means "use the default"
   })
 
   it('tells "no bar" apart from "nothing set"', () => {
@@ -27,7 +27,7 @@ describe('no bar at all', () => {
     expect(plateSplit(100, 0)).toBe(50)
     expect(plateSplit(100, 20)).toBe(40)
     expect(plateSplit(0, 0)).toBe(null)
-    expect(plateSplit(100, null)).toBe(null)            // not a bar exercise at all
+    expect(plateSplit(100, null)).toBe(null) // not a bar exercise at all
   })
 
   it('leaves an ordinary barbell alone', () => {

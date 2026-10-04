@@ -33,7 +33,9 @@ describe('exercise configuration progression row', () => {
   })
 
   afterEach(() => {
-    act(() => { mounted.splice(0).forEach(root => root.unmount()) })
+    act(() => {
+      mounted.splice(0).forEach(root => root.unmount())
+    })
   })
 
   it('marks the four-stepper double-progression row so it can wrap into pairs on phones', () => {

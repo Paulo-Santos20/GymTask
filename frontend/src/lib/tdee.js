@@ -47,10 +47,10 @@ export const KCAL_PER_G = { protein: 4, carbs: 4, fat: 9 }
 
 // The form's default profile — also what a fresh store starts with.
 export const DEFAULT_PROFILE = {
-  peso: 75,        // kg
-  altura: 175,     // cm
-  idade: 30,       // years
-  sexo: 'male',    // 'male' | 'female' — Mifflin-St Jeor's only demographic input
+  peso: 75, // kg
+  altura: 175, // cm
+  idade: 30, // years
+  sexo: 'male', // 'male' | 'female' — Mifflin-St Jeor's only demographic input
   atividade: DEFAULT_ACTIVITY,
   objetivo: DEFAULT_GOAL,
 }
@@ -84,7 +84,7 @@ export function calcMacros(kcal, profile = {}) {
   const peso = Number(profile.peso) || DEFAULT_PROFILE.peso
   const objetivo = profile.objetivo ?? DEFAULT_GOAL
   const protein = peso * (PROTEIN_G_PER_KG[objetivo] ?? PROTEIN_G_PER_KG[DEFAULT_GOAL])
-  const fat = kcal * (FAT_KCAL_FRAC[objetivo] ?? FAT_KCAL_FRAC[DEFAULT_GOAL]) / KCAL_PER_G.fat
+  const fat = (kcal * (FAT_KCAL_FRAC[objetivo] ?? FAT_KCAL_FRAC[DEFAULT_GOAL])) / KCAL_PER_G.fat
   const carbs = Math.max(0, (kcal - protein * KCAL_PER_G.protein - fat * KCAL_PER_G.fat) / KCAL_PER_G.carbs)
   return { protein, carbs, fat }
 }

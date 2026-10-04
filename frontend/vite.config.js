@@ -22,12 +22,14 @@ const umami = {
   name: 'gytask-umami',
   transformIndexHtml() {
     if (!umamiSrc || !umamiId) return
-    return [{
-      tag: 'script',
-      attrs: { defer: true, src: umamiSrc, 'data-website-id': umamiId },
-      injectTo: 'head'
-    }]
-  }
+    return [
+      {
+        tag: 'script',
+        attrs: { defer: true, src: umamiSrc, 'data-website-id': umamiId },
+        injectTo: 'head',
+      },
+    ]
+  },
 }
 
 // The service worker's cache is named after the build (public/sw.js carries a `__BUILD__`
@@ -39,11 +41,12 @@ const swStamp = {
   apply: 'build',
   closeBundle() {
     const dir = new URL('./dist/', import.meta.url)
-    const html = new URL('index.html', dir), sw = new URL('sw.js', dir)
+    const html = new URL('index.html', dir),
+      sw = new URL('sw.js', dir)
     if (!existsSync(html) || !existsSync(sw)) return
     const stamp = createHash('sha256').update(readFileSync(html)).digest('hex').slice(0, 10)
     writeFileSync(sw, readFileSync(sw, 'utf8').replace('__BUILD__', stamp))
-  }
+  },
 }
 
 // The FCM messaging worker (public/firebase-messaging-sw.js) carries __VITE_FIREBASE_*__
@@ -54,18 +57,24 @@ const swStamp = {
 // reads as "not configured" and skips Firebase init instead of crashing.
 let fcmEnv = null
 const fillFcmSw = source => {
-  const esc = v => String(v ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r?\n/g, '')
+  const esc = v =>
+    String(v ?? '')
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/\r?\n/g, '')
   return source.replace(/__VITE_FIREBASE_([A-Z_]+)__/g, (_, name) => esc(fcmEnv?.['VITE_FIREBASE_' + name]))
 }
 const fcmSw = {
   name: 'gytask-fcm-sw',
   apply: 'build',
-  configResolved(config) { fcmEnv = loadEnv(config.mode, config.envDir, 'VITE_') },
+  configResolved(config) {
+    fcmEnv = loadEnv(config.mode, config.envDir, 'VITE_')
+  },
   closeBundle() {
     const f = new URL('firebase-messaging-sw.js', new URL('./dist/', import.meta.url))
     if (!existsSync(f)) return
     writeFileSync(f, fillFcmSw(readFileSync(f, 'utf8')))
-  }
+  },
 }
 // Dev: same fill, served in place of the raw placeholder file so `getToken` finds a working
 // worker on localhost when a local .env exists.
@@ -80,7 +89,7 @@ const fcmSwDev = {
       res.setHeader('content-type', 'text/javascript')
       res.end(fillFcmSw(readFileSync(f, 'utf8')))
     })
-  }
+  },
 }
 
 // The version people are asked for in #install-help and on every bug report. Read from
@@ -101,8 +110,8 @@ export default defineConfig({
     proxy: {
       '/api': { target: backend, changeOrigin: true, headers: { Origin: apiOrigin } },
       '/img': { target: media, changeOrigin: true },
-      '/gif': { target: media, changeOrigin: true }
-    }
+      '/gif': { target: media, changeOrigin: true },
+    },
   },
   build: {
     chunkSizeWarningLimit: 1500,
@@ -119,10 +128,11 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('node_modules')) return
           if (/(?:^|[/\\])node_modules[/\\]@remix-run[/\\]/.test(id)) return 'vendor-react'
-          if (/(?:^|[/\\])node_modules[/\\](react|react-dom|react-router|react-router-dom|scheduler)[/\\]/.test(id)) return 'vendor-react'
+          if (/(?:^|[/\\])node_modules[/\\](react|react-dom|react-router|react-router-dom|scheduler)[/\\]/.test(id))
+            return 'vendor-react'
           if (/(?:^|[/\\])node_modules[/\\](firebase|@firebase)[/\\]/.test(id)) return 'vendor-firebase'
-        }
-      }
-    }
-  }
+        },
+      },
+    },
+  },
 })

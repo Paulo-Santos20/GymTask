@@ -16,19 +16,24 @@ const mocks = vi.hoisted(() => {
       mut(next)
       state.S = next
     },
-    replaceState: vi.fn(), setUser: vi.fn(), pullState: vi.fn(), pushState: vi.fn(),
-    signOut: vi.fn(), signOutAll: vi.fn(), resetDemo: vi.fn(),
+    replaceState: vi.fn(),
+    setUser: vi.fn(),
+    pullState: vi.fn(),
+    pushState: vi.fn(),
+    signOut: vi.fn(),
+    signOutAll: vi.fn(),
+    resetDemo: vi.fn(),
   })
   return state
 })
 vi.mock('../store/useStore.js', () => {
-  const useStore = selector => selector ? selector(mocks.snapshot()) : mocks.snapshot()
+  const useStore = selector => (selector ? selector(mocks.snapshot()) : mocks.snapshot())
   useStore.getState = mocks.snapshot
   return { useStore, DEF: { reminder: { time: '17:30' } }, hasData: () => false }
 })
 vi.mock('../store/useUI.js', () => {
   const snap = () => ({ toast: vi.fn(), openSheet: vi.fn() })
-  const useUI = selector => selector ? selector(snap()) : snap()
+  const useUI = selector => (selector ? selector(snap()) : snap())
   useUI.getState = snap
   return { useUI }
 })
@@ -43,8 +48,11 @@ vi.mock('../lib/push.js', () => ({
 }))
 vi.mock('../lib/wakelock.js', () => ({ wakeLockSupported: () => false }))
 vi.mock('../sheets.jsx', () => ({
-  starterPlanSheet: vi.fn(), confirmSheet: vi.fn(), importFromApp: vi.fn(),
-  importFromHevy: vi.fn(), equipmentProfileSheet: vi.fn(),
+  starterPlanSheet: vi.fn(),
+  confirmSheet: vi.fn(),
+  importFromApp: vi.fn(),
+  importFromHevy: vi.fn(),
+  equipmentProfileSheet: vi.fn(),
 }))
 vi.mock('../lib/sound.js', async importOriginal => {
   const real = await importOriginal()
@@ -54,16 +62,29 @@ vi.mock('../lib/sound.js', async importOriginal => {
 globalThis.__APP_VERSION__ ??= 'test'
 
 let host, root
-const setAudioSession = value => Object.defineProperty(navigator, 'audioSession', { value, configurable: true, writable: true })
+const setAudioSession = value =>
+  Object.defineProperty(navigator, 'audioSession', { value, configurable: true, writable: true })
 beforeEach(() => {
   mocks.S = {
-    unit: 'kg', restSec: 90, restPauseSec: 15, sound: true, soundOnSilent: false, effort: 'none',
-    gifSize: 'full', workouts: [], routines: [], exWeights: {},
+    unit: 'kg',
+    restSec: 90,
+    restPauseSec: 15,
+    sound: true,
+    soundOnSilent: false,
+    effort: 'none',
+    gifSize: 'full',
+    workouts: [],
+    routines: [],
+    exWeights: {},
   }
   mocks.pushOK = false
   mocks.pushSubscribed = false
   setAudioSession({ type: 'auto' })
-  Object.defineProperty(navigator, 'userAgent', { value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148', configurable: true })
+  Object.defineProperty(navigator, 'userAgent', {
+    value:
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
+    configurable: true,
+  })
   host = document.createElement('div')
   document.body.appendChild(host)
   root = createRoot(host)
@@ -75,8 +96,12 @@ afterEach(() => {
 })
 
 const mount = () => act(() => root.render(<Settings />))
-const mountAsync = () => act(async () => { root.render(<Settings />) })
-const rowTitled = title => [...host.querySelectorAll('.lrow')].find(r => r.querySelector('.lrow-t')?.textContent === title)
+const mountAsync = () =>
+  act(async () => {
+    root.render(<Settings />)
+  })
+const rowTitled = title =>
+  [...host.querySelectorAll('.lrow')].find(r => r.querySelector('.lrow-t')?.textContent === title)
 
 describe('Settings — accessible names (a11y audit)', () => {
   it('every switch exposes a non-empty accessible name', () => {
@@ -90,7 +115,13 @@ describe('Settings — accessible names (a11y audit)', () => {
 
   it("each switch's name matches the title of the row it sits in", () => {
     mount()
-    for (const title of ['Gym check-in', 'Weigh in before workouts', 'Keep screen awake', 'Sounds', 'Flash screen when timer ends']) {
+    for (const title of [
+      'Gym check-in',
+      'Weigh in before workouts',
+      'Keep screen awake',
+      'Sounds',
+      'Flash screen when timer ends',
+    ]) {
       const row = rowTitled(title)
       expect(row, title).toBeTruthy()
       const sw = row.querySelector('[role="switch"]')
@@ -118,7 +149,9 @@ describe('Settings — accessible names (a11y audit)', () => {
     expect(host.querySelector('input[type="time"]')).toBeNull()
     const sw = reminderRow.querySelector('[role="switch"]')
     expect(sw.getAttribute('aria-label')).toBe('Workout day reminder')
-    await act(async () => { sw.click() })
+    await act(async () => {
+      sw.click()
+    })
     // the test store mock has no subscriptions, so re-render to read the new state
     await mountAsync()
     const time = host.querySelector('input[type="time"]')

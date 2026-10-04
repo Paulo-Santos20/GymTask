@@ -4,32 +4,34 @@ import { bestWeightForEntry } from './history.js'
 import { hasCompletedWork } from './workout-model.js'
 
 export function buildCompletedWorkout(active, { end = Date.now(), prs = [], snapshotFor } = {}) {
-  const entries = (active?.entries || []).map(entry => {
-    const completed = {
-      id: entry.id,
-      sets: entry.sets,
-      topW: bestWeightForEntry(entry) || null,
-      target: entry.target || null,
-      // Which routine this entry came from, and whether it counts for progression. Written
-      // only when set/true, so a single-routine non-excluded session is byte-for-byte the
-      // shape it always was. Without this the whitelist drops both at finish.
-      ...(entry.rid ? { rid: entry.rid } : {}),
-      ...(entry.noProg === true ? { noProg: true } : {}),
-    }
-    const snapshot = typeof snapshotFor === 'function' ? snapshotFor(entry) : null
-    if (snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot) && Object.keys(snapshot).length) {
-      completed.muscleSnapshot = { ...snapshot }
-    }
-    // What you typed about this exercise today, and whether you asked to see it again next
-    // time. Written only when there is something to keep, so an untouched entry is byte-for-byte
-    // the shape it always was.
-    const note = (entry.note || '').trim()
-    if (note) {
-      completed.note = note
-      if (entry.notePin) completed.notePin = true
-    }
-    return completed
-  }).filter(entry => entry.sets.some(hasCompletedWork))
+  const entries = (active?.entries || [])
+    .map(entry => {
+      const completed = {
+        id: entry.id,
+        sets: entry.sets,
+        topW: bestWeightForEntry(entry) || null,
+        target: entry.target || null,
+        // Which routine this entry came from, and whether it counts for progression. Written
+        // only when set/true, so a single-routine non-excluded session is byte-for-byte the
+        // shape it always was. Without this the whitelist drops both at finish.
+        ...(entry.rid ? { rid: entry.rid } : {}),
+        ...(entry.noProg === true ? { noProg: true } : {}),
+      }
+      const snapshot = typeof snapshotFor === 'function' ? snapshotFor(entry) : null
+      if (snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot) && Object.keys(snapshot).length) {
+        completed.muscleSnapshot = { ...snapshot }
+      }
+      // What you typed about this exercise today, and whether you asked to see it again next
+      // time. Written only when there is something to keep, so an untouched entry is byte-for-byte
+      // the shape it always was.
+      const note = (entry.note || '').trim()
+      if (note) {
+        completed.note = note
+        if (entry.notePin) completed.notePin = true
+      }
+      return completed
+    })
+    .filter(entry => entry.sets.some(hasCompletedWork))
 
   const sessionNote = (active?.note || '').trim()
   const routineIds = [].concat(active?.routineIds ?? (active?.routineId ? [active.routineId] : []))

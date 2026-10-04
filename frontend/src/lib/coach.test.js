@@ -1,10 +1,29 @@
 import { describe, it, expect } from 'vitest'
 import {
-  canonicalPlan, planHash, hashPlan, markStale, applicable, currentValue,
-  pushSnapshot, revertLast, canRevert, appendLog, applyChangeSet, applyCreatedPlan,
-  recordDismissal, validateProposal, coachAvailable, hasConsent,
-  recordDebrief, logEntry, lightBundle, changeValues,
-  CHANGE_TYPES, SNAPSHOT_MAX, LOG_MAX, CONSENT_VERSION
+  canonicalPlan,
+  planHash,
+  hashPlan,
+  markStale,
+  applicable,
+  currentValue,
+  pushSnapshot,
+  revertLast,
+  canRevert,
+  appendLog,
+  applyChangeSet,
+  applyCreatedPlan,
+  recordDismissal,
+  validateProposal,
+  coachAvailable,
+  hasConsent,
+  recordDebrief,
+  logEntry,
+  lightBundle,
+  changeValues,
+  CHANGE_TYPES,
+  SNAPSHOT_MAX,
+  LOG_MAX,
+  CONSENT_VERSION,
 } from './coach.js'
 import { registerCustom } from './exercises.js'
 
@@ -14,24 +33,53 @@ import * as serverPayload from '../../../api/coach/core/payload.js'
 import { hashPlan as serverHashPlan } from '../../../api/coach/core/plan-hash.js'
 
 const state = (over = {}) => ({
-  unit: 'kg', lang: 'en', customEx: [], workouts: [], bodyweight: [], exWeights: {}, dayPlan: {},
-  routines: [{
-    id: 'r1', name: 'Full body A', emoji: '💪', prog: 'linear',
-    ex: [
-      { id: '0001', sets: 3, reps: 10, mode: 'reps', weight: 20, prog: 'linear' },
-      { id: '0007', sets: 3, sec: 45, mode: 'time' },
-      { id: '0009', sets: 3, reps: 12, mode: 'reps' }
-    ]
-  }, { id: 'r2', name: 'Full body B', ex: [{ id: '0002', sets: 4, reps: 6, mode: 'reps' }] }],
+  unit: 'kg',
+  lang: 'en',
+  customEx: [],
+  workouts: [],
+  bodyweight: [],
+  exWeights: {},
+  dayPlan: {},
+  routines: [
+    {
+      id: 'r1',
+      name: 'Full body A',
+      emoji: '💪',
+      prog: 'linear',
+      ex: [
+        { id: '0001', sets: 3, reps: 10, mode: 'reps', weight: 20, prog: 'linear' },
+        { id: '0007', sets: 3, sec: 45, mode: 'time' },
+        { id: '0009', sets: 3, reps: 12, mode: 'reps' },
+      ],
+    },
+    { id: 'r2', name: 'Full body B', ex: [{ id: '0002', sets: 4, reps: 6, mode: 'reps' }] },
+  ],
   week: { 1: 'r1', 3: 'r2', 5: 'r1' },
-  coach: { consent: { agreedAt: '2026-07-01T00:00:00Z', version: CONSENT_VERSION }, log: [], snapshots: [], cadence: 'off' },
-  ...over
+  coach: {
+    consent: { agreedAt: '2026-07-01T00:00:00Z', version: CONSENT_VERSION },
+    log: [],
+    snapshots: [],
+    cadence: 'off',
+  },
+  ...over,
 })
 
-const change = over => ({ id: 'c1', type: 'sets', target: { routineId: 'r1', exId: '0001' }, before: 3, after: 4, why: 'stalled twice', ...over })
+const change = over => ({
+  id: 'c1',
+  type: 'sets',
+  target: { routineId: 'r1', exId: '0001' },
+  before: 3,
+  after: 4,
+  why: 'stalled twice',
+  ...over,
+})
 const proposal = (changes, over = {}) => ({ id: 'p1', kind: 'review', summary: 's', changes, ...over })
 /** Apply against a throwaway draft, the way the store does. */
-const apply = (S, p, ids) => { const s = JSON.parse(JSON.stringify(S)); applyChangeSet(s, p, ids); return s }
+const apply = (S, p, ids) => {
+  const s = JSON.parse(JSON.stringify(S))
+  applyChangeSet(s, p, ids)
+  return s
+}
 
 describe('gating', () => {
   it('shows nothing unless the instance offers it and someone is signed in', () => {
@@ -45,7 +93,7 @@ describe('gating', () => {
     expect(coachAvailable(null, null, { demo: true })).toBe(true)
   })
 
-  it('is on in BYOK mode, where the browser runs the pipeline with the user\'s own key', () => {
+  it("is on in BYOK mode, where the browser runs the pipeline with the user's own key", () => {
     expect(coachAvailable(null, null, { coachMode: 'byok' })).toBe(true)
     expect(coachAvailable(null, { id: 'u' }, { coachMode: 'byok' })).toBe(true)
     expect(coachAvailable(null, { id: 'u' }, { coachMode: 'server' })).toBe(false)
@@ -66,15 +114,19 @@ describe('plan fingerprint', () => {
     // A field the plan does not carry cannot move the hash.
     expect(planHash(state({ theme: 'light' }))).toBe(planHash(S))
     // Everything the Coach can change does.
-    const moved = state(); moved.routines[0].ex[0].sets = 4
+    const moved = state()
+    moved.routines[0].ex[0].sets = 4
     expect(planHash(moved)).not.toBe(planHash(S))
-    const week = state(); week.week[6] = 'r1'
+    const week = state()
+    week.week[6] = 'r1'
     expect(planHash(week)).not.toBe(planHash(S))
   })
 
   it('cannot tell "no weight" from "0 kg" — both mean unloaded', () => {
-    const a = state(); delete a.routines[0].ex[2].weight
-    const b = state(); b.routines[0].ex[2].weight = 0
+    const a = state()
+    delete a.routines[0].ex[2].weight
+    const b = state()
+    b.routines[0].ex[2].weight = 0
     expect(planHash(a)).toBe(planHash(b))
   })
 
@@ -83,7 +135,8 @@ describe('plan fingerprint', () => {
     // has to read as stale afterwards. They were in canonicalPlan and not in the hash.
     const S = state()
     for (const [field, value] of Object.entries({ repsMax: 20, bodyweight: false, side: true })) {
-      const edited = state(); edited.routines[0].ex[0][field] = value
+      const edited = state()
+      edited.routines[0].ex[0][field] = value
       expect(planHash(edited), field).not.toBe(planHash(S))
     }
   })
@@ -124,18 +177,21 @@ describe('staleness', () => {
     const S = state()
     const p = { ...proposal([change()]), planHash: planHash(S) }
     expect(markStale(p, S).planMoved).toBe(false)
-    const edited = state(); edited.routines[0].ex[0].sets = 5
+    const edited = state()
+    edited.routines[0].ex[0].sets = 5
     expect(markStale(p, edited).planMoved).toBe(true)
   })
 
   it('flags a change whose target is gone', () => {
-    const S = state(); S.routines[0].ex = S.routines[0].ex.filter(e => e.id !== '0001')
+    const S = state()
+    S.routines[0].ex = S.routines[0].ex.filter(e => e.id !== '0001')
     const [c] = markStale(proposal([change()]), S).changes
     expect(c.status).toBe('stale')
   })
 
   it('flags a change someone already made by hand, rather than overwriting them', () => {
-    const S = state(); S.routines[0].ex[0].sets = 5     // Coach saw 3, user has since set 5
+    const S = state()
+    S.routines[0].ex[0].sets = 5 // Coach saw 3, user has since set 5
     const [c] = markStale(proposal([change()]), S).changes
     expect(c.status).toBe('stale')
     expect(applicable(markStale(proposal([change()]), S))).toHaveLength(0)
@@ -165,7 +221,7 @@ describe('staleness', () => {
     expect(currentValue(S, change({ type: 'repsMax' }))).toBe(20)
     expect(currentValue(S, change({ type: 'exercise-prog' }))).toBe('linear')
     expect(currentValue(S, change({ type: 'routine-prog' }))).toBe('linear')
-    expect(currentValue(S, change({ type: 'week', target: { weekday: 1 } }))).toEqual(['r1'])   // a routine-id list; [] = rest
+    expect(currentValue(S, change({ type: 'week', target: { weekday: 1 } }))).toEqual(['r1']) // a routine-id list; [] = rest
   })
 })
 
@@ -180,33 +236,81 @@ describe('applying changes', () => {
     expect(apply(S, proposal([change({ type: 'sets', after: 4 })]), ['c1']).routines[0].ex[0].sets).toBe(4)
     expect(apply(S, proposal([change({ type: 'reps', after: 12 })]), ['c1']).routines[0].ex[0].reps).toBe(12)
     expect(apply(S, proposal([change({ type: 'repsMin', after: 8 })]), ['c1']).routines[0].ex[0].repsMin).toBe(8)
-    expect(apply(S, proposal([change({ type: 'repsMax', before: null, after: 20 })]), ['c1']).routines[0].ex[0].repsMax).toBe(20)
-    expect(apply(S, proposal([change({ type: 'sec', target: { routineId: 'r1', exId: '0007' }, before: 45, after: 60 })]), ['c1']).routines[0].ex[1].sec).toBe(60)
+    expect(
+      apply(S, proposal([change({ type: 'repsMax', before: null, after: 20 })]), ['c1']).routines[0].ex[0].repsMax,
+    ).toBe(20)
+    expect(
+      apply(S, proposal([change({ type: 'sec', target: { routineId: 'r1', exId: '0007' }, before: 45, after: 60 })]), [
+        'c1',
+      ]).routines[0].ex[1].sec,
+    ).toBe(60)
     expect(apply(S, proposal([change({ type: 'inc', before: null, after: 5 })]), ['c1']).routines[0].ex[0].inc).toBe(5)
-    expect(apply(S, proposal([change({ type: 'exercise-prog', before: 'linear', after: 'double' })]), ['c1']).routines[0].ex[0].prog).toBe('double')
-    expect(apply(S, proposal([change({ type: 'routine-prog', target: { routineId: 'r1' }, before: 'linear', after: 'greyskull' })]), ['c1']).routines[0].prog).toBe('greyskull')
+    expect(
+      apply(S, proposal([change({ type: 'exercise-prog', before: 'linear', after: 'double' })]), ['c1']).routines[0]
+        .ex[0].prog,
+    ).toBe('double')
+    expect(
+      apply(
+        S,
+        proposal([change({ type: 'routine-prog', target: { routineId: 'r1' }, before: 'linear', after: 'greyskull' })]),
+        ['c1'],
+      ).routines[0].prog,
+    ).toBe('greyskull')
   })
 
   it('adds an exercise at the position asked for', () => {
-    const out = apply(state(), proposal([change({
-      type: 'add-exercise', target: { routineId: 'r1' }, before: null,
-      after: { id: '0002', sets: 3, reps: 8, mode: 'reps', position: 1 }
-    })]), ['c1'])
+    const out = apply(
+      state(),
+      proposal([
+        change({
+          type: 'add-exercise',
+          target: { routineId: 'r1' },
+          before: null,
+          after: { id: '0002', sets: 3, reps: 8, mode: 'reps', position: 1 },
+        }),
+      ]),
+      ['c1'],
+    )
     expect(out.routines[0].ex.map(e => e.id)).toEqual(['0001', '0002', '0007', '0009'])
     expect(out.routines[0].ex[1].sets).toBe(3)
   })
 
   it('carries a rep ceiling and the two flags onto an added exercise, and only when set', () => {
-    const withFlags = apply(state(), proposal([change({
-      type: 'add-exercise', target: { routineId: 'r1' }, before: null,
-      after: { id: '0002', sets: 3, reps: 16, mode: 'reps', repsMin: 10, repsMax: 24, bodyweight: true, side: true }
-    })]), ['c1']).routines[0].ex.at(-1)
+    const withFlags = apply(
+      state(),
+      proposal([
+        change({
+          type: 'add-exercise',
+          target: { routineId: 'r1' },
+          before: null,
+          after: {
+            id: '0002',
+            sets: 3,
+            reps: 16,
+            mode: 'reps',
+            repsMin: 10,
+            repsMax: 24,
+            bodyweight: true,
+            side: true,
+          },
+        }),
+      ]),
+      ['c1'],
+    ).routines[0].ex.at(-1)
     expect(withFlags).toMatchObject({ repsMin: 10, repsMax: 24, bodyweight: true, side: true })
 
-    const plain = apply(state(), proposal([change({
-      type: 'add-exercise', target: { routineId: 'r1' }, before: null,
-      after: { id: '0002', sets: 3, reps: 8, mode: 'reps' }
-    })]), ['c1']).routines[0].ex.at(-1)
+    const plain = apply(
+      state(),
+      proposal([
+        change({
+          type: 'add-exercise',
+          target: { routineId: 'r1' },
+          before: null,
+          after: { id: '0002', sets: 3, reps: 8, mode: 'reps' },
+        }),
+      ]),
+      ['c1'],
+    ).routines[0].ex.at(-1)
     // Absent means "whatever the catalogue says". Writing a flag out would freeze today's
     // dataset into the plan.
     expect(plain.bodyweight).toBeUndefined()
@@ -223,7 +327,7 @@ describe('applying changes', () => {
     const e = out.routines[0].ex[0]
     expect(e.id).toBe('0002')
     expect(e.sets).toBe(3)
-    expect(e.reps).toBe(10)     // not silently reset — that would be a change nobody approved
+    expect(e.reps).toBe(10) // not silently reset — that would be a change nobody approved
   })
 
   it('drops flags that described the old movement when swapping', () => {
@@ -234,28 +338,53 @@ describe('applying changes', () => {
     // rep count that was never per-side; the new exercise goes back to the catalogue.
     expect(e.side).toBeUndefined()
     expect(e.bodyweight).toBeUndefined()
-    expect(e.reps).toBe(16)     // the prescription itself still survives
+    expect(e.reps).toBe(16) // the prescription itself still survives
   })
 
   it('reorders only with a complete permutation', () => {
-    const out = apply(state(), proposal([change({ type: 'reorder', target: { routineId: 'r1' }, after: ['0009', '0001', '0007'] })]), ['c1'])
+    const out = apply(
+      state(),
+      proposal([change({ type: 'reorder', target: { routineId: 'r1' }, after: ['0009', '0001', '0007'] })]),
+      ['c1'],
+    )
     expect(out.routines[0].ex.map(e => e.id)).toEqual(['0009', '0001', '0007'])
-    expect(() => apply(state(), proposal([change({ type: 'reorder', target: { routineId: 'r1' }, after: ['0009'] })]), ['c1'])).toThrow()
+    expect(() =>
+      apply(state(), proposal([change({ type: 'reorder', target: { routineId: 'r1' }, after: ['0009'] })]), ['c1']),
+    ).toThrow()
     // A repeated id counts right and resolves to the same object twice: the third exercise
     // disappears and the survivor is aliased into two slots. Both gates have to catch this,
     // because it is the one change type with nothing in the diff column to give it away.
-    expect(() => apply(state(), proposal([change({
-      type: 'reorder', target: { routineId: 'r1' }, after: ['0009', '0009', '0001']
-    })]), ['c1'])).toThrow()
+    expect(() =>
+      apply(
+        state(),
+        proposal([
+          change({
+            type: 'reorder',
+            target: { routineId: 'r1' },
+            after: ['0009', '0009', '0001'],
+          }),
+        ]),
+        ['c1'],
+      ),
+    ).toThrow()
   })
 
   it('refuses to superset an exercise with itself', () => {
     // Reachable only if the server let it past. By the message, not merely by throwing: the
     // unfixed path also threw — a TypeError, after it had already moved the exercise — so
     // asserting "it throws" would pass against the bug this is here to pin.
-    expect(() => apply(state(), proposal([change({
-      type: 'superset', after: { link: true, with: '0001' }
-    })]), ['c1'])).toThrow('superset with itself')
+    expect(() =>
+      apply(
+        state(),
+        proposal([
+          change({
+            type: 'superset',
+            after: { link: true, with: '0001' },
+          }),
+        ]),
+        ['c1'],
+      ),
+    ).toThrow('superset with itself')
   })
 
   it('supersets by moving the partner adjacent and tagging both', () => {
@@ -269,39 +398,66 @@ describe('applying changes', () => {
 
   it('unlinks a superset and cleans up the orphan tag', () => {
     const S = state()
-    S.routines[0].ex[0].sg = 'a'; S.routines[0].ex[1].sg = 'a'
+    S.routines[0].ex[0].sg = 'a'
+    S.routines[0].ex[1].sg = 'a'
     const out = apply(S, proposal([change({ type: 'superset', after: { link: false } })]), ['c1'])
     expect(out.routines[0].ex[0].sg).toBeUndefined()
     expect(out.routines[0].ex[1].sg).toBeUndefined()
   })
 
   it('adds, renames and removes routines, clearing any day that pointed at one', () => {
-    const added = apply(state(), proposal([change({
-      type: 'add-routine', target: {}, before: null,
-      after: { name: 'Full body C', ex: [{ id: '0001', sets: 3, reps: 10, mode: 'reps' }] }
-    })]), ['c1'])
+    const added = apply(
+      state(),
+      proposal([
+        change({
+          type: 'add-routine',
+          target: {},
+          before: null,
+          after: { name: 'Full body C', ex: [{ id: '0001', sets: 3, reps: 10, mode: 'reps' }] },
+        }),
+      ]),
+      ['c1'],
+    )
     expect(added.routines).toHaveLength(3)
     expect(added.routines[2].id).not.toBe('r1')
 
-    const renamed = apply(state(), proposal([change({ type: 'rename-routine', target: { routineId: 'r1' }, before: 'Full body A', after: 'Upper' })]), ['c1'])
+    const renamed = apply(
+      state(),
+      proposal([
+        change({ type: 'rename-routine', target: { routineId: 'r1' }, before: 'Full body A', after: 'Upper' }),
+      ]),
+      ['c1'],
+    )
     expect(renamed.routines[0].name).toBe('Upper')
 
     const removed = apply(state(), proposal([change({ type: 'remove-routine', target: { routineId: 'r2' } })]), ['c1'])
     expect(removed.routines.map(r => r.id)).toEqual(['r1'])
-    expect(removed.week[3]).toBeUndefined()      // Wednesday pointed at r2
+    expect(removed.week[3]).toBeUndefined() // Wednesday pointed at r2
   })
 
   it('moves a day, and clears one — the slot stays a routine-id list', () => {
-    const moved = apply(state(), proposal([change({ type: 'week', target: { weekday: 6 }, before: null, after: 'r1' })]), ['c1'])
+    const moved = apply(
+      state(),
+      proposal([change({ type: 'week', target: { weekday: 6 }, before: null, after: 'r1' })]),
+      ['c1'],
+    )
     expect(moved.week[6]).toEqual(['r1'])
-    const cleared = apply(state(), proposal([change({ type: 'week', target: { weekday: 1 }, before: 'r1', after: 'rest' })]), ['c1'])
+    const cleared = apply(
+      state(),
+      proposal([change({ type: 'week', target: { weekday: 1 }, before: 'r1', after: 'rest' })]),
+      ['c1'],
+    )
     expect(cleared.week[1]).toBeUndefined()
   })
 
   it('collapses a combined day to the single routine the Coach named', () => {
     const S = state()
     S.week = { ...S.week, 3: ['r2', 'r1'] }
-    const out = apply(S, proposal([change({ type: 'week', target: { weekday: 3 }, before: ['r2', 'r1'], after: 'r1' })]), ['c1'])
+    const out = apply(
+      S,
+      proposal([change({ type: 'week', target: { weekday: 3 }, before: ['r2', 'r1'], after: 'r1' })]),
+      ['c1'],
+    )
     expect(out.week[3]).toEqual(['r1'])
   })
 
@@ -309,7 +465,9 @@ describe('applying changes', () => {
     const S = state()
     const c = { type: 'week', target: { weekday: 3 }, before: ['r1', 'r2'], after: 'r1' }
     expect(changeValues(c, S)).toEqual({ before: 'Full body A + Full body B', after: 'Full body A' })
-    expect(changeValues({ type: 'week', target: { weekday: 3 }, before: ['r1', 'r2'], after: 'rest' }, S).after).toBe('Rest')
+    expect(changeValues({ type: 'week', target: { weekday: 3 }, before: ['r1', 'r2'], after: 'rest' }, S).after).toBe(
+      'Rest',
+    )
     expect(changeValues({ type: 'week', target: { weekday: 3 }, before: null, after: 'r2' }, S).before).toBe('Rest')
   })
 
@@ -317,7 +475,9 @@ describe('applying changes', () => {
     const S = state({
       workouts: [{ id: 'w1', d: '2026-07-20', entries: [] }],
       bodyweight: [{ d: '2026-07-20', w: 80 }],
-      exWeights: { '0001': { w: 20 } }, unit: 'kg', restSec: 90
+      exWeights: { '0001': { w: 20 } },
+      unit: 'kg',
+      restSec: 90,
     })
     const out = apply(S, proposal([change({ type: 'sets', after: 4 })]), ['c1'])
     expect(out.workouts).toEqual(S.workouts)
@@ -333,7 +493,7 @@ describe('accepting a subset', () => {
     const s = JSON.parse(JSON.stringify(state()))
     const p = proposal([
       change({ id: 'c1', type: 'sets', after: 4 }),
-      change({ id: 'c2', type: 'reps', before: 10, after: 12 })
+      change({ id: 'c2', type: 'reps', before: 10, after: 12 }),
     ])
     const res = applyChangeSet(s, p, ['c1'])
     expect(res).toMatchObject({ applied: 1, rejected: 1 })
@@ -354,12 +514,16 @@ describe('accepting a subset', () => {
     const before = JSON.stringify(s.routines)
     const p = proposal([
       change({ id: 'c1', type: 'sets', after: 4 }),
-      change({ id: 'c2', type: 'reps', target: { routineId: 'r1', exId: 'ghost' }, before: null, after: 12 })
+      change({ id: 'c2', type: 'reps', target: { routineId: 'r1', exId: 'ghost' }, before: null, after: 12 }),
     ])
     // The store hands us a clone and keeps it only if we return; throwing discards everything.
     expect(() => applyChangeSet(s, p, ['c1', 'c2'])).toThrow()
     const s2 = JSON.parse(JSON.stringify(state()))
-    try { applyChangeSet(s2, p, ['c1', 'c2']) } catch { /* draft discarded by the caller */ }
+    try {
+      applyChangeSet(s2, p, ['c1', 'c2'])
+    } catch {
+      /* draft discarded by the caller */
+    }
     expect(JSON.stringify(state().routines)).toBe(before)
   })
 })
@@ -401,7 +565,12 @@ describe('the log', () => {
   it('stays well inside the sync budget even when full', () => {
     const s = JSON.parse(JSON.stringify(state()))
     for (let i = 0; i < LOG_MAX; i++) {
-      appendLog(s, { kind: 'review', at: i, summary: 'x'.repeat(200), decisions: [{ id: 'c', type: 'sets', why: 'y'.repeat(200), status: 'accepted' }] })
+      appendLog(s, {
+        kind: 'review',
+        at: i,
+        summary: 'x'.repeat(200),
+        decisions: [{ id: 'c', type: 'sets', why: 'y'.repeat(200), status: 'accepted' }],
+      })
     }
     for (let i = 0; i < SNAPSHOT_MAX; i++) pushSnapshot(s, 'p' + i)
     expect(JSON.stringify(s.coach).length).toBeLessThan(300 * 1024)
@@ -420,15 +589,20 @@ describe('created plans', () => {
   describe('per-date reschedules', () => {
     const past = '2020-01-02'
     const future = '2099-12-31'
-    const withOverrides = () => JSON.parse(JSON.stringify(state({
-      dayPlan: { [past]: 'r1', [future]: 'rest' }
-    })))
+    const withOverrides = () =>
+      JSON.parse(
+        JSON.stringify(
+          state({
+            dayPlan: { [past]: 'r1', [future]: 'rest' },
+          }),
+        ),
+      )
 
     it('drops today-and-later overrides when the schedule moves, and keeps past ones', () => {
       const s = withOverrides()
       applyCreatedPlan(s, { id: 'p1', kind: 'create', bundle }, { schedule: true })
       expect(s.dayPlan[future]).toBeUndefined()
-      expect(s.dayPlan[past]).toBe('r1')       // history, not intent
+      expect(s.dayPlan[past]).toBe('r1') // history, not intent
     })
 
     it('leaves them alone when the schedule was not taken', () => {
@@ -465,33 +639,41 @@ describe('created plans', () => {
   })
 
   const bundle = {
-    opengym_plan: 1, name: 'Coach plan', summary: 'three days',
+    opengym_plan: 1,
+    name: 'Coach plan',
+    summary: 'three days',
     week: { 1: 'x1', 3: 'x2' },
     routines: [
-      { id: 'x1', name: 'A', emoji: '💪', why: 'why A', ex: [{ id: '0001', sets: 3, reps: 10, mode: 'reps', why: 'why ex' }] },
-      { id: 'x2', name: 'B', emoji: '🏋️', ex: [{ id: '0002', sets: 3, reps: 8, mode: 'reps' }] }
+      {
+        id: 'x1',
+        name: 'A',
+        emoji: '💪',
+        why: 'why A',
+        ex: [{ id: '0001', sets: 3, reps: 10, mode: 'reps', why: 'why ex' }],
+      },
+      { id: 'x2', name: 'B', emoji: '🏋️', ex: [{ id: '0002', sets: 3, reps: 8, mode: 'reps' }] },
     ],
-    customEx: []
+    customEx: [],
   }
 
   it('adds routines as new ones and never modifies what was already there', () => {
     const s = JSON.parse(JSON.stringify(state()))
     applyCreatedPlan(s, { id: 'p1', kind: 'create', bundle }, { schedule: false })
     expect(s.routines).toHaveLength(4)
-    expect(s.routines[0].name).toBe('Full body A')          // untouched
-    expect(s.routines[2].id).not.toBe('x1')                 // fresh ids, like a plan import
-    expect(s.week[1]).toBe('r1')                            // schedule left alone
+    expect(s.routines[0].name).toBe('Full body A') // untouched
+    expect(s.routines[2].id).not.toBe('x1') // fresh ids, like a plan import
+    expect(s.week[1]).toBe('r1') // schedule left alone
   })
 
   it('replaces the week only when asked, and remaps to the new ids', () => {
     const s = JSON.parse(JSON.stringify(state()))
     applyCreatedPlan(s, { id: 'p1', kind: 'create', bundle }, { schedule: true })
-    expect(s.week[1]).toEqual([s.routines[2].id])           // a weekday holds a routine-id list
+    expect(s.week[1]).toEqual([s.routines[2].id]) // a weekday holds a routine-id list
     expect(s.week[3]).toEqual([s.routines[3].id])
-    expect(s.week[5]).toBeUndefined()                       // a day the new plan leaves empty is rest
+    expect(s.week[5]).toBeUndefined() // a day the new plan leaves empty is rest
   })
 
-  it('keeps the Coach\'s prose out of the routine data', () => {
+  it("keeps the Coach's prose out of the routine data", () => {
     const s = JSON.parse(JSON.stringify(state()))
     applyCreatedPlan(s, { id: 'p1', kind: 'create', bundle }, {})
     expect(s.routines[2].why).toBeUndefined()
@@ -501,13 +683,24 @@ describe('created plans', () => {
 
   it('carries the rep ceiling and the flags the validator let through', () => {
     const s = JSON.parse(JSON.stringify(state()))
-    applyCreatedPlan(s, {
-      id: 'p1', kind: 'create',
-      bundle: {
-        ...bundle,
-        routines: [{ id: 'x1', name: 'A', ex: [{ id: '0001', sets: 3, reps: 12, mode: 'reps', repsMin: 8, repsMax: 20, bodyweight: true }] }]
-      }
-    }, {})
+    applyCreatedPlan(
+      s,
+      {
+        id: 'p1',
+        kind: 'create',
+        bundle: {
+          ...bundle,
+          routines: [
+            {
+              id: 'x1',
+              name: 'A',
+              ex: [{ id: '0001', sets: 3, reps: 12, mode: 'reps', repsMin: 8, repsMax: 20, bodyweight: true }],
+            },
+          ],
+        },
+      },
+      {},
+    )
     expect(s.routines[2].ex[0]).toMatchObject({ repsMin: 8, repsMax: 20, bodyweight: true })
   })
 
@@ -521,10 +714,19 @@ describe('created plans', () => {
 
   it('brings custom exercises along and registers them', () => {
     const s = JSON.parse(JSON.stringify(state()))
-    applyCreatedPlan(s, {
-      id: 'p1', kind: 'create',
-      bundle: { ...bundle, routines: [{ id: 'x1', name: 'A', ex: [{ id: 'cx1', sets: 3, reps: 10 }] }], customEx: [{ id: 'cx1', n: 'Sandbag carry', bp: 'back' }] }
-    }, {})
+    applyCreatedPlan(
+      s,
+      {
+        id: 'p1',
+        kind: 'create',
+        bundle: {
+          ...bundle,
+          routines: [{ id: 'x1', name: 'A', ex: [{ id: 'cx1', sets: 3, reps: 10 }] }],
+          customEx: [{ id: 'cx1', n: 'Sandbag carry', bp: 'back' }],
+        },
+      },
+      {},
+    )
     expect(s.customEx).toHaveLength(1)
     registerCustom(s.customEx)
     expect(s.routines[2].ex[0].id).toBe(s.customEx[0].id)
@@ -566,7 +768,7 @@ describe('the gate has something real to read', () => {
     // The exact shape GET /api/config returns when the Coach is on.
     const config = { invite_only: false, coach: { enabled: true, provider: 'claude', authMode: 'instance' } }
     expect(coachAvailable(config, { id: 'u' })).toBe(true)
-    expect(coachAvailable(undefined, { id: 'u' })).toBe(false)   // the bug, pinned
+    expect(coachAvailable(undefined, { id: 'u' })).toBe(false) // the bug, pinned
   })
 })
 
@@ -579,7 +781,7 @@ describe('removing a routine takes its per-date reschedules with it', () => {
     const S = state({ dayPlan: { '2099-01-01': 'r2', '2099-01-02': 'r1' } })
     const s = apply(S, proposal([c]), ['c1'])
     expect(s.dayPlan['2099-01-01']).toBeUndefined()
-    expect(s.dayPlan['2099-01-02']).toBe('r1')   // a different routine is none of its business
+    expect(s.dayPlan['2099-01-02']).toBe('r1') // a different routine is none of its business
     expect(s.week[3]).toBeUndefined()
   })
 
@@ -593,9 +795,20 @@ describe('removing a routine takes its per-date reschedules with it', () => {
 
 describe('what the log keeps, so a decision never makes a proposal vanish', () => {
   const plan = {
-    opengym_plan: 1, name: 'Coach plan', summary: 'p', week: { 1: 'x1' },
-    routines: [{ id: 'x1', name: 'A', emoji: '💪', why: 'w', ex: [{ id: '0001', sets: 3, reps: 10, mode: 'reps', why: 'y'.repeat(300), secret: 1 }] }],
-    customEx: []
+    opengym_plan: 1,
+    name: 'Coach plan',
+    summary: 'p',
+    week: { 1: 'x1' },
+    routines: [
+      {
+        id: 'x1',
+        name: 'A',
+        emoji: '💪',
+        why: 'w',
+        ex: [{ id: '0001', sets: 3, reps: 10, mode: 'reps', why: 'y'.repeat(300), secret: 1 }],
+      },
+    ],
+    customEx: [],
   }
 
   it('applyChangeSet returns the log id and keeps the declined change whole', () => {
@@ -604,7 +817,13 @@ describe('what the log keeps, so a decision never makes a proposal vanish', () =
     const res = applyChangeSet(s, p, ['c1'])
     expect(res.logId).toBe(s.coach.log.at(-1).id)
     const rej = s.coach.log.at(-1).decisions.find(d => d.id === 'c2')
-    expect(rej).toMatchObject({ status: 'rejected', type: 'reps', before: 10, after: 8, target: { routineId: 'r1', exId: '0001' } })
+    expect(rej).toMatchObject({
+      status: 'rejected',
+      type: 'reps',
+      before: 10,
+      after: 8,
+      target: { routineId: 'r1', exId: '0001' },
+    })
     expect(logEntry(s, res.logId).kind).toBe('review')
   })
 
@@ -633,8 +852,23 @@ describe('what the log keeps, so a decision never makes a proposal vanish', () =
 
   it('recordDebrief files the whole reading', () => {
     const s = JSON.parse(JSON.stringify(state()))
-    const id = recordDebrief(s, { id: 'd1', kind: 'debrief', workout: { id: 'w1', name: 'Push' }, summary: 'ok', score: 8, highlights: ['a'], watch: [], nextTime: ['b'] })
-    expect(logEntry(s, id)).toMatchObject({ kind: 'debrief', score: 8, highlights: ['a'], nextTime: ['b'], workout: { id: 'w1' } })
+    const id = recordDebrief(s, {
+      id: 'd1',
+      kind: 'debrief',
+      workout: { id: 'w1', name: 'Push' },
+      summary: 'ok',
+      score: 8,
+      highlights: ['a'],
+      watch: [],
+      nextTime: ['b'],
+    })
+    expect(logEntry(s, id)).toMatchObject({
+      kind: 'debrief',
+      score: 8,
+      highlights: ['a'],
+      nextTime: ['b'],
+      workout: { id: 'w1' },
+    })
   })
 
   it('lightBundle drops what the card does not show', () => {

@@ -11,7 +11,9 @@ import { parsePlan } from './lib/plan-share.js'
 import { EXDB } from './lib/exercises.js'
 
 const clone = v => JSON.parse(JSON.stringify(v))
-const ids = EXDB.filter(e => e.bp !== 'cardio').slice(0, 2).map(e => e.id)
+const ids = EXDB.filter(e => e.bp !== 'cardio')
+  .slice(0, 2)
+  .map(e => e.id)
 const mounted = []
 
 function renderTop() {
@@ -36,13 +38,19 @@ beforeEach(() => {
   S.week = {}
   useStore.setState({ S, user: null })
 })
-afterEach(() => { act(() => { mounted.splice(0).forEach(r => r.unmount()) }) })
+afterEach(() => {
+  act(() => {
+    mounted.splice(0).forEach(r => r.unmount())
+  })
+})
 
 describe('Plan import sheet — the toast counts what it added', () => {
   it('says "1 routine" for a single routine', () => {
     planImportSheet(bundleOf([routine('a', 'Push')]))
     const host = renderTop()
-    act(() => { buttonFor(host, 'Add to my plan').click() })
+    act(() => {
+      buttonFor(host, 'Add to my plan').click()
+    })
     expect(useStore.getState().S.routines).toHaveLength(1)
     expect(useUI.getState().toastMsg).toBe('Added 1 routine to your plan')
   })
@@ -50,7 +58,9 @@ describe('Plan import sheet — the toast counts what it added', () => {
   it('keeps the plural for several', () => {
     planImportSheet(bundleOf([routine('a', 'Push'), routine('b', 'Pull')]))
     const host = renderTop()
-    act(() => { buttonFor(host, 'Add to my plan').click() })
+    act(() => {
+      buttonFor(host, 'Add to my plan').click()
+    })
     expect(useUI.getState().toastMsg).toBe('Added 2 routines to your plan')
   })
 })

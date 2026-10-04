@@ -33,20 +33,34 @@ async function render() {
   document.body.appendChild(host)
   const root = createRoot(host)
   mounted.push(root)
-  await act(async () => { root.render(<Muscles />) })
+  await act(async () => {
+    root.render(<Muscles />)
+  })
   return host
 }
 const chip = (host, name) => [...host.querySelectorAll('.chip')].find(c => c.textContent.startsWith(name))
 
 beforeEach(() => {
   mocks.S = {
-    unit: 'kg', lang: 'en', body: 'male', routines: [], workouts: [],
-    customEx: [], exWeights: {}, equipProfiles: [], activeEquipId: null, equipFilterOn: false,
+    unit: 'kg',
+    lang: 'en',
+    body: 'male',
+    routines: [],
+    workouts: [],
+    customEx: [],
+    exWeights: {},
+    equipProfiles: [],
+    activeEquipId: null,
+    equipFilterOn: false,
   }
   mocks.nav.mockClear()
   document.body.innerHTML = ''
 })
-afterEach(() => { act(() => { mounted.splice(0).forEach(root => root.unmount()) }) })
+afterEach(() => {
+  act(() => {
+    mounted.splice(0).forEach(root => root.unmount())
+  })
+})
 
 describe('Muscles explorer', () => {
   it('draws the body map with data and counts the catalogue per muscle', async () => {

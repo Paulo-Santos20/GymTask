@@ -13,20 +13,34 @@ const setNavigator = value =>
   Object.defineProperty(globalThis, 'navigator', { value, configurable: true, writable: true })
 
 function fakeBrowser() {
-  requests = 0; released = 0; live = null; reject = false
+  requests = 0
+  released = 0
+  live = null
+  reject = false
   listeners = new Set()
   globalThis.document = {
     visibilityState: 'visible',
-    addEventListener: (type, fn) => { if (type === 'visibilitychange') listeners.add(fn) },
-    removeEventListener: (type, fn) => { if (type === 'visibilitychange') listeners.delete(fn) },
+    addEventListener: (type, fn) => {
+      if (type === 'visibilitychange') listeners.add(fn)
+    },
+    removeEventListener: (type, fn) => {
+      if (type === 'visibilitychange') listeners.delete(fn)
+    },
   }
   setNavigator({
     wakeLock: {
       request: async () => {
         requests++
-        if (reject) throw new Error('NotAllowedError')   // iOS Low Power Mode
+        if (reject) throw new Error('NotAllowedError') // iOS Low Power Mode
         const subs = new Set()
-        const s = { addEventListener: (_, fn) => subs.add(fn), release: async () => { if (live === s) live = null; released++; subs.forEach(fn => fn()) } }
+        const s = {
+          addEventListener: (_, fn) => subs.add(fn),
+          release: async () => {
+            if (live === s) live = null
+            released++
+            subs.forEach(fn => fn())
+          },
+        }
         live = s
         return s
       },
@@ -35,17 +49,29 @@ function fakeBrowser() {
 }
 const fire = () => listeners.forEach(fn => fn())
 const settle = () => new Promise(r => setTimeout(r, 0))
-const background = async () => { globalThis.document.visibilityState = 'hidden'; if (live) await live.release(); fire(); await settle() }
-const foreground = async () => { globalThis.document.visibilityState = 'visible'; fire(); await settle() }
+const background = async () => {
+  globalThis.document.visibilityState = 'hidden'
+  if (live) await live.release()
+  fire()
+  await settle()
+}
+const foreground = async () => {
+  globalThis.document.visibilityState = 'visible'
+  fire()
+  await settle()
+}
 
 let requestWakeLock, releaseWakeLock, wakeLockSupported
 
 beforeEach(async () => {
   fakeBrowser()
-  vi.resetModules()   // the module holds process-wide state; each test gets a fresh one
+  vi.resetModules() // the module holds process-wide state; each test gets a fresh one
   ;({ requestWakeLock, releaseWakeLock, wakeLockSupported } = await import('./wakelock.js'))
 })
-afterEach(() => { delete globalThis.document; delete globalThis.navigator })
+afterEach(() => {
+  delete globalThis.document
+  delete globalThis.navigator
+})
 
 describe('wakeLockSupported', () => {
   it('is false when the browser has no wakeLock at all', () => {
@@ -59,25 +85,30 @@ describe('wakeLockSupported', () => {
 
 describe('requestWakeLock', () => {
   it('takes a lock', async () => {
-    requestWakeLock(); await settle()
+    requestWakeLock()
+    await settle()
     expect(requests).toBe(1)
     expect(live).not.toBeNull()
   })
 
   it('does not stack a second lock while one is held', async () => {
-    requestWakeLock(); await settle()
-    requestWakeLock(); await settle()
+    requestWakeLock()
+    await settle()
+    requestWakeLock()
+    await settle()
     expect(requests).toBe(1)
   })
 
   it('does not request one on a hidden document', async () => {
     globalThis.document.visibilityState = 'hidden'
-    requestWakeLock(); await settle()
+    requestWakeLock()
+    await settle()
     expect(requests).toBe(0)
   })
 
   it('re-acquires after the browser drops it on backgrounding', async () => {
-    requestWakeLock(); await settle()
+    requestWakeLock()
+    await settle()
     await background()
     expect(live).toBeNull()
     await foreground()
@@ -87,7 +118,8 @@ describe('requestWakeLock', () => {
 
   it('survives a rejection and retries when the document comes back', async () => {
     reject = true
-    requestWakeLock(); await settle()
+    requestWakeLock()
+    await settle()
     expect(live).toBeNull()
     reject = false
     await foreground()
@@ -97,20 +129,23 @@ describe('requestWakeLock', () => {
 
 describe('releaseWakeLock', () => {
   it('releases the held lock and stops re-acquiring', async () => {
-    requestWakeLock(); await settle()
-    releaseWakeLock(); await settle()
+    requestWakeLock()
+    await settle()
+    releaseWakeLock()
+    await settle()
     expect(released).toBe(1)
     expect(live).toBeNull()
-    await background(); await foreground()
+    await background()
+    await foreground()
     expect(requests).toBe(1)
   })
 
   it('does not leak a lock when it lands while a request is in flight', async () => {
-    requestWakeLock()      // no await — the request is still pending
+    requestWakeLock() // no await — the request is still pending
     releaseWakeLock()
     await settle()
-    expect(live).toBeNull()          // the arriving sentinel was released immediately
+    expect(live).toBeNull() // the arriving sentinel was released immediately
     await foreground()
-    expect(requests).toBe(1)         // and we did not start wanting it again
+    expect(requests).toBe(1) // and we did not start wanting it again
   })
 })

@@ -1,8 +1,17 @@
 import { describe, it, expect } from 'vitest'
 import { EXIDX, EXDB, smOf } from './exercises.js'
 import {
-  MUSCLE_NAME, exerciseMuscleSnapshot, hasExplicitMuscleMetadata, levelsOf, loadOf,
-  loadOfWorkouts, matchesMuscleGroups, muscleBalanceWindow, muscleGroupsOf, musclesOf, rankOf
+  MUSCLE_NAME,
+  exerciseMuscleSnapshot,
+  hasExplicitMuscleMetadata,
+  levelsOf,
+  loadOf,
+  loadOfWorkouts,
+  matchesMuscleGroups,
+  muscleBalanceWindow,
+  muscleGroupsOf,
+  musclesOf,
+  rankOf,
 } from './muscles.js'
 
 describe('multi-muscle exercise metadata', () => {
@@ -37,15 +46,26 @@ describe('multi-muscle exercise metadata', () => {
   })
 
   it('counts one effective set per unique group instead of double counting duplicates', () => {
-    expect(loadOf([{ id: 'inline', ex: { tg: 'chest', sm: ['chest', 'triceps'] }, sets: 2 }]))
-      .toEqual({ chest: 2, triceps: 0.8 })
+    expect(loadOf([{ id: 'inline', ex: { tg: 'chest', sm: ['chest', 'triceps'] }, sets: 2 }])).toEqual({
+      chest: 2,
+      triceps: 0.8,
+    })
   })
 
   it('uses multi-muscle metadata carried by a history entry when its catalogue id is unavailable', () => {
-    expect(loadOfWorkouts([{ entries: [{
-      id: 'deleted-custom', muscleGroups: ['chest', 'chest', 'triceps'],
-      sets: [{ done: true }]
-    }] }])).toEqual({ chest: 1, triceps: 1 })
+    expect(
+      loadOfWorkouts([
+        {
+          entries: [
+            {
+              id: 'deleted-custom',
+              muscleGroups: ['chest', 'chest', 'triceps'],
+              sets: [{ done: true }],
+            },
+          ],
+        },
+      ]),
+    ).toEqual({ chest: 1, triceps: 1 })
   })
 })
 
@@ -77,7 +97,6 @@ describe('catalogue secondary muscles', () => {
   })
 })
 
-
 describe('catalogue secondary additions', () => {
   it('enriches the muscle map without mutating the raw dataset', () => {
     const raw = EXDB.find(e => e.id === '0027')
@@ -88,12 +107,15 @@ describe('catalogue secondary additions', () => {
   })
 })
 
-
 describe('explicit multi-primary metadata', () => {
   it('gives every primary full weight and secondaries supporting weight', () => {
     const ex = {
-      bp: 'chest', tg: 'abs', mg: 'triceps', sm: ['lower back'],
-      primaries: ['chest', 'triceps', 'chest'], secondaries: ['deltoids', 'triceps']
+      bp: 'chest',
+      tg: 'abs',
+      mg: 'triceps',
+      sm: ['lower back'],
+      primaries: ['chest', 'triceps', 'chest'],
+      secondaries: ['deltoids', 'triceps'],
     }
     expect(muscleGroupsOf(ex)).toEqual(['chest', 'triceps', 'deltoids'])
     expect(musclesOf(ex)).toEqual({ chest: 1, triceps: 1, deltoids: 0.4 })
@@ -107,39 +129,63 @@ describe('explicit multi-primary metadata', () => {
 
   it('keeps legacy metadata when a new array field is present but empty', () => {
     expect(exerciseMuscleSnapshot({ bp: 'chest', tg: 'abs', primaries: [] })).toMatchObject({
-      muscleGroups: ['abs']
+      muscleGroups: ['abs'],
     })
   })
 
   it('provides a conservative Full body fallback for legacy custom exercises', () => {
-    expect(muscleGroupsOf({ bp: 'full body' })).toEqual(['chest', 'upper-back', 'gluteal', 'quadriceps', 'hamstring', 'abs'])
+    expect(muscleGroupsOf({ bp: 'full body' })).toEqual([
+      'chest',
+      'upper-back',
+      'gluteal',
+      'quadriceps',
+      'hamstring',
+      'abs',
+    ])
     expect(musclesOf({ bp: 'full body' })).toEqual({
-      chest: 0.2, 'upper-back': 0.2, gluteal: 0.2, quadriceps: 0.2, hamstring: 0.1, abs: 0.1
+      chest: 0.2,
+      'upper-back': 0.2,
+      gluteal: 0.2,
+      quadriceps: 0.2,
+      hamstring: 0.1,
+      abs: 0.1,
     })
   })
 
   it('preserves explicit primary and secondary arrays in history snapshots', () => {
-    expect(exerciseMuscleSnapshot({
-      n: 'Deadlift', bp: 'full body', primaries: ['gluteal', 'lower-back'], secondaries: ['hamstring']
-    })).toMatchObject({
-      n: 'Deadlift', bp: 'full body', primaries: ['gluteal', 'lower-back'], secondaries: ['hamstring'],
-      muscleGroups: ['gluteal', 'lower-back', 'hamstring']
+    expect(
+      exerciseMuscleSnapshot({
+        n: 'Deadlift',
+        bp: 'full body',
+        primaries: ['gluteal', 'lower-back'],
+        secondaries: ['hamstring'],
+      }),
+    ).toMatchObject({
+      n: 'Deadlift',
+      bp: 'full body',
+      primaries: ['gluteal', 'lower-back'],
+      secondaries: ['hamstring'],
+      muscleGroups: ['gluteal', 'lower-back', 'hamstring'],
     })
   })
 })
 
-
 describe('map load with warm-up phases', () => {
   it('excludes warm-up sets from the by-sets-worked map', () => {
     const w = {
-      id: 'w1', d: '2026-08-01', start: Date.UTC(2026, 7, 1, 10), unit: 'kg',
-      entries: [{
-        id: '0025',
-        sets: [
-          { done: true, phase: 'warmup', w: 20, r: 8 },
-          { done: true, phase: 'work', w: 60, r: 8 },
-        ],
-      }],
+      id: 'w1',
+      d: '2026-08-01',
+      start: Date.UTC(2026, 7, 1, 10),
+      unit: 'kg',
+      entries: [
+        {
+          id: '0025',
+          sets: [
+            { done: true, phase: 'warmup', w: 20, r: 8 },
+            { done: true, phase: 'work', w: 60, r: 8 },
+          ],
+        },
+      ],
     }
     const load = loadOfWorkouts([w], null)
     expect(load.chest).toBe(1)
@@ -165,7 +211,7 @@ describe('deleted custom exercises', () => {
     expect(muscleGroupsOf(snapshotEntry)).toEqual(['chest'])
   })
 
-  it('still prefers the entry\'s own metadata when it has any', () => {
+  it("still prefers the entry's own metadata when it has any", () => {
     const withOwn = { ...snapshotEntry, tg: 'quadriceps' }
     expect(muscleGroupsOf(withOwn)).toEqual(['quadriceps'])
   })

@@ -14,16 +14,21 @@ function entry(id, done = false) {
   return {
     id,
     target: { mode: 'reps', sets: 1, reps: 5, weight: 40 },
-    sets: [{ w: 40, r: 5, done }]
+    sets: [{ w: 40, r: 5, done }],
   }
 }
 
 function installActive() {
   const S = clone(DEF)
   S.active = {
-    id: 'swap-test', d: '2026-08-27', start: Date.now(), routineId: null,
-    name: 'Swap test', bw: null, cur: 1,
-    entries: [entry(ids[0]), entry(ids[0]), entry(ids[1])]
+    id: 'swap-test',
+    d: '2026-08-27',
+    start: Date.now(),
+    routineId: null,
+    name: 'Swap test',
+    bw: null,
+    cur: 1,
+    entries: [entry(ids[0]), entry(ids[0]), entry(ids[1])],
   }
   useStore.setState({ S, user: null })
 }
@@ -73,7 +78,7 @@ describe('active exercise swap locale coverage', () => {
     'Logged sets stay with the original exercise. Choose where the replacement belongs.',
     'Keep replacement in this group',
     'Insert after this group',
-    'Logged sets stay with the original exercise. The replacement will be inserted afterward.'
+    'Logged sets stay with the original exercise. The replacement will be inserted afterward.',
   ]
   const packs = import.meta.glob('./locales/*.js', { eager: true, import: 'default' })
 

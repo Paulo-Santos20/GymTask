@@ -7,33 +7,38 @@
  * server at startup. mcp/scripts/check-node-loadable.mjs exists because exactly that happened
  * once. Run by bare `node` on purpose — being outside vitest IS the check.
  */
-import { readdirSync } from 'node:fs';
+import { readdirSync } from 'node:fs'
 
-const CORE = new URL('../coach/core/', import.meta.url);
-const files = readdirSync(CORE).filter(f => f.endsWith('.js')).sort();
-const adapters = readdirSync(new URL('adapters/', CORE)).filter(f => f.endsWith('.js')).sort().map(f => 'adapters/' + f);
+const CORE = new URL('../coach/core/', import.meta.url)
+const files = readdirSync(CORE)
+  .filter(f => f.endsWith('.js'))
+  .sort()
+const adapters = readdirSync(new URL('adapters/', CORE))
+  .filter(f => f.endsWith('.js'))
+  .sort()
+  .map(f => 'adapters/' + f)
 
-let failed = 0;
+let failed = 0
 for (const m of [...files, ...adapters]) {
   try {
-    await import(new URL(m, CORE));
-    console.log(`  ok    core/${m}`);
+    await import(new URL(m, CORE))
+    console.log(`  ok    core/${m}`)
   } catch (e) {
-    failed++;
-    console.error(`  FAIL  core/${m} — ${e.message}`);
+    failed++
+    console.error(`  FAIL  core/${m} — ${e.message}`)
   }
 }
 // And the server's own use of it, which pulls the whole graph transitively.
 try {
-  await import(new URL('../coach/jobs.js', import.meta.url));
-  console.log('  ok    jobs.js');
+  await import(new URL('../coach/jobs.js', import.meta.url))
+  console.log('  ok    jobs.js')
 } catch (e) {
-  failed++;
-  console.error(`  FAIL  jobs.js — ${e.message}`);
+  failed++
+  console.error(`  FAIL  jobs.js — ${e.message}`)
 }
 
 if (failed) {
-  console.error(`\n${failed} module(s) do not load under plain node — the api would not start.`);
-  process.exit(1);
+  console.error(`\n${failed} module(s) do not load under plain node — the api would not start.`)
+  process.exit(1)
 }
-console.log('\napi/coach/core loads under plain node.');
+console.log('\napi/coach/core loads under plain node.')

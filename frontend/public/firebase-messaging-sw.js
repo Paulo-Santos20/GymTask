@@ -21,7 +21,7 @@ const firebaseConfig = {
   projectId: '__VITE_FIREBASE_PROJECT_ID__',
   storageBucket: '__VITE_FIREBASE_STORAGE_BUCKET__',
   messagingSenderId: '__VITE_FIREBASE_MESSAGING_SENDER_ID__',
-  appId: '__VITE_FIREBASE_APP_ID__'
+  appId: '__VITE_FIREBASE_APP_ID__',
 }
 
 if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('__')) {
@@ -34,15 +34,21 @@ if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('__')) {
   // Fallback for an unconfigured worker: FCM wraps the payload as { notification: { title,
   // body } }, while the rest-timer pushes from api/ post a flat { title, body } — cover both.
   self.addEventListener('push', e => {
-    e.waitUntil((async () => {
-      let data = {}
-      try { data = e.data ? await e.data.json() : {} } catch { data = {} }
-      const n = data.notification || data
-      await self.registration.showNotification(n.title || 'GymTask', {
-        body: n.body || '',
-        icon: '/icon-512.png',
-        tag: n.tag || 'gytask'
-      })
-    })())
+    e.waitUntil(
+      (async () => {
+        let data = {}
+        try {
+          data = e.data ? await e.data.json() : {}
+        } catch {
+          data = {}
+        }
+        const n = data.notification || data
+        await self.registration.showNotification(n.title || 'GymTask', {
+          body: n.body || '',
+          icon: '/icon-512.png',
+          tag: n.tag || 'gytask',
+        })
+      })(),
+    )
   })
 }

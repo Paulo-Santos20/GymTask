@@ -8,7 +8,9 @@ import { addRoutineToSessionSheet, workoutDetailSheet } from './sheets.jsx'
 import { EXDB } from './lib/exercises.js'
 
 const clone = v => JSON.parse(JSON.stringify(v))
-const ids = EXDB.filter(e => e.bp !== 'cardio').slice(0, 4).map(e => e.id)
+const ids = EXDB.filter(e => e.bp !== 'cardio')
+  .slice(0, 4)
+  .map(e => e.id)
 const mounted = []
 
 function renderTop() {
@@ -20,26 +22,45 @@ function renderTop() {
   act(() => root.render(sheet.render(() => useUI.getState().closeSheet(sheet.id))))
   return host
 }
-const rowFor = (host, name) => [...host.querySelectorAll('.item')].find(el => el.querySelector('.tt')?.textContent === name)
+const rowFor = (host, name) =>
+  [...host.querySelectorAll('.item')].find(el => el.querySelector('.tt')?.textContent === name)
 
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
   useUI.setState({ sheets: [], toastMsg: '' })
   document.body.innerHTML = ''
 })
-afterEach(() => { act(() => { mounted.splice(0).forEach(r => r.unmount()) }) })
+afterEach(() => {
+  act(() => {
+    mounted.splice(0).forEach(r => r.unmount())
+  })
+})
 
 describe('Add routine mid-session sheet', () => {
   const setup = () => {
     const S = clone(useStore.getState().S)
     S.routines = [
       { id: 'strength', name: 'Strength', emoji: '🏋️', prog: 'off', ex: [{ id: ids[0], sets: 3, reps: 5, weight: 60 }] },
-      { id: 'core', name: 'Core', emoji: '🧘', prog: 'off', ex: [{ id: ids[1], sets: 3, reps: 12, weight: 0 }, { id: ids[2], sets: 3, reps: 10, weight: 0 }] },
+      {
+        id: 'core',
+        name: 'Core',
+        emoji: '🧘',
+        prog: 'off',
+        ex: [
+          { id: ids[1], sets: 3, reps: 12, weight: 0 },
+          { id: ids[2], sets: 3, reps: 10, weight: 0 },
+        ],
+      },
       { id: 'empty', name: 'Empty', emoji: '📝', ex: [] },
     ]
     S.workouts = []
     S.active = {
-      id: 'a', d: '2026-09-06', start: 1, routineIds: ['strength'], name: 'Strength', cur: 0,
+      id: 'a',
+      d: '2026-09-06',
+      start: 1,
+      routineIds: ['strength'],
+      name: 'Strength',
+      cur: 0,
       entries: [{ id: ids[0], rid: 'strength', target: {}, sets: [{ w: 60, r: 5, done: true }] }],
       workoutView: 'cards',
     }
@@ -50,13 +71,15 @@ describe('Add routine mid-session sheet', () => {
     setup()
     addRoutineToSessionSheet()
     const host = renderTop()
-    act(() => { rowFor(host, 'Core').click() })
+    act(() => {
+      rowFor(host, 'Core').click()
+    })
 
     const a = useStore.getState().S.active
     expect(a.routineIds).toEqual(['strength', 'core'])
     expect(a.name).toBe('Strength + Core')
     expect(a.entries.map(e => e.rid)).toEqual(['strength', 'core', 'core'])
-    expect(a.cur).toBe(0)                    // current unit is left where it was
+    expect(a.cur).toBe(0) // current unit is left where it was
     expect(useUI.getState().toastMsg).toContain('Core added')
   })
 
@@ -73,15 +96,36 @@ describe('Add routine mid-session sheet', () => {
 
 describe('WorkoutDetail — per-routine grouping', () => {
   const combined = {
-    id: 'w', d: '2026-09-06', start: 1, end: 2, name: 'Strength + Core', vol: 500,
-    routineIds: ['strength', 'core'], prs: [],
+    id: 'w',
+    d: '2026-09-06',
+    start: 1,
+    end: 2,
+    name: 'Strength + Core',
+    vol: 500,
+    routineIds: ['strength', 'core'],
+    prs: [],
     entries: [
-      { id: ids[0], rid: 'strength', target: { reps: 5 }, sets: [{ w: 60, r: 5, done: true }, { w: 60, r: 5, done: true }] },
+      {
+        id: ids[0],
+        rid: 'strength',
+        target: { reps: 5 },
+        sets: [
+          { w: 60, r: 5, done: true },
+          { w: 60, r: 5, done: true },
+        ],
+      },
       { id: ids[1], rid: 'core', target: { reps: 12 }, sets: [{ w: 0, r: 12, done: true }] },
     ],
   }
   const legacy = {
-    id: 'w2', d: '2026-09-06', start: 1, end: 2, name: 'Push', vol: 100, routineIds: ['strength'], prs: [],
+    id: 'w2',
+    d: '2026-09-06',
+    start: 1,
+    end: 2,
+    name: 'Push',
+    vol: 100,
+    routineIds: ['strength'],
+    prs: [],
     entries: [{ id: ids[0], target: { reps: 5 }, sets: [{ w: 100, r: 5, done: true }] }],
   }
 

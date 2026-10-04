@@ -7,7 +7,9 @@ import { DEF, useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 
 const clone = v => JSON.parse(JSON.stringify(v))
-const ids = EXDB.filter(e => e.bp !== 'cardio').slice(0, 3).map(e => e.id)
+const ids = EXDB.filter(e => e.bp !== 'cardio')
+  .slice(0, 3)
+  .map(e => e.id)
 
 function install(routines, week = {}) {
   const S = clone(DEF)
@@ -23,8 +25,23 @@ beforeEach(() => {
   useUI.setState({ sheets: [] })
   install([
     { id: 'strength', name: 'Strength', emoji: '🏋️', prog: 'off', ex: [{ id: ids[0], sets: 3, reps: 5, weight: 60 }] },
-    { id: 'core', name: 'Core', emoji: '🧘', prog: 'off', ex: [{ id: ids[1], sets: 3, reps: 12, weight: 0 }, { id: ids[2], sets: 3, reps: 10, weight: 0 }] },
-    { id: 'rehab', name: 'Rehab', emoji: '🩹', excludeFromProgression: true, ex: [{ id: ids[1], sets: 2, reps: 15, weight: 5 }] },
+    {
+      id: 'core',
+      name: 'Core',
+      emoji: '🧘',
+      prog: 'off',
+      ex: [
+        { id: ids[1], sets: 3, reps: 12, weight: 0 },
+        { id: ids[2], sets: 3, reps: 10, weight: 0 },
+      ],
+    },
+    {
+      id: 'rehab',
+      name: 'Rehab',
+      emoji: '🩹',
+      excludeFromProgression: true,
+      ex: [{ id: ids[1], sets: 2, reps: 15, weight: 5 }],
+    },
   ])
 })
 

@@ -12,7 +12,7 @@ describe('buildSessionEntries', () => {
     const entries = buildSessionEntries(st, r)
     const warm = entries[0].sets.filter(isWarmupRow).map(s => s.w)
     expect(warm).toHaveLength(2)
-    for (const w of warm) expect(Math.round(w / 1.25 * 1000) / 1000 % 1).toBe(0)   // a multiple of 1.25
+    for (const w of warm) expect((Math.round((w / 1.25) * 1000) / 1000) % 1).toBe(0) // a multiple of 1.25
     expect(entries[0].sets.filter(s => !isWarmupRow(s)).every(s => s.w === 60)).toBe(true)
   })
 
@@ -25,15 +25,20 @@ describe('buildSessionEntries', () => {
   it('persists the effective deload target so completing the opened rows reads as a hit', () => {
     const cfg = { id: '0025', sets: 3, reps: 8, weight: 60, prog: 'linear' }
     const st = {
-      unit: 'kg', exWeights: {}, routines: [],
-      workouts: [1, 2, 3].map((n) => ({
-        d: `2026-01-0${n}`, routineIds: ['r'],
-        entries: [{
-          id: cfg.id,
-          target: { sets: 3, reps: 8, weight: 60 },
-          sets: [6, 6, 6].map(r => ({ w: 60, r, done: true }))
-        }]
-      }))
+      unit: 'kg',
+      exWeights: {},
+      routines: [],
+      workouts: [1, 2, 3].map(n => ({
+        d: `2026-01-0${n}`,
+        routineIds: ['r'],
+        entries: [
+          {
+            id: cfg.id,
+            target: { sets: 3, reps: 8, weight: 60 },
+            sets: [6, 6, 6].map(r => ({ w: 60, r, done: true })),
+          },
+        ],
+      })),
     }
     const r = { id: 'r', prog: 'linear', ex: [cfg] }
     const entries = buildSessionEntries(st, r)
@@ -51,12 +56,27 @@ describe('buildSessionEntries', () => {
   // Linear and Greyskull used to open at last session's reps while the stamped target kept the
   // plan's, so a routine edited from 15 to 10 opened at 15 and read 15 ≥ 10 as a hit forever.
   const history = (reps, extra = {}) => ({
-    unit: 'kg', exWeights: {}, routines: [],
-    workouts: [{ d: '2026-01-01', routineIds: ['r'], entries: [{ id: '0025', target: { sets: 2, reps: 15, weight: 40 }, sets: reps.map(r => ({ w: 40, r, done: true })) }] }],
+    unit: 'kg',
+    exWeights: {},
+    routines: [],
+    workouts: [
+      {
+        d: '2026-01-01',
+        routineIds: ['r'],
+        entries: [
+          { id: '0025', target: { sets: 2, reps: 15, weight: 40 }, sets: reps.map(r => ({ w: 40, r, done: true })) },
+        ],
+      },
+    ],
     ...extra,
   })
   // Greyskull has no hold: one failure resets it, so its miss case is a (non-Epley) deload.
-  for (const [prog, kind, reps] of [['linear', 'up', [15, 15]], ['linear', 'hold', [15, 9]], ['greyskull', 'up', [15, 15]], ['greyskull', 'deload', [15, 9]]]) {
+  for (const [prog, kind, reps] of [
+    ['linear', 'up', [15, 15]],
+    ['linear', 'hold', [15, 9]],
+    ['greyskull', 'up', [15, 15]],
+    ['greyskull', 'deload', [15, 9]],
+  ]) {
     it(`opens ${prog} ${kind} at the plan's reps, and completing the rows reads as a hit`, () => {
       const cfg = { id: '0025', sets: 2, reps: 10, weight: 40, prog }
       const [entry] = buildSessionEntries(history(reps), { id: 'r', prog, ex: [cfg] })
@@ -69,31 +89,56 @@ describe('buildSessionEntries', () => {
     })
   }
 
-  it('carries last session\'s reps instead when the profile starts from the last session', () => {
+  it("carries last session's reps instead when the profile starts from the last session", () => {
     const cfg = { id: '0025', sets: 2, reps: 10, weight: 40, prog: 'linear' }
-    const [entry] = buildSessionEntries(history([15, 15], { startFrom: 'last' }), { id: 'r', prog: 'linear', ex: [cfg] })
-    expect(entry.sets.map(s => [s.w, s.r])).toEqual([[42.5, 15], [42.5, 15]])
+    const [entry] = buildSessionEntries(history([15, 15], { startFrom: 'last' }), {
+      id: 'r',
+      prog: 'linear',
+      ex: [cfg],
+    })
+    expect(entry.sets.map(s => [s.w, s.r])).toEqual([
+      [42.5, 15],
+      [42.5, 15],
+    ])
     expect(entry.target.reps).toBe(10)
     // …and marks the entry, so the workout card can say where the 15 came from.
     expect(entry.carried).toBe(true)
     expect(buildSessionEntries(history([15, 15]), { id: 'r', prog: 'linear', ex: [cfg] })[0].carried).toBeUndefined()
-    expect(buildSessionEntries(history([10, 10], { startFrom: 'last' }), { id: 'r', prog: 'linear', ex: [cfg] })[0].carried).toBeUndefined()
+    expect(
+      buildSessionEntries(history([10, 10], { startFrom: 'last' }), { id: 'r', prog: 'linear', ex: [cfg] })[0].carried,
+    ).toBeUndefined()
   })
 
-  it('warms up at the plan\'s reps, not at last session\'s', () => {
+  it("warms up at the plan's reps, not at last session's", () => {
     const cfg = { id: '0025', sets: 2, reps: 10, weight: 40, warmupSets: 1 }
     const [entry] = buildSessionEntries(history([15, 15]), { id: 'r', prog: 'linear', ex: [cfg] })
-    expect(entry.sets.map(s => [isWarmupRow(s) ? 'warm' : 'work', s.r])).toEqual([['warm', 10], ['work', 10], ['work', 10]])
+    expect(entry.sets.map(s => [isWarmupRow(s) ? 'warm' : 'work', s.r])).toEqual([
+      ['warm', 10],
+      ['work', 10],
+      ['work', 10],
+    ])
   })
 
-  it('splits the plan\'s reps evenly per side', () => {
+  it("splits the plan's reps evenly per side", () => {
     const cfg = { id: '0025', sets: 1, reps: 16, weight: 20, side: true, prog: 'linear' }
     const side = (w, r) => ({ w, r, done: true })
     const st = {
-      unit: 'kg', exWeights: {}, routines: [],
-      workouts: [{ d: '2026-01-01', routineIds: ['r'], entries: [{ id: '0025', target: { sets: 1, reps: 10, weight: 20, side: true }, sets: [
-        { w: 22.5, r: 10, done: true, sides: { L: side(22.5, 5), R: side(20, 5) } },
-      ] }] }],
+      unit: 'kg',
+      exWeights: {},
+      routines: [],
+      workouts: [
+        {
+          d: '2026-01-01',
+          routineIds: ['r'],
+          entries: [
+            {
+              id: '0025',
+              target: { sets: 1, reps: 10, weight: 20, side: true },
+              sets: [{ w: 22.5, r: 10, done: true, sides: { L: side(22.5, 5), R: side(20, 5) } }],
+            },
+          ],
+        },
+      ],
     }
     const [entry] = buildSessionEntries(st, { id: 'r', ex: [cfg] })
     const row = entry.sets[0]
@@ -116,7 +161,11 @@ describe('buildSessionEntries', () => {
     const [entry] = buildSessionEntries(st, { id: 'r', prog: 'linear', ex: [cfg] })
     const work = entry.sets.filter(s => !isWarmupRow(s))
     expect(entry.plan.kind).toBe('hold')
-    expect(work.map(s => [s.w, s.r])).toEqual([[40, 10], [40, 10], [40, 10]])
+    expect(work.map(s => [s.w, s.r])).toEqual([
+      [40, 10],
+      [40, 10],
+      [40, 10],
+    ])
     expect(entry.target).toMatchObject({ sets: 3, reps: 10, weight: 40 })
     expect(readSession({ ...entry, sets: entry.sets.map(s => ({ ...s, done: true })) }, cfg).ok).toBe(true)
   })
@@ -129,7 +178,10 @@ describe('buildSessionEntries', () => {
   })
 
   it('stamps noProg + plan.kind "off" on every entry of an excluded routine, and neither on a normal one', () => {
-    const ex = [{ id: '0025', sets: 3, reps: 5, weight: 60 }, { id: '0031', sets: 3, reps: 8, weight: 40 }]
+    const ex = [
+      { id: '0025', sets: 3, reps: 5, weight: 60 },
+      { id: '0031', sets: 3, reps: 8, weight: 40 },
+    ]
     const excluded = buildSessionEntries(st, { id: 'rehab', excludeFromProgression: true, ex })
     expect(excluded.every(e => e.noProg === true)).toBe(true)
     expect(excluded.every(e => e.plan.kind === 'off')).toBe(true)
@@ -147,18 +199,35 @@ describe('buildSessionEntries', () => {
 // The mid-session settings sheet edits the plan, so it opens at the plan's sets and reps and at
 // today's weight — never at a prescription's aim, climb or added set (#275).
 describe('plannedConfigOf', () => {
-  it('puts the plan\'s sets, reps and range back in place of today\'s', () => {
+  it("puts the plan's sets, reps and range back in place of today's", () => {
     const entry = {
       target: { id: '0025', mode: 'reps', sets: 3, reps: 9, repsMin: 8, weight: 42.5, prog: 'double' },
       planned: { sets: 3, reps: 12, repsMin: 8, weight: 40 },
     }
-    expect(plannedConfigOf(entry)).toEqual({ id: '0025', mode: 'reps', sets: 3, reps: 12, repsMin: 8, weight: 42.5, prog: 'double' })
+    expect(plannedConfigOf(entry)).toEqual({
+      id: '0025',
+      mode: 'reps',
+      sets: 3,
+      reps: 12,
+      repsMin: 8,
+      weight: 42.5,
+      prog: 'double',
+    })
   })
 
-  it('drops a bottom the plan does not have, and takes a hold\'s seconds', () => {
-    expect(plannedConfigOf({ target: { sets: 3, reps: 13, repsMin: 10, weight: 0 }, planned: { sets: 2, reps: 10, weight: 0 } }))
-      .toEqual({ sets: 2, reps: 10, weight: 0 })
-    expect(plannedConfigOf({ target: { mode: 'time', sets: 2, sec: 50, weight: 0 }, planned: { sets: 2, sec: 45, weight: 0 } }).sec).toBe(45)
+  it("drops a bottom the plan does not have, and takes a hold's seconds", () => {
+    expect(
+      plannedConfigOf({
+        target: { sets: 3, reps: 13, repsMin: 10, weight: 0 },
+        planned: { sets: 2, reps: 10, weight: 0 },
+      }),
+    ).toEqual({ sets: 2, reps: 10, weight: 0 })
+    expect(
+      plannedConfigOf({
+        target: { mode: 'time', sets: 2, sec: 50, weight: 0 },
+        planned: { sets: 2, sec: 45, weight: 0 },
+      }).sec,
+    ).toBe(45)
   })
 
   it('opens an entry built before plans were stamped at its target', () => {

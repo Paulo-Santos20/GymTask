@@ -41,8 +41,23 @@ describe('unilateral sets across session boundaries', () => {
   })
 
   it('uses progressed side weights when building a routine session and its planned drops', () => {
-    const cfg = { id: '0025', mode: 'reps', side: true, bodyweight: false, sets: 1, reps: 16, weight: 20, policy: 'linear', inc: 2.5, intensifier: { type: 'dropset', count: 1, pct: 20 } }
-    const S = { unit: 'kg', exWeights: {}, workouts: [{ id: 'w', d: '2026-09-01', routineIds: ['r'], entries: [{ ...entry(done(row())), target: cfg }] }] }
+    const cfg = {
+      id: '0025',
+      mode: 'reps',
+      side: true,
+      bodyweight: false,
+      sets: 1,
+      reps: 16,
+      weight: 20,
+      policy: 'linear',
+      inc: 2.5,
+      intensifier: { type: 'dropset', count: 1, pct: 20 },
+    }
+    const S = {
+      unit: 'kg',
+      exWeights: {},
+      workouts: [{ id: 'w', d: '2026-09-01', routineIds: ['r'], entries: [{ ...entry(done(row())), target: cfg }] }],
+    }
     const [built] = buildSessionEntries(S, { id: 'r', policy: 'linear', ex: [cfg] })
     expect(built.plan.kind).toBe('up')
     expect(built.sets[0].sides.L.w).toBe(built.plan.weight)
@@ -86,7 +101,9 @@ describe('unilateral sets across session boundaries', () => {
 
   it.each([12, 13])('preserves L/R rows and total reps for a planned rest-pause of %i', totalReps => {
     const [warmup, work] = applyIntensifierPlan([setSideField(row(), 'R', 'w', 30)], {
-      side: true, reps: 16, intensifier: { type: 'restpause', totalReps, restSec: 15 },
+      side: true,
+      reps: 16,
+      intensifier: { type: 'restpause', totalReps, restSec: 15 },
     })
     expect(warmup.phase).toBe('warmup')
     expect(isSideSet(work)).toBe(true)
@@ -97,6 +114,8 @@ describe('unilateral sets across session boundaries', () => {
     }
     expect(work.sides.L.w).toBe(20)
     expect(work.sides.R.w).toBe(30)
-    expect(workoutVolume({ entries: [entry(done(work))] })).toBe(20 * Math.ceil(totalReps / 2) + 30 * Math.floor(totalReps / 2))
+    expect(workoutVolume({ entries: [entry(done(work))] })).toBe(
+      20 * Math.ceil(totalReps / 2) + 30 * Math.floor(totalReps / 2),
+    )
   })
 })

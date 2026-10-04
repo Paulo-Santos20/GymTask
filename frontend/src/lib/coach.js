@@ -32,13 +32,18 @@ export const TIMINGS_MAX = 5
 const NAMESPACE_MAX = 256 * 1024
 
 export const emptyCoach = () => ({
-  consent: null, profile: null, cadence: 'off', lastReview: null, log: [], snapshots: [],
+  consent: null,
+  profile: null,
+  cadence: 'off',
+  lastReview: null,
+  log: [],
+  snapshots: [],
   // The conversation as the user saw it (views/CoachChat.jsx): their messages, and what the
   // Coach did with them. Short, synced, and trimmed with the log — the proposal itself lives
   // server-side (or in the phone's device file) until it is applied or dismissed.
   chat: [],
   // How long the last few jobs took, so the typing bubble can say "usually about 2 minutes".
-  timings: []
+  timings: [],
 })
 const coachOf = s => (s.coach = s.coach || emptyCoach())
 
@@ -56,18 +61,19 @@ const coachOf = s => (s.coach = s.coach || emptyCoach())
 // an account — the thing being gated already exists on this device. Otherwise the instance
 // must offer the Coach and someone must be signed in.
 export const coachAvailable = (config, user, { demo, coachMode } = {}) =>
-  demo ? true
-    : coachMode === 'byok' ? true
-      : !!(config?.coach?.enabled && user)
+  demo ? true : coachMode === 'byok' ? true : !!(config?.coach?.enabled && user)
 
 // What each data category means, in the user's words. Rendered from the same list the payload
 // builder uses (api/coach/core/categories.js), so the screen cannot promise less than leaves.
 export const CATEGORY_TEXT = {
   plan: ['Your plan', 'Routines, exercises, sets and reps, your weekly schedule and progression settings.'],
-  training: ['Your logged training', 'Sets you logged in the review window — weights, reps, times, effort ratings and how long sessions took.'],
+  training: [
+    'Your logged training',
+    'Sets you logged in the review window — weights, reps, times, effort ratings and how long sessions took.',
+  ],
   bodyweight: ['Body weight', 'Weigh-ins from the same window, and your goal weight if you set one.'],
   profile: ['What you tell the Coach', 'Your intake answers, including any limitations or injuries you describe.'],
-  prefs: ['A few preferences', 'Your unit, your language and which effort scale you log.']
+  prefs: ['A few preferences', 'Your unit, your language and which effort scale you log.'],
 }
 export const hasConsent = S => !!S?.coach?.consent?.agreedAt && S.coach.consent.version === CONSENT_VERSION
 
@@ -83,47 +89,80 @@ export const hasConsent = S => !!S?.coach?.consent?.agreedAt && S.coach.consent.
 export function canonicalPlan(S) {
   return {
     routines: (S.routines || []).map(r => ({
-      id: r.id, name: r.name || '', prog: r.prog || '',
+      id: r.id,
+      name: r.name || '',
+      prog: r.prog || '',
       ex: (r.ex || []).map(e => {
         const mode = modeOf(e)
         return {
-          id: e.id, mode, sets: e.sets || 0,
-          reps: mode === 'reps' ? (e.reps || 0) : 0,
-          sec: mode === 'time' ? (e.sec || 0) : 0,
-          min: mode === 'cardio' ? (e.min || 0) : 0,
-          speed: mode === 'cardio' ? (e.speed || 0) : 0,
-          weight: mode === 'cardio' ? 0 : (e.weight || 0),
-          prog: e.prog || '', inc: e.inc || 0, repsMin: e.repsMin || 0, repsMax: e.repsMax || 0,
-          bodyweight: isBw(e), side: isPerSide(e),
-          sg: e.sg || ''
+          id: e.id,
+          mode,
+          sets: e.sets || 0,
+          reps: mode === 'reps' ? e.reps || 0 : 0,
+          sec: mode === 'time' ? e.sec || 0 : 0,
+          min: mode === 'cardio' ? e.min || 0 : 0,
+          speed: mode === 'cardio' ? e.speed || 0 : 0,
+          weight: mode === 'cardio' ? 0 : e.weight || 0,
+          prog: e.prog || '',
+          inc: e.inc || 0,
+          repsMin: e.repsMin || 0,
+          repsMax: e.repsMax || 0,
+          bodyweight: isBw(e),
+          side: isPerSide(e),
+          sg: e.sg || '',
         }
-      })
+      }),
     })),
     // A weekday holds a routine-id list now. `[].concat` folds a legacy bare string and a
     // one-element list to the same shape, so their fingerprint is identical — no false-stale
     // storm on the first load after the upgrade. `?.length` keeps a stray `[]` out. Insertion
     // order is preserved and never sorted (it is the merge order).
-    week: Object.fromEntries([1, 2, 3, 4, 5, 6, 0].filter(d => S.week?.[d]?.length).map(d => [d, [].concat(S.week[d])]))
+    week: Object.fromEntries(
+      [1, 2, 3, 4, 5, 6, 0].filter(d => S.week?.[d]?.length).map(d => [d, [].concat(S.week[d])]),
+    ),
   }
 }
 
 /** FNV-1a-ish 64-bit fingerprint. Mirror of hashPlan in api/coach/core/plan-hash.js. */
 export function hashPlan(plan) {
   const canon = JSON.stringify({
-    routines: (plan?.routines || []).map(r => [r.id, r.name, r.prog, (r.ex || []).map(e =>
-      [e.id, e.mode, e.sets, e.reps, e.sec, e.min, e.speed, e.weight, e.prog, e.inc,
-        e.repsMin, e.repsMax, e.bodyweight, e.side, e.sg].join(':')
-    )]),
+    routines: (plan?.routines || []).map(r => [
+      r.id,
+      r.name,
+      r.prog,
+      (r.ex || []).map(e =>
+        [
+          e.id,
+          e.mode,
+          e.sets,
+          e.reps,
+          e.sec,
+          e.min,
+          e.speed,
+          e.weight,
+          e.prog,
+          e.inc,
+          e.repsMin,
+          e.repsMax,
+          e.bodyweight,
+          e.side,
+          e.sg,
+        ].join(':'),
+      ),
+    ]),
     // `plan` is a canonicalPlan output, so each day is already an array. `{1:['r1']}` → "1=r1",
     // byte-identical to the pre-upgrade fingerprint; `{3:['r2','r3']}` → "3=r2+r3". Weekday
     // keys still sorted; the routine list within a day never is.
-    week: Object.keys(plan?.week || {}).sort().map(k => k + '=' + [].concat(plan.week[k]).join('+'))
+    week: Object.keys(plan?.week || {})
+      .sort()
+      .map(k => k + '=' + [].concat(plan.week[k]).join('+')),
   })
-  let h1 = 0x811c9dc5, h2 = 0x01000193
+  let h1 = 0x811c9dc5,
+    h2 = 0x01000193
   for (let i = 0; i < canon.length; i++) {
     const c = canon.charCodeAt(i)
     h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0
-    h2 = Math.imul(h2 ^ ((c << 3) | i & 7), 0x85ebca6b) >>> 0
+    h2 = Math.imul(h2 ^ ((c << 3) | (i & 7)), 0x85ebca6b) >>> 0
   }
   return h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0')
 }
@@ -139,17 +178,28 @@ export function currentValue(S, change) {
   const r = findRoutine(S, change.target?.routineId)
   const e = change.target?.exId ? findEx(r, change.target.exId) : null
   switch (change.type) {
-    case 'sets': return e?.sets ?? null
-    case 'reps': return e?.reps ?? null
-    case 'repsMin': return e?.repsMin ?? null
-    case 'repsMax': return e?.repsMax ?? null
-    case 'sec': return e?.sec ?? null
-    case 'inc': return e?.inc ?? null
-    case 'exercise-prog': return e?.prog ?? null
-    case 'routine-prog': return r?.prog ?? null
-    case 'rename-routine': return r?.name ?? null
-    case 'week': return [].concat(S.week?.[change.target?.weekday] ?? [])   // routine-id list; [] = rest
-    default: return undefined            // structural changes have no single scalar to compare
+    case 'sets':
+      return e?.sets ?? null
+    case 'reps':
+      return e?.reps ?? null
+    case 'repsMin':
+      return e?.repsMin ?? null
+    case 'repsMax':
+      return e?.repsMax ?? null
+    case 'sec':
+      return e?.sec ?? null
+    case 'inc':
+      return e?.inc ?? null
+    case 'exercise-prog':
+      return e?.prog ?? null
+    case 'routine-prog':
+      return r?.prog ?? null
+    case 'rename-routine':
+      return r?.name ?? null
+    case 'week':
+      return [].concat(S.week?.[change.target?.weekday] ?? []) // routine-id list; [] = rest
+    default:
+      return undefined // structural changes have no single scalar to compare
   }
 }
 
@@ -174,14 +224,13 @@ export function markStale(proposal, S) {
       // legacy bare string. Compare by canonical join so order matters but shape does not.
       const join = v => [].concat(v ?? []).join('+')
       if (c.before != null && join(currentValue(S, c)) !== join(c.before)) stale = true
-    }
-    else {
+    } else {
       const cur = currentValue(S, c)
       // `before` is what the Coach saw. If the live plan disagrees, someone has already
       // changed it — applying would silently overwrite their edit with a stale premise.
       if (cur !== undefined && c.before != null && cur !== c.before && cur !== null) stale = true
     }
-    return { ...c, status: stale ? 'stale' : (c.status === 'stale' ? 'proposed' : c.status || 'proposed') }
+    return { ...c, status: stale ? 'stale' : c.status === 'stale' ? 'proposed' : c.status || 'proposed' }
   })
   return { ...proposal, planMoved, changes }
 }
@@ -193,7 +242,8 @@ export const applicable = proposal => (proposal?.changes || []).filter(c => c.st
 export function validateProposal(p) {
   if (!p || typeof p !== 'object') throw new Error(t('That proposal can’t be read.'))
   if (p.bundle) {
-    if (!Array.isArray(p.bundle.routines) || !p.bundle.routines.length) throw new Error(t('That proposal can’t be read.'))
+    if (!Array.isArray(p.bundle.routines) || !p.bundle.routines.length)
+      throw new Error(t('That proposal can’t be read.'))
     // The server rejects a routine with no exercises; so must this, or an empty one is appended,
     // gets scheduled, and "start today's session" opens a workout with nothing in it.
     for (const r of p.bundle.routines) {
@@ -237,7 +287,10 @@ function recordDayPlanDrops(s, dropped) {
 function sweepDayPlan(s, fromIso) {
   const dropped = {}
   Object.keys(s.dayPlan || {}).forEach(iso => {
-    if (iso >= fromIso) { dropped[iso] = s.dayPlan[iso]; delete s.dayPlan[iso] }
+    if (iso >= fromIso) {
+      dropped[iso] = s.dayPlan[iso]
+      delete s.dayPlan[iso]
+    }
   })
   recordDayPlanDrops(s, dropped)
 }
@@ -245,10 +298,16 @@ function sweepDayPlan(s, fromIso) {
 /** Snapshot `{routines, week}` before touching either. The unit of revert (FR-30/31). */
 export function pushSnapshot(s, proposalId, label) {
   const c = coachOf(s)
-  c.snapshots = [...(c.snapshots || []), {
-    at: Date.now(), proposalId: proposalId || null, label: label || '',
-    routines: clone(s.routines || []), week: clone(s.week || {})
-  }].slice(-SNAPSHOT_MAX)
+  c.snapshots = [
+    ...(c.snapshots || []),
+    {
+      at: Date.now(),
+      proposalId: proposalId || null,
+      label: label || '',
+      routines: clone(s.routines || []),
+      week: clone(s.week || {}),
+    },
+  ].slice(-SNAPSHOT_MAX)
   trim(s)
 }
 
@@ -267,7 +326,12 @@ export function revertLast(s) {
   s.week = clone(snap.week)
   // Snapshots taken before this field existed have nothing to put back.
   if (snap.dayPlanRestore) Object.assign(s.dayPlan, snap.dayPlanRestore)
-  appendLog(s, { kind: 'revert', at: Date.now(), proposalId: snap.proposalId, summary: t('Reverted the last Coach changes.') })
+  appendLog(s, {
+    kind: 'revert',
+    at: Date.now(),
+    proposalId: snap.proposalId,
+    summary: t('Reverted the last Coach changes.'),
+  })
   return true
 }
 export const canRevert = S => !!(S?.coach?.snapshots || []).length
@@ -291,20 +355,37 @@ export const logEntry = (S, id) => (S?.coach?.log || []).find(e => e.id === id) 
 export function lightBundle(b) {
   if (!b) return null
   return {
-    name: b.name || '', summary: b.summary || '', week: { ...(b.week || {}) },
+    name: b.name || '',
+    summary: b.summary || '',
+    week: { ...(b.week || {}) },
     routines: (b.routines || []).map(r => ({
-      id: r.id, name: r.name, emoji: r.emoji || '', why: r.why || '',
+      id: r.id,
+      name: r.name,
+      emoji: r.emoji || '',
+      why: r.why || '',
       ex: (r.ex || []).map(e => ({
-        id: e.id, sets: e.sets, mode: e.mode || 'reps',
-        ...(e.reps != null ? { reps: e.reps } : {}), ...(e.sec != null ? { sec: e.sec } : {}),
-        ...(e.min != null ? { min: e.min } : {}), ...(e.weight ? { weight: e.weight } : {}),
-        ...(e.why ? { why: String(e.why).slice(0, 200) } : {})
-      }))
-    }))
+        id: e.id,
+        sets: e.sets,
+        mode: e.mode || 'reps',
+        ...(e.reps != null ? { reps: e.reps } : {}),
+        ...(e.sec != null ? { sec: e.sec } : {}),
+        ...(e.min != null ? { min: e.min } : {}),
+        ...(e.weight ? { weight: e.weight } : {}),
+        ...(e.why ? { why: String(e.why).slice(0, 200) } : {}),
+      })),
+    })),
   }
 }
-const decisionOf = (c, status) => ({ id: c.id, type: c.type, target: c.target || null, before: c.before ?? null, after: c.after ?? null, why: c.why, routineName: c.routineName || null, status })
-
+const decisionOf = (c, status) => ({
+  id: c.id,
+  type: c.type,
+  target: c.target || null,
+  before: c.before ?? null,
+  after: c.after ?? null,
+  why: c.why,
+  routineName: c.routineName || null,
+  status,
+})
 
 /**
  * Last line of defence for the 5 MB sync body: if the Coach namespace ever outgrows its
@@ -358,8 +439,16 @@ export function estimateMs(S) {
 /** The questionnaire, as the lines the chat shows back to the user. */
 export function profileLines(p) {
   if (!p) return []
-  const goal = { strength: 'Get stronger', muscle: 'Build muscle', general: 'General fitness', fatloss: 'Lose fat', endurance: 'Endurance' }[p.goal]
-  const exp = { new: 'New to lifting', returning: 'Coming back after a break', regular: 'Training regularly' }[p.experience]
+  const goal = {
+    strength: 'Get stronger',
+    muscle: 'Build muscle',
+    general: 'General fitness',
+    fatloss: 'Lose fat',
+    endurance: 'Endurance',
+  }[p.goal]
+  const exp = { new: 'New to lifting', returning: 'Coming back after a break', regular: 'Training regularly' }[
+    p.experience
+  ]
   const lines = []
   if (goal) lines.push(t(goal))
   if (exp) lines.push(t(exp))
@@ -387,16 +476,25 @@ export function applyCreatedPlan(s, proposal, { schedule } = {}) {
   // The Coach's `why` texts are for the review screen; they have no place in the routine data.
   const stripped = {
     ...bundle,
-    routines: bundle.routines.map(r => ({ ...r, why: undefined, ex: r.ex.map(e => ({ ...e, why: undefined, name: undefined })) }))
+    routines: bundle.routines.map(r => ({
+      ...r,
+      why: undefined,
+      ex: r.ex.map(e => ({ ...e, why: undefined, name: undefined })),
+    })),
   }
   const res = mergePlan(s, stripped, { schedule })
   // Only when the week actually moved — with the switch off the old schedule still stands, and
   // so do the reschedules made against it.
   if (schedule) sweepDayPlan(s, todayISO())
   res.logId = appendLog(s, {
-    kind: 'create', at: Date.now(), proposalId: proposal.id,
-    summary: proposal.summary || '', routines: res.routines, iteration: proposal.iteration || 1,
-    bundle: lightBundle(bundle), scheduled: !!schedule
+    kind: 'create',
+    at: Date.now(),
+    proposalId: proposal.id,
+    summary: proposal.summary || '',
+    routines: res.routines,
+    iteration: proposal.iteration || 1,
+    bundle: lightBundle(bundle),
+    scheduled: !!schedule,
   })
   return res
 }
@@ -410,8 +508,10 @@ const CHANGE_APPLY = {
     const r = need(findRoutine(s, c.target.routineId))
     const a = c.after || {}
     const e = { id: a.id, sets: a.sets || 3, mode: a.mode || 'reps' }
-    if (e.mode === 'cardio') { e.min = a.min || 20; e.speed = a.speed || 8 }
-    else if (e.mode === 'time') e.sec = a.sec || 45
+    if (e.mode === 'cardio') {
+      e.min = a.min || 20
+      e.speed = a.speed || 8
+    } else if (e.mode === 'time') e.sec = a.sec || 45
     else e.reps = a.reps || 10
     if (a.weight > 0) e.weight = a.weight
     if (POLICIES.includes(a.prog)) e.prog = a.prog
@@ -435,7 +535,8 @@ const CHANGE_APPLY = {
     const r = need(findRoutine(s, c.target.routineId))
     const i = r.ex.findIndex(e => e.id === c.target.exId)
     if (i < 0) throw new Error('missing exercise')
-    const old = r.ex[i], a = c.after || {}
+    const old = r.ex[i],
+      a = c.after || {}
     // Keep the old prescription unless the Coach deliberately changed it: a swap is about the
     // movement, and silently resetting sets and reps would be a second change nobody approved.
     //
@@ -444,21 +545,43 @@ const CHANGE_APPLY = {
     // app halve a rep count that was never per-side, so an explicit flag is dropped and the new
     // exercise goes back to whatever the catalogue says about it.
     const { bodyweight, side, ...keep } = old
-    r.ex[i] = { ...keep, id: a.id, ...(a.sets ? { sets: a.sets } : {}), ...(a.reps ? { reps: a.reps } : {}), ...(a.weight > 0 ? { weight: a.weight } : {}) }
+    r.ex[i] = {
+      ...keep,
+      id: a.id,
+      ...(a.sets ? { sets: a.sets } : {}),
+      ...(a.reps ? { reps: a.reps } : {}),
+      ...(a.weight > 0 ? { weight: a.weight } : {}),
+    }
   },
-  sets: (s, c) => { need(findExIn(s, c)).sets = c.after },
-  reps: (s, c) => { need(findExIn(s, c)).reps = c.after },
-  repsMin: (s, c) => { need(findExIn(s, c)).repsMin = c.after },
-  repsMax: (s, c) => { need(findExIn(s, c)).repsMax = c.after },
-  sec: (s, c) => { need(findExIn(s, c)).sec = c.after },
+  sets: (s, c) => {
+    need(findExIn(s, c)).sets = c.after
+  },
+  reps: (s, c) => {
+    need(findExIn(s, c)).reps = c.after
+  },
+  repsMin: (s, c) => {
+    need(findExIn(s, c)).repsMin = c.after
+  },
+  repsMax: (s, c) => {
+    need(findExIn(s, c)).repsMax = c.after
+  },
+  sec: (s, c) => {
+    need(findExIn(s, c)).sec = c.after
+  },
   cardio: (s, c) => {
     const e = need(findExIn(s, c))
     if (c.after?.min != null) e.min = c.after.min
     if (c.after?.speed != null) e.speed = c.after.speed
   },
-  inc: (s, c) => { need(findExIn(s, c)).inc = c.after },
-  'exercise-prog': (s, c) => { need(findExIn(s, c)).prog = c.after },
-  'routine-prog': (s, c) => { need(findRoutine(s, c.target.routineId)).prog = c.after },
+  inc: (s, c) => {
+    need(findExIn(s, c)).inc = c.after
+  },
+  'exercise-prog': (s, c) => {
+    need(findExIn(s, c)).prog = c.after
+  },
+  'routine-prog': (s, c) => {
+    need(findRoutine(s, c.target.routineId)).prog = c.after
+  },
   reorder: (s, c) => {
     const r = need(findRoutine(s, c.target.routineId))
     const by = new Map(r.ex.map(e => [e.id, e]))
@@ -474,7 +597,11 @@ const CHANGE_APPLY = {
     const r = need(findRoutine(s, c.target.routineId))
     const i = r.ex.findIndex(e => e.id === c.target.exId)
     if (i < 0) throw new Error('missing exercise')
-    if (!c.after?.link) { delete r.ex[i].sg; cleanupSg(r.ex); return }
+    if (!c.after?.link) {
+      delete r.ex[i].sg
+      cleanupSg(r.ex)
+      return
+    }
     // Splicing the partner out from under the anchor when they are the same exercise leaves
     // nothing to tag; refuse rather than reorder the routine on the way to a TypeError.
     if (c.after.with === c.target.exId) throw new Error('superset with itself')
@@ -491,15 +618,19 @@ const CHANGE_APPLY = {
   'add-routine': (s, c) => {
     const a = c.after
     s.routines.push({
-      id: uid(), name: a.name, emoji: a.emoji || '🏋️',
+      id: uid(),
+      name: a.name,
+      emoji: a.emoji || '🏋️',
       ...(POLICIES.includes(a.prog) ? { prog: a.prog } : {}),
       ex: a.ex.map(e => ({
-        id: e.id, sets: e.sets || 3, mode: e.mode || 'reps',
+        id: e.id,
+        sets: e.sets || 3,
+        mode: e.mode || 'reps',
         ...(e.mode === 'time' ? { sec: e.sec || 45 } : { reps: e.reps || 10 }),
         ...(Number.isInteger(e.repsMax) ? { repsMax: e.repsMax } : {}),
         ...(e.bodyweight != null ? { bodyweight: !!e.bodyweight } : {}),
-        ...(e.side ? { side: true } : {})
-      }))
+        ...(e.side ? { side: true } : {}),
+      })),
     })
   },
   'remove-routine': (s, c) => {
@@ -507,16 +638,23 @@ const CHANGE_APPLY = {
     s.routines = s.routines.filter(r => r.id !== id)
     // A week pointing at a routine that no longer exists reads as a rest day anyway; clearing
     // it keeps the plan honest rather than merely harmless.
-    Object.keys(s.week || {}).forEach(d => { if (s.week[d] === id) delete s.week[d] })
+    Object.keys(s.week || {}).forEach(d => {
+      if (s.week[d] === id) delete s.week[d]
+    })
     // RoutineEdit does the same on a hand-deleted routine. A pointer left behind here is not
     // merely inert: the day still counts as overridden, so it wears a "rescheduled" badge for good.
     const dropped = {}
     Object.keys(s.dayPlan || {}).forEach(iso => {
-      if (s.dayPlan[iso] === id) { dropped[iso] = id; delete s.dayPlan[iso] }
+      if (s.dayPlan[iso] === id) {
+        dropped[iso] = id
+        delete s.dayPlan[iso]
+      }
     })
     recordDayPlanDrops(s, dropped)
   },
-  'rename-routine': (s, c) => { need(findRoutine(s, c.target.routineId)).name = c.after },
+  'rename-routine': (s, c) => {
+    need(findRoutine(s, c.target.routineId)).name = c.after
+  },
   week: (s, c) => {
     // A single-routine op: the slot is a list, but the Coach only ever names one routine (or
     // rest), and it replaces the day. This collapses a combined day to one routine — the same
@@ -524,12 +662,17 @@ const CHANGE_APPLY = {
     const d = c.target.weekday
     if (c.after == null || c.after === 'rest') delete s.week[d]
     else s.week[d] = [c.after]
-  }
+  },
 }
 export const CHANGE_TYPES = Object.keys(CHANGE_APPLY)
 
-function findExIn(s, c) { return findEx(findRoutine(s, c.target.routineId), c.target.exId) }
-function need(x) { if (!x) throw new Error('missing target'); return x }
+function findExIn(s, c) {
+  return findEx(findRoutine(s, c.target.routineId), c.target.exId)
+}
+function need(x) {
+  if (!x) throw new Error('missing target')
+  return x
+}
 
 /**
  * Apply the accepted subset, atomically (FR-30).
@@ -558,9 +701,13 @@ export function applyChangeSet(s, proposal, acceptedIds) {
     .map(c => decisionOf(c, c.status === 'stale' ? 'stale' : 'rejected'))
 
   const logId = appendLog(s, {
-    kind: 'review', at: Date.now(), proposalId: proposal.id,
-    summary: proposal.summary || '', evidence: proposal.evidence || null,
-    notes: proposal.notes || [], decisions: [...applied, ...rejected]
+    kind: 'review',
+    at: Date.now(),
+    proposalId: proposal.id,
+    summary: proposal.summary || '',
+    evidence: proposal.evidence || null,
+    notes: proposal.notes || [],
+    decisions: [...applied, ...rejected],
   })
   coachOf(s).lastReview = { at: Date.now() }
   return { applied: applied.length, rejected: rejected.length, logId }
@@ -569,11 +716,15 @@ export function applyChangeSet(s, proposal, acceptedIds) {
 /** Turned down whole, or expired: recorded so a later review knows not to re-propose it. */
 export function recordDismissal(s, proposal) {
   const logId = appendLog(s, {
-    kind: proposal.kind === 'create' ? 'create' : 'review', at: Date.now(), proposalId: proposal.id,
-    summary: proposal.summary || '', dismissed: true,
-    evidence: proposal.evidence || null, notes: proposal.notes || [],
+    kind: proposal.kind === 'create' ? 'create' : 'review',
+    at: Date.now(),
+    proposalId: proposal.id,
+    summary: proposal.summary || '',
+    dismissed: true,
+    evidence: proposal.evidence || null,
+    notes: proposal.notes || [],
     ...(proposal.bundle ? { bundle: lightBundle(proposal.bundle), iteration: proposal.iteration || 1 } : {}),
-    decisions: (proposal.changes || []).map(c => decisionOf(c, 'rejected'))
+    decisions: (proposal.changes || []).map(c => decisionOf(c, 'rejected')),
   })
   if (proposal.kind !== 'create') coachOf(s).lastReview = { at: Date.now() }
   return logId
@@ -582,10 +733,15 @@ export function recordDismissal(s, proposal) {
 /** A debrief has no decision to make: it is read, kept, and shown again on request. */
 export function recordDebrief(s, proposal) {
   return appendLog(s, {
-    kind: 'debrief', at: Date.now(), proposalId: proposal.id,
+    kind: 'debrief',
+    at: Date.now(),
+    proposalId: proposal.id,
     workout: proposal.workout || null,
-    summary: proposal.summary || '', score: proposal.score ?? null,
-    highlights: proposal.highlights || [], watch: proposal.watch || [], nextTime: proposal.nextTime || []
+    summary: proposal.summary || '',
+    score: proposal.score ?? null,
+    highlights: proposal.highlights || [],
+    watch: proposal.watch || [],
+    nextTime: proposal.nextTime || [],
   })
 }
 
@@ -601,25 +757,46 @@ export const exTitle = id => cap(exName(id))
 export function changeTitle(c, S) {
   const ex = c.target?.exId ? exTitle(c.target.exId) : null
   switch (c.type) {
-    case 'add-exercise': return t('Add {0}', exTitle(c.after?.id))
-    case 'remove-exercise': return t('Drop {0}', ex)
-    case 'swap-exercise': return t('Swap {0} for {1}', ex, exTitle(c.after?.id))
-    case 'sets': return t('{0}: sets', ex)
-    case 'reps': return t('{0}: reps', ex)
-    case 'repsMin': return t('{0}: rep-range floor', ex)
-    case 'repsMax': return t('{0}: rep-range ceiling', ex)
-    case 'sec': return t('{0}: hold time', ex)
-    case 'cardio': return t('{0}: duration & pace', ex)
-    case 'inc': return t('{0}: load step', ex)
-    case 'exercise-prog': return t('{0}: progression', ex)
-    case 'routine-prog': return t('Routine progression')
-    case 'reorder': return t('Reorder exercises')
-    case 'superset': return c.after?.link ? t('Superset {0} with {1}', ex, exTitle(c.after.with)) : t('Unlink superset on {0}', ex)
-    case 'add-routine': return t('Add routine “{0}”', c.after?.name)
-    case 'remove-routine': return t('Remove a routine')
-    case 'rename-routine': return t('Rename routine to “{0}”', c.after)
-    case 'week': return Number.isInteger(c.target?.weekday) ? t('{0}: what’s planned', t(DAYN[c.target.weekday])) : t('Change what’s planned on one day')
-    default: return c.type
+    case 'add-exercise':
+      return t('Add {0}', exTitle(c.after?.id))
+    case 'remove-exercise':
+      return t('Drop {0}', ex)
+    case 'swap-exercise':
+      return t('Swap {0} for {1}', ex, exTitle(c.after?.id))
+    case 'sets':
+      return t('{0}: sets', ex)
+    case 'reps':
+      return t('{0}: reps', ex)
+    case 'repsMin':
+      return t('{0}: rep-range floor', ex)
+    case 'repsMax':
+      return t('{0}: rep-range ceiling', ex)
+    case 'sec':
+      return t('{0}: hold time', ex)
+    case 'cardio':
+      return t('{0}: duration & pace', ex)
+    case 'inc':
+      return t('{0}: load step', ex)
+    case 'exercise-prog':
+      return t('{0}: progression', ex)
+    case 'routine-prog':
+      return t('Routine progression')
+    case 'reorder':
+      return t('Reorder exercises')
+    case 'superset':
+      return c.after?.link ? t('Superset {0} with {1}', ex, exTitle(c.after.with)) : t('Unlink superset on {0}', ex)
+    case 'add-routine':
+      return t('Add routine “{0}”', c.after?.name)
+    case 'remove-routine':
+      return t('Remove a routine')
+    case 'rename-routine':
+      return t('Rename routine to “{0}”', c.after)
+    case 'week':
+      return Number.isInteger(c.target?.weekday)
+        ? t('{0}: what’s planned', t(DAYN[c.target.weekday]))
+        : t('Change what’s planned on one day')
+    default:
+      return c.type
   }
 }
 

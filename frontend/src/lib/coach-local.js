@@ -42,22 +42,34 @@ const HANDLE_LENGTH = 16
 
 let job = null
 let lastError = null
-let last = null   // how the most recent job ended — the same shape the server's status() reports
+let last = null // how the most recent job ended — the same shape the server's status() reports
 // Reported to the screens through the same status shape the server answers with; a toast is
 // also raised because on the server a failed job lands in the admin card, and here there is
 // no admin card — the user is the operator.
 let notify = null
-export function setNotifier(fn) { notify = fn }
+export function setNotifier(fn) {
+  notify = fn
+}
 
 /* ---------- what this phone is configured with ---------- */
 
-const cfgOf = d => ({ provider: d.provider, providerOptions: d.baseUrl ? { [d.provider]: { baseUrl: d.baseUrl } } : {} })
+const cfgOf = d => ({
+  provider: d.provider,
+  providerOptions: d.baseUrl ? { [d.provider]: { baseUrl: d.baseUrl } } : {},
+})
 const envOf = (d, key) => (key ? { [HTTP_PROVIDERS[d.provider].apiKeyEnv]: key } : {})
 
 function mintHandle() {
   const bytes = new Uint8Array(12)
-  ;(globalThis.crypto || {}).getRandomValues ? crypto.getRandomValues(bytes) : bytes.forEach((_, i) => { bytes[i] = Math.floor(Math.random() * 256) })
-  let bin = ''; bytes.forEach(b => { bin += String.fromCharCode(b) })
+  ;(globalThis.crypto || {}).getRandomValues
+    ? crypto.getRandomValues(bytes)
+    : bytes.forEach((_, i) => {
+        bytes[i] = Math.floor(Math.random() * 256)
+      })
+  let bin = ''
+  bytes.forEach(b => {
+    bin += String.fromCharCode(b)
+  })
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '').slice(0, HANDLE_LENGTH)
 }
 async function handle() {
@@ -94,21 +106,36 @@ export const localPlan = (S, intake) => start(S, 'create', { intake: intake || n
 export const localRefine = async (S, text) => {
   const d = await loadCoachDevice()
   const pendingCreate = d.pending && d.pending.kind === 'create' ? d.pending : null
-  return start(S, 'create', { refine: String(text || '').slice(0, 1000), previous: pendingCreate?.bundle || null, iteration: (pendingCreate?.iteration || 1) + 1 })
+  return start(S, 'create', {
+    refine: String(text || '').slice(0, 1000),
+    previous: pendingCreate?.bundle || null,
+    iteration: (pendingCreate?.iteration || 1) + 1,
+  })
 }
 export const localDebrief = (S, workoutId) => start(S, 'debrief', { workoutId: workoutId || null })
-export async function localResolve() { await saveCoachDevice({ pending: null }); return { ok: true } }
-export async function localForget() { job = null; lastError = null; await saveCoachDevice({ pending: null, daily: null }); return { ok: true } }
+export async function localResolve() {
+  await saveCoachDevice({ pending: null })
+  return { ok: true }
+}
+export async function localForget() {
+  job = null
+  lastError = null
+  await saveCoachDevice({ pending: null, daily: null })
+  return { ok: true }
+}
 
 export async function localDisclosure() {
   const d = await loadCoachDevice()
   const meta = HTTP_PROVIDERS[d.provider] || {}
   const base = d.provider ? baseUrlFor(d.provider, cfgOf(d)) : ''
   return {
-    provider: d.provider, providerLabel: meta.label || t('the configured AI provider'),
-    categories: payloadLib.DATA_CATEGORIES, version: 1,
+    provider: d.provider,
+    providerLabel: meta.label || t('the configured AI provider'),
+    categories: payloadLib.DATA_CATEGORIES,
+    version: 1,
     // The honest difference from the self-hosted flow: it is the user's own account.
-    payer: 'you', host: hostOf(base)
+    payer: 'you',
+    host: hostOf(base),
   }
 }
 
@@ -119,43 +146,77 @@ export async function localModels(settings, key) {
   return adapter.models(cfgOf(settings), envOf(settings, key), { timeoutMs: 20000 })
 }
 
-const hostOf = url => { try { return new URL(url).host } catch { return url || '' } }
+const hostOf = url => {
+  try {
+    return new URL(url).host
+  } catch {
+    return url || ''
+  }
+}
 
 /* ---------- running a job ---------- */
 
 async function start(S, kind, opts) {
-  if (job) throw Object.assign(new Error(t('The Coach is already thinking about your training.')), { status: 409, code: 'busy' })
-  if (!S?.coach?.consent?.agreedAt) throw Object.assign(new Error(t('The Coach needs your go-ahead first.')), { status: 403, code: 'consent' })
+  if (job)
+    throw Object.assign(new Error(t('The Coach is already thinking about your training.')), {
+      status: 409,
+      code: 'busy',
+    })
+  if (!S?.coach?.consent?.agreedAt)
+    throw Object.assign(new Error(t('The Coach needs your go-ahead first.')), { status: 403, code: 'consent' })
   const d = await loadCoachDevice()
   const adapter = ADAPTERS[d.provider]
-  if (d.mode !== 'byok' || !adapter) throw Object.assign(new Error(t('The Coach isn’t set up on this phone.')), { status: 503, code: 'off' })
+  if (d.mode !== 'byok' || !adapter)
+    throw Object.assign(new Error(t('The Coach isn’t set up on this phone.')), { status: 503, code: 'off' })
   const cap = await capState()
-  if (cap.used >= cap.limit) throw Object.assign(new Error(t('The Coach is resting — you have used today’s {0} runs on this phone.', cap.limit)), { status: 429, code: 'cap' })
+  if (cap.used >= cap.limit)
+    throw Object.assign(
+      new Error(t('The Coach is resting — you have used today’s {0} runs on this phone.', cap.limit)),
+      { status: 429, code: 'cap' },
+    )
 
   await bumpDaily()
   job = { id: 'local-' + Date.now().toString(36), kind, state: 'running', startedAt: Date.now() }
   lastError = null
   // Not awaited: the screens poll, exactly as they do against a server.
-  run(S, kind, opts, d, adapter).catch(e => { lastError = { errorClass: 'internal', detail: String(e && e.message || e) } }).finally(() => { job = null })
+  run(S, kind, opts, d, adapter)
+    .catch(e => {
+      lastError = { errorClass: 'internal', detail: String((e && e.message) || e) }
+    })
+    .finally(() => {
+      job = null
+    })
   return { job }
 }
 
 async function run(S, kind, opts, d, adapter) {
   const key = await getApiKey()
   const payload = payloadLib.build(S, {
-    handle: await handle(), kind, intake: opts.intake, note: opts.note, refine: opts.refine, previous: opts.previous, workoutId: opts.workoutId
+    handle: await handle(),
+    kind,
+    intake: opts.intake,
+    note: opts.note,
+    refine: opts.refine,
+    previous: opts.previous,
+    workoutId: opts.workoutId,
   })
   const attempt = await runPipeline({
-    adapter, cfg: cfgOf(d), kind, payload,
-    model: d.model || HTTP_PROVIDERS[d.provider].defaultModel, timeoutMs: timeoutFor(d.provider),
-    invokeOpts: { env: envOf(d, key) }
+    adapter,
+    cfg: cfgOf(d),
+    kind,
+    payload,
+    model: d.model || HTTP_PROVIDERS[d.provider].defaultModel,
+    timeoutMs: timeoutFor(d.provider),
+    invokeOpts: { env: envOf(d, key) },
   })
   if (!attempt.ok) {
     // There is no admin card on a phone, so the reason has to reach the person holding it:
     // the provider's own words for a refusal, the validator's for an answer that did not fit.
-    const detail = attempt.detail || (Array.isArray(attempt.errors) && attempt.errors.length
-      ? attempt.errors.slice(0, 3).map(String).join(' · ').slice(0, 300)
-      : null)
+    const detail =
+      attempt.detail ||
+      (Array.isArray(attempt.errors) && attempt.errors.length
+        ? attempt.errors.slice(0, 3).map(String).join(' · ').slice(0, 300)
+        : null)
     lastError = { errorClass: attempt.errorClass, detail }
     last = { id: job.id, kind, outcome: 'failed', errorClass: attempt.errorClass, at: Date.now() }
     if (notify) notify({ kind: 'failed', errorClass: attempt.errorClass, detail })
@@ -167,10 +228,14 @@ async function run(S, kind, opts, d, adapter) {
     return
   }
   const pending = {
-    id: job.id, kind, createdAt: Date.now(), expiresAt: Date.now() + PENDING_DAYS * 86400000,
-    planHash: planHash(S), iteration: opts.iteration || 1,
+    id: job.id,
+    kind,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + PENDING_DAYS * 86400000,
+    planHash: planHash(S),
+    iteration: opts.iteration || 1,
     ...(kind === 'debrief' ? { workout: workoutMetaOf(S, opts.workoutId) } : {}),
-    ...attempt.result
+    ...attempt.result,
   }
   await saveCoachDevice({ pending })
   last = { id: job.id, kind, outcome: 'ready', errorClass: null, at: Date.now() }
@@ -187,4 +252,8 @@ function workoutMetaOf(S, workoutId) {
 }
 
 // Test seam.
-export function _resetLocal() { job = null; lastError = null; last = null }
+export function _resetLocal() {
+  job = null
+  lastError = null
+  last = null
+}

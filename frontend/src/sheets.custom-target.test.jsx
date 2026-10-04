@@ -14,7 +14,7 @@ import { _setLangState } from './lib/i18n-core.js'
 import { bindUI } from './components/ui.jsx'
 import { customExSheet } from './sheets.jsx'
 
-bindUI(useUI)   // the multi-select rows open their sheet through the shared controls
+bindUI(useUI) // the multi-select rows open their sheet through the shared controls
 
 const mounted = []
 const S = () => useStore.getState().S
@@ -48,9 +48,18 @@ function pickMuscles(form, rowTitle, labels) {
   click(sub, 'button', 'Done')
 }
 const custom = (over = {}) => ({
-  id: 'cqa1', n: 'QA Custom Thrust', bp: 'upper legs', eq: 'barbell', custom: true, desc: '',
-  tg: 'gluteal', sm: ['forearm', 'hip-flexors'], primaries: ['gluteal'], secondaries: ['forearm', 'hip-flexors'],
-  muscleGroups: ['gluteal', 'forearm', 'hip-flexors'], ...over,
+  id: 'cqa1',
+  n: 'QA Custom Thrust',
+  bp: 'upper legs',
+  eq: 'barbell',
+  custom: true,
+  desc: '',
+  tg: 'gluteal',
+  sm: ['forearm', 'hip-flexors'],
+  primaries: ['gluteal'],
+  secondaries: ['forearm', 'hip-flexors'],
+  muscleGroups: ['gluteal', 'forearm', 'hip-flexors'],
+  ...over,
 })
 function seed(ex) {
   useStore.setState(s => ({ S: { ...s.S, customEx: [ex] } }))
@@ -67,7 +76,9 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  act(() => { mounted.splice(0).forEach(root => root.unmount()) })
+  act(() => {
+    mounted.splice(0).forEach(root => root.unmount())
+  })
   _setLangState('en', null, null, null)
   registerCustom([])
 })
@@ -88,7 +99,13 @@ describe('custom exercise target (QA C10)', () => {
   })
 
   it('survives an edit that adds a primary higher up the body', () => {
-    const ex = custom({ tg: 'hamstring', primaries: ['gluteal', 'hamstring'], secondaries: [], sm: [], muscleGroups: ['gluteal', 'hamstring'] })
+    const ex = custom({
+      tg: 'hamstring',
+      primaries: ['gluteal', 'hamstring'],
+      secondaries: [],
+      sm: [],
+      muscleGroups: ['gluteal', 'hamstring'],
+    })
     seed(ex)
     customExSheet(EXIDX[ex.id])
     const form = renderTop()
@@ -100,11 +117,17 @@ describe('custom exercise target (QA C10)', () => {
   })
 
   it('moves to another primary only when the old target is dropped', () => {
-    const ex = custom({ tg: 'hamstring', primaries: ['gluteal', 'hamstring'], secondaries: [], sm: [], muscleGroups: ['gluteal', 'hamstring'] })
+    const ex = custom({
+      tg: 'hamstring',
+      primaries: ['gluteal', 'hamstring'],
+      secondaries: [],
+      sm: [],
+      muscleGroups: ['gluteal', 'hamstring'],
+    })
     seed(ex)
     customExSheet(EXIDX[ex.id])
     const form = renderTop()
-    pickMuscles(form, 'Primary muscle groups', ['Hamstrings'])   // untick it
+    pickMuscles(form, 'Primary muscle groups', ['Hamstrings']) // untick it
     click(form, 'button', 'Save')
     const c = S().customEx[0]
     expect(c.primaries).toEqual(['gluteal'])
@@ -114,12 +137,17 @@ describe('custom exercise target (QA C10)', () => {
   // Dropping the target used to hand it to the head of the map-sorted list, which is where C10
   // started: an upper-legs exercise read "Traps · barbell" again the moment its target went away.
   it('hands a dropped target to the primary tapped in this sheet, not to the topmost muscle', () => {
-    const ex = custom({ tg: 'hamstring', primaries: ['trapezius', 'gluteal', 'hamstring'], secondaries: ['forearm'], sm: ['forearm'],
-      muscleGroups: ['trapezius', 'gluteal', 'hamstring', 'forearm'] })
+    const ex = custom({
+      tg: 'hamstring',
+      primaries: ['trapezius', 'gluteal', 'hamstring'],
+      secondaries: ['forearm'],
+      sm: ['forearm'],
+      muscleGroups: ['trapezius', 'gluteal', 'hamstring', 'forearm'],
+    })
     seed(ex)
     customExSheet(EXIDX[ex.id])
     const form = renderTop()
-    pickMuscles(form, 'Primary muscle groups', ['Hamstrings', 'Quads'])   // untick the target, tap another
+    pickMuscles(form, 'Primary muscle groups', ['Hamstrings', 'Quads']) // untick the target, tap another
     click(form, 'button', 'Save')
     const c = S().customEx[0]
     expect(c.primaries).toEqual(['trapezius', 'gluteal', 'quadriceps'])
@@ -129,7 +157,13 @@ describe('custom exercise target (QA C10)', () => {
   // Tapping the same chip twice leaves the selection as it was, so it says nothing about what the
   // user wants the target to be — the muscle actually added does.
   it('ignores a primary that was tapped on and off again', () => {
-    const ex = custom({ tg: 'hamstring', primaries: ['trapezius', 'hamstring'], secondaries: [], sm: [], muscleGroups: ['trapezius', 'hamstring'] })
+    const ex = custom({
+      tg: 'hamstring',
+      primaries: ['trapezius', 'hamstring'],
+      secondaries: [],
+      sm: [],
+      muscleGroups: ['trapezius', 'hamstring'],
+    })
     seed(ex)
     customExSheet(EXIDX[ex.id])
     const form = renderTop()

@@ -83,7 +83,10 @@ export function unionById(newer = [], older = [], key = x => x?.id) {
   const out = []
   for (const x of [...list(newer), ...list(older)]) {
     const k = key(x)
-    if (k == null) { out.push(x); continue }
+    if (k == null) {
+      out.push(x)
+      continue
+    }
     if (seen.has(k)) continue
     seen.add(k)
     out.push(x)
@@ -155,7 +158,9 @@ function mergeExWeights(n = {}, o = {}) {
 // edit was kept. Nothing left to read removes the key, as the edit itself did.
 function correctedExWeight(id, workouts, sources) {
   let best = null
-  const consider = c => { if (c && c.w > 0 && (!best || beatsWeight(id, c.w, best.w))) best = c }
+  const consider = c => {
+    if (c && c.w > 0 && (!best || beatsWeight(id, c.w, best.w))) best = c
+  }
   for (const w of workouts) {
     for (const e of list(w?.entries)) if (e?.id === id) consider({ w: bestWeightForEntry(e), d: w.d })
   }
@@ -214,8 +219,13 @@ const workoutTime = w => Number(w?._ts) || Number(w?.end) || Number(w?.start) ||
 // What a reset records of the entries it wiped (resetIds), by field: how an entry is named.
 const bodyweightKey = e => `${e?.d}|${e?.t ?? ''}`
 const RESET_LISTS = {
-  workouts: workoutKey, routines: x => x?.id, customEx: x => x?.id, bodyweight: bodyweightKey,
-  gymCards: x => x?.id, equipProfiles: x => x?.id, favEx: x => x,
+  workouts: workoutKey,
+  routines: x => x?.id,
+  customEx: x => x?.id,
+  bodyweight: bodyweightKey,
+  gymCards: x => x?.id,
+  equipProfiles: x => x?.id,
+  favEx: x => x,
 }
 const RESET_MAPS = ['exNotes', 'barWeights', 'balanceOverrides', 'loadKind', 'plates']
 /** An entry's name in resetIds: a workout's id (or day and start), a weigh-in's day and time, … */
@@ -241,7 +251,10 @@ export function resetIdsOf(...copies) {
   for (const S of copies) {
     if (!S || typeof S !== 'object') continue
     const one = {}
-    for (const [f, key] of Object.entries(RESET_LISTS)) one[f] = list(S[f]).filter(x => x != null).map(key)
+    for (const [f, key] of Object.entries(RESET_LISTS))
+      one[f] = list(S[f])
+        .filter(x => x != null)
+        .map(key)
     for (const f of RESET_MAPS) one[f] = Object.keys(isMap(S[f]) ? S[f] : {})
     out = mergeResetIds(out, one)
   }
@@ -298,24 +311,36 @@ export function sinceReset(S, at, ids) {
 export function mergeStates(a0, b0, { prefer } = {}) {
   if (!a0) return b0 ? clone(b0) : b0
   if (!b0) return clone(a0)
-  let a = a0, b = b0
+  let a = a0,
+    b = b0
   // A reset seen by one copy only: the other keeps what was made after it, and the reset copy
   // decides the rest (the file's header).
   let side = prefer === 'a' || prefer === 'b' ? prefer : newerOf(a, b) === a ? 'a' : 'b'
-  const ra = Number(a.resetAt) || 0, rb = Number(b.resetAt) || 0
+  const ra = Number(a.resetAt) || 0,
+    rb = Number(b.resetAt) || 0
   if (!prefer) {
-    if (ra > rb) { b = sinceReset(b, ra, a.resetIds); side = 'a' }
-    else if (rb > ra) { a = sinceReset(a, rb, b.resetIds); side = 'b' }
+    if (ra > rb) {
+      b = sinceReset(b, ra, a.resetIds)
+      side = 'a'
+    } else if (rb > ra) {
+      a = sinceReset(a, rb, b.resetIds)
+      side = 'b'
+    }
   }
   // The reset stamp only moves forward, with the names it wiped — with `prefer` too.
   const resetAt = Math.max(ra, rb)
-  const resetIds = ra === rb ? (a0.resetIds || b0.resetIds ? mergeResetIds(a0.resetIds, b0.resetIds) : null)
-    : (ra > rb ? a0 : b0).resetIds || null
+  const resetIds =
+    ra === rb
+      ? a0.resetIds || b0.resetIds
+        ? mergeResetIds(a0.resetIds, b0.resetIds)
+        : null
+      : (ra > rb ? a0 : b0).resetIds || null
   // One unit before anything is compared.
   let lead = null
   if (unitOf(a) !== unitOf(b)) {
     lead = prefer || unitStamp(a) === unitStamp(b) ? (side === 'a' ? a : b) : unitStamp(a) > unitStamp(b) ? a : b
-    if (lead === a) b = inUnitOf(b, a); else a = inUnitOf(a, b)
+    if (lead === a) b = inUnitOf(b, a)
+    else a = inUnitOf(a, b)
   }
   const n = side === 'a' ? a : b
   const o = n === a ? b : a
@@ -355,8 +380,12 @@ export function mergeStates(a0, b0, { prefer } = {}) {
     const oBy = new Map(list(o.workouts).map(w => [workoutKey(w), w]))
     for (const w of out.workouts) {
       const key = workoutKey(w)
-      const x = nBy.get(key), y = oBy.get(key)
-      if (x && y) { mergeWorkoutMedia(w, x); mergeWorkoutMedia(w, y) }
+      const x = nBy.get(key),
+        y = oBy.get(key)
+      if (x && y) {
+        mergeWorkoutMedia(w, x)
+        mergeWorkoutMedia(w, y)
+      }
     }
   }
   out.workouts.sort(byDayStart)
@@ -368,7 +397,11 @@ export function mergeStates(a0, b0, { prefer } = {}) {
   // flipped a setting — its whole copy was newer, its version of that routine was not. `prefer`
   // (sign-in) keeps the preferred side's plan as it is.
   if (!prefer && out.routines) {
-    const other = new Map(list(o.routines).filter(r => r?.id != null).map(r => [r.id, r]))
+    const other = new Map(
+      list(o.routines)
+        .filter(r => r?.id != null)
+        .map(r => [r.id, r]),
+    )
     out.routines = out.routines.map(r => {
       const alt = r?.id != null && other.get(r.id)
       return alt && (alt._ts || 0) > (r._ts || 0) ? clone(alt) : r
@@ -379,7 +412,11 @@ export function mergeStates(a0, b0, { prefer } = {}) {
   // media it never saw change brings its old media back (the old file outlives the grace period
   // on the server, so nothing breaks, it is only the older picture).
   if (!prefer && out.customEx) {
-    const other = new Map(list(o.customEx).filter(c => c?.id != null).map(c => [c.id, c]))
+    const other = new Map(
+      list(o.customEx)
+        .filter(c => c?.id != null)
+        .map(c => [c.id, c]),
+    )
     out.customEx = out.customEx.map(c => {
       const alt = c?.id != null && other.get(c.id)
       return alt && (alt._ts || 0) > (c._ts || 0) ? clone(alt) : c
@@ -418,10 +455,12 @@ export function mergeStates(a0, b0, { prefer } = {}) {
  */
 export function keepReset(cur, next) {
   if (!next || typeof next !== 'object') return next
-  const rc = Number(cur?.resetAt) || 0, rn = Number(next.resetAt) || 0
+  const rc = Number(cur?.resetAt) || 0,
+    rn = Number(next.resetAt) || 0
   if (rc > rn) {
     next.resetAt = cur.resetAt
-    if (cur.resetIds) next.resetIds = clone(cur.resetIds); else delete next.resetIds
+    if (cur.resetIds) next.resetIds = clone(cur.resetIds)
+    else delete next.resetIds
   } else if (rc && rc === rn && (cur.resetIds || next.resetIds)) {
     next.resetIds = mergeResetIds(cur.resetIds, next.resetIds)
   }
@@ -436,7 +475,11 @@ const sameRoutine = (a, b) => JSON.stringify({ ...a, _ts: 0 }) === JSON.stringif
  * (useStore update), so no screen that edits a plan has to remember to. Mutates and returns `next`.
  */
 export function stampRoutines(prev = [], next = [], now = Date.now()) {
-  const before = new Map(list(prev).filter(r => r?.id != null).map(r => [r.id, r]))
+  const before = new Map(
+    list(prev)
+      .filter(r => r?.id != null)
+      .map(r => [r.id, r]),
+  )
   for (const r of list(next)) {
     if (!r || r.id == null) continue
     const old = before.get(r.id)
@@ -454,7 +497,11 @@ const sameEntry = (a, b) => JSON.stringify({ ...a, _ts: 0 }) === JSON.stringify(
  * `next`.
  */
 export function stampCustomEx(prev = [], next = [], now = Date.now()) {
-  const before = new Map(list(prev).filter(c => c?.id != null).map(c => [c.id, c]))
+  const before = new Map(
+    list(prev)
+      .filter(c => c?.id != null)
+      .map(c => [c.id, c]),
+  )
   for (const c of list(next)) {
     if (!c || typeof c !== 'object' || c.id == null) continue
     const old = before.get(c.id)
@@ -472,14 +519,20 @@ export function stampCustomEx(prev = [], next = [], now = Date.now()) {
 // being asked. Weights are compared in the server's unit.
 export function localExtras(local, server) {
   const have = new Set(list(server?.workouts).map(workoutKey))
-  const days = new Map(list(server?.bodyweight).filter(e => e && e.d != null).map(e => [e.d, e]))
+  const days = new Map(
+    list(server?.bodyweight)
+      .filter(e => e && e.d != null)
+      .map(e => [e.d, e]),
+  )
   const ex = new Set(list(server?.customEx).map(e => e?.id))
-  const from = unitOf(local), to = unitOf(server)
+  const from = unitOf(local),
+    to = unitOf(server)
   const differs = (mine, theirs) =>
     (Number(mine.t) || 0) > (Number(theirs.t) || 0) && Number(convertBodyWeight(mine.w, from, to)) !== Number(theirs.w)
   return {
     workouts: list(local?.workouts).filter(w => !have.has(workoutKey(w))).length,
-    bodyweight: list(local?.bodyweight).filter(e => e && e.d != null && (!days.has(e.d) || differs(e, days.get(e.d)))).length,
-    customEx: list(local?.customEx).filter(e => e && !ex.has(e.id)).length
+    bodyweight: list(local?.bodyweight).filter(e => e && e.d != null && (!days.has(e.d) || differs(e, days.get(e.d))))
+      .length,
+    customEx: list(local?.customEx).filter(e => e && !ex.has(e.id)).length,
   }
 }

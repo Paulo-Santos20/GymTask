@@ -25,6 +25,6 @@ export function exerciseMuscleMetadataFor(id) {
     ...(COMPOUND_LIFT_BATCH_1[id] || {}),
     ...(MACHINE_BATCH_2[id] || {}),
     ...(OLYMPIC_LIFT_METADATA[id] || {}),
-    ...(USER_EXERCISE_MUSCLE_OVERRIDES[id] || {})
+    ...(USER_EXERCISE_MUSCLE_OVERRIDES[id] || {}),
   }
 }

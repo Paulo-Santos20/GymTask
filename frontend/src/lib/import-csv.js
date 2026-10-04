@@ -32,18 +32,27 @@ import { HEVY_TITLE_MAP } from './hevy-id-map.js'
  */
 export function parseCSV(text) {
   const rows = []
-  let row = [], field = '', quoted = false
+  let row = [],
+    field = '',
+    quoted = false
   const s = String(text).replace(/^﻿/, '')
   for (let i = 0; i < s.length; i++) {
     const c = s[i]
     if (quoted) {
-      if (c === '"') { if (s[i + 1] === '"') { field += '"'; i++ } else quoted = false }
-      else field += c
+      if (c === '"') {
+        if (s[i + 1] === '"') {
+          field += '"'
+          i++
+        } else quoted = false
+      } else field += c
     } else if (c === '"') quoted = true
-    else if (c === ',') { row.push(field); field = '' }
-    else if (c === '\n' || c === '\r') {
+    else if (c === ',') {
+      row.push(field)
+      field = ''
+    } else if (c === '\n' || c === '\r') {
       if (c === '\r' && s[i + 1] === '\n') i++
-      row.push(field); field = ''
+      row.push(field)
+      field = ''
       if (row.some(x => x !== '')) rows.push(row)
       row = []
     } else field += c
@@ -53,7 +62,11 @@ export function parseCSV(text) {
   return rows
 }
 
-const norm = h => h.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+const norm = h =>
+  h
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
 
 // header text -> the field we care about. Specific names first; first match wins.
 const COLUMNS = [
@@ -86,7 +99,10 @@ function mapHeader(header) {
   header.forEach((h, i) => {
     const n = norm(h)
     for (const [field, names] of COLUMNS) {
-      if (map[field] === undefined && names.includes(n)) { map[field] = i; return }
+      if (map[field] === undefined && names.includes(n)) {
+        map[field] = i
+        return
+      }
     }
   })
   return map
@@ -110,15 +126,29 @@ export function detectSource(header) {
 // "barbell snatch". Strip the parentheses, expand the shorthand, then compare as a
 // sorted bag of words so word order stops mattering.
 const SYN = [
-  [/\bbb\b/g, 'barbell'], [/\bdb\b/g, 'dumbbell'], [/\bkb\b/g, 'kettlebell'],
-  [/\bohp\b/g, 'overhead press'], [/\bbw\b/g, 'body weight'], [/\bbodyweight\b/g, 'body weight'],
+  [/\bbb\b/g, 'barbell'],
+  [/\bdb\b/g, 'dumbbell'],
+  [/\bkb\b/g, 'kettlebell'],
+  [/\bohp\b/g, 'overhead press'],
+  [/\bbw\b/g, 'body weight'],
+  [/\bbodyweight\b/g, 'body weight'],
   // 'smith machine' first: the generic machine->lever rule would otherwise eat the word
   // and leave 'smith lever', which matches no entry in the dataset.
-  [/\bsmith machine\b/g, 'smith'], [/\bmachine\b/g, 'lever'], [/\bez bar\b/g, 'ez barbell'],
-  [/\bpull ups?\b/g, 'pull up'], [/\bchin ups?\b/g, 'chin up'], [/\bpush ups?\b/g, 'push up'],
-  [/\bsit ups?\b/g, 'sit up'], [/\bdips?\b/g, 'dip'], [/\braises?\b/g, 'raise'],
-  [/\bcurls?\b/g, 'curl'], [/\bpresses\b/g, 'press'], [/\bextensions?\b/g, 'extension'],
-  [/\bcables?\b/g, 'cable'], [/\bseated\b/g, 'seated'], [/\bassisted\b/g, 'assisted'],
+  [/\bsmith machine\b/g, 'smith'],
+  [/\bmachine\b/g, 'lever'],
+  [/\bez bar\b/g, 'ez barbell'],
+  [/\bpull ups?\b/g, 'pull up'],
+  [/\bchin ups?\b/g, 'chin up'],
+  [/\bpush ups?\b/g, 'push up'],
+  [/\bsit ups?\b/g, 'sit up'],
+  [/\bdips?\b/g, 'dip'],
+  [/\braises?\b/g, 'raise'],
+  [/\bcurls?\b/g, 'curl'],
+  [/\bpresses\b/g, 'press'],
+  [/\bextensions?\b/g, 'extension'],
+  [/\bcables?\b/g, 'cable'],
+  [/\bseated\b/g, 'seated'],
+  [/\bassisted\b/g, 'assisted'],
 ]
 // Words that say nothing about which exercise this is, so they shouldn't stop a match.
 const FILLER = new Set(['the', 'a', 'with', 'and', 'v', 'variation', 'version', 'pulley', 'weighted'])
@@ -126,11 +156,14 @@ const FILLER = new Set(['the', 'a', 'with', 'and', 'v', 'variation', 'version', 
 function wordsOf(name) {
   // Parentheses are unwrapped rather than dropped: "Bench Press (Barbell)" carries its
   // equipment in there, and the dataset writes that as "barbell bench press".
-  let k = String(name || '').toLowerCase()
+  let k = String(name || '')
+    .toLowerCase()
     .replace(/[()[\]]/g, ' ')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
-  SYN.forEach(([re, to]) => { k = k.replace(re, to) })
+  SYN.forEach(([re, to]) => {
+    k = k.replace(re, to)
+  })
   return k.split(' ').filter(w => w && !FILLER.has(w))
 }
 const keyOf = name => wordsOf(name).sort().join(' ')
@@ -158,55 +191,117 @@ function buildIndex() {
 // canonical barbell version, which is what these apps assume when they show it to you.
 // Extending this table is the intended way to improve import accuracy.
 const ALIAS_EX = {
-  'bench press': '0025', 'barbell bench press': '0025', 'flat bench press': '0025', 'flat barbell bench press': '0025',
-  'incline bench press': '0047', 'decline bench press': '0033',
-  'close grip bench press': '0030', 'close-grip bench press': '0030',
-  squat: '0043', 'back squat': '0043', 'barbell squat': '0043', 'front squat': '0042',
-  deadlift: '0032', 'romanian deadlift': '0085', rdl: '0085', 'sumo deadlift': '0117',
-  'lat pulldown': '2330', 'lat pull down': '2330', pulldown: '2330',
-  shrug: '0095', shrugs: '0095',
-  'overhead press': '0091', 'military press': '0091', 'shoulder press': '0091', ohp: '0091',
-  'barbell row': '0027', 'bent over row': '0027', 'bent-over row': '0027',
-  'dumbbell row': '0292', 'one arm dumbbell row': '0292',
-  'leg curl': '0586', 'lying leg curl': '0586', 'seated leg curl': '0586',
-  'leg press': '0739', 'leg extension': '0585',
-  'calf raise': '1372', 'standing calf raise': '1372', 'seated calf raise': '0088',
-  'lateral raise': '0334', 'side raise': '0334', 'reverse fly': '0348', 'rear delt fly': '0348',
-  'bicep curl': '0294', 'biceps curl': '0294', 'dumbbell curl': '0294',
-  'preacher curl': '0070', 'barbell curl': '0031',
-  'tricep pushdown': '0241', 'triceps pushdown': '0241', pushdown: '0241',
-  skullcrusher: '0060', 'skull crusher': '0060', 'lying triceps extension': '0061',
-  lunge: '0054', lunges: '0054', 'cable crossover': '1269', 'cable cross over': '1269',
-  'goblet squat': '1760', 'dumbbell goblet squat': '1760', 'kettlebell goblet squat': '0534',
+  'bench press': '0025',
+  'barbell bench press': '0025',
+  'flat bench press': '0025',
+  'flat barbell bench press': '0025',
+  'incline bench press': '0047',
+  'decline bench press': '0033',
+  'close grip bench press': '0030',
+  'close-grip bench press': '0030',
+  squat: '0043',
+  'back squat': '0043',
+  'barbell squat': '0043',
+  'front squat': '0042',
+  deadlift: '0032',
+  'romanian deadlift': '0085',
+  rdl: '0085',
+  'sumo deadlift': '0117',
+  'lat pulldown': '2330',
+  'lat pull down': '2330',
+  pulldown: '2330',
+  shrug: '0095',
+  shrugs: '0095',
+  'overhead press': '0091',
+  'military press': '0091',
+  'shoulder press': '0091',
+  ohp: '0091',
+  'barbell row': '0027',
+  'bent over row': '0027',
+  'bent-over row': '0027',
+  'dumbbell row': '0292',
+  'one arm dumbbell row': '0292',
+  'leg curl': '0586',
+  'lying leg curl': '0586',
+  'seated leg curl': '0586',
+  'leg press': '0739',
+  'leg extension': '0585',
+  'calf raise': '1372',
+  'standing calf raise': '1372',
+  'seated calf raise': '0088',
+  'lateral raise': '0334',
+  'side raise': '0334',
+  'reverse fly': '0348',
+  'rear delt fly': '0348',
+  'bicep curl': '0294',
+  'biceps curl': '0294',
+  'dumbbell curl': '0294',
+  'preacher curl': '0070',
+  'barbell curl': '0031',
+  'tricep pushdown': '0241',
+  'triceps pushdown': '0241',
+  pushdown: '0241',
+  skullcrusher: '0060',
+  'skull crusher': '0060',
+  'lying triceps extension': '0061',
+  lunge: '0054',
+  lunges: '0054',
+  'cable crossover': '1269',
+  'cable cross over': '1269',
+  'goblet squat': '1760',
+  'dumbbell goblet squat': '1760',
+  'kettlebell goblet squat': '0534',
   // Reported in issue #74: these come out of Hevy under names no word-overlap can reach, so
   // they landed as custom exercises. The catalogue's cardio vocabulary is thin (29 of 1,324
   // entries), so each of these is the *only* candidate rather than the best of several.
-  treadmill: '3666', 'treadmill walk': '3666', 'treadmill run': '3666',
-  cycling: '2331', 'cross trainer': '2331', elliptical: '2141',
-  'stationary bike': '2138', 'exercise bike': '2138', 'stepmill': '2311',
+  treadmill: '3666',
+  'treadmill walk': '3666',
+  'treadmill run': '3666',
+  cycling: '2331',
+  'cross trainer': '2331',
+  elliptical: '2141',
+  'stationary bike': '2138',
+  'exercise bike': '2138',
+  stepmill: '2311',
   // The catalogue has only band Pallof presses, so a cable one resolves to the band entry:
   // same movement, wrong equipment label, which beats leaving it uncategorised.
-  'pallof press': '0979', 'cable pallof press': '0979', 'vertical pallof press': '1015',
-  'cable core pallof press': '0979', 'core pallof press': '0979',
+  'pallof press': '0979',
+  'cable pallof press': '0979',
+  'vertical pallof press': '1015',
+  'cable core pallof press': '0979',
+  'core pallof press': '0979',
   // Hevy's own vocabulary, from a real export. Hevy writes the equipment in parentheses
   // and uses "bicep"/"chest fly"/"reverse fly" where the dataset says "biceps"/"fly"/
   // "reverse fly", so these are near-misses the word-bag cannot close on its own.
-  'bicep curl (dumbbell)': '0294', 'bicep curl (cable)': '0868', 'bicep curl (barbell)': '0031',
-  'chest fly (dumbbell)': '0308', 'chest fly (machine)': '0596', 'butterfly (pec deck)': '0596',
-  'incline chest fly (dumbbell)': '0319', 'cable fly crossovers': '1269',
-  'rear delt reverse fly (dumbbell)': '0383', 'rear delt reverse fly (machine)': '0602',
+  'bicep curl (dumbbell)': '0294',
+  'bicep curl (cable)': '0868',
+  'bicep curl (barbell)': '0031',
+  'chest fly (dumbbell)': '0308',
+  'chest fly (machine)': '0596',
+  'butterfly (pec deck)': '0596',
+  'incline chest fly (dumbbell)': '0319',
+  'cable fly crossovers': '1269',
+  'rear delt reverse fly (dumbbell)': '0383',
+  'rear delt reverse fly (machine)': '0602',
   'chest supported reverse fly (dumbbell)': '0383',
-  'bench press (smith machine)': '0748', 'overhead press (smith machine)': '0766',
-  'hack squat (machine)': '0743', 'iso-lateral row (machine)': '0571',
-  'seated cable row - bar grip': '0218', 'reverse grip lat pulldown (cable)': '0673',
-  'single arm lateral raise (cable)': '0192', 'plate front raise': '0310',
+  'bench press (smith machine)': '0748',
+  'overhead press (smith machine)': '0766',
+  'hack squat (machine)': '0743',
+  'iso-lateral row (machine)': '0571',
+  'seated cable row - bar grip': '0218',
+  'reverse grip lat pulldown (cable)': '0673',
+  'single arm lateral raise (cable)': '0192',
+  'plate front raise': '0310',
   'back extension (weighted hyperextension)': '0573',
   'behind the back bicep wrist curl (barbell)': '0104',
   // A face pull is a rope rear-delt row; the dataset has no entry under that name.
   'face pull': '0203',
   // Cardio again: the only candidates in a 29-entry cardio vocabulary.
-  'jumping jack': '3220', 'jumping jacks': '3220', 'battle ropes': '0128',
-  'stair machine (steps)': '2311', 'stair machine': '2311',
+  'jumping jack': '3220',
+  'jumping jacks': '3220',
+  'battle ropes': '0128',
+  'stair machine (steps)': '2311',
+  'stair machine': '2311',
 }
 
 let ALIAS_IDX = null
@@ -239,15 +334,24 @@ export function matchExercise(name) {
   const exact = idx.exact.get(sorted)
   if (exact) return exact
   const q = new Set(w)
-  let best = null, bestExtra = Infinity, ties = 0
+  let best = null,
+    bestExtra = Infinity,
+    ties = 0
   for (const c of idx.all) {
     let ok = true
-    for (const word of q) if (!c.set.has(word)) { ok = false; break }
+    for (const word of q)
+      if (!c.set.has(word)) {
+        ok = false
+        break
+      }
     if (!ok) continue
     const extra = c.n - q.size
     if (extra > 2) continue
-    if (extra < bestExtra) { best = c.id; bestExtra = extra; ties = 1 }
-    else if (extra === bestExtra) ties++
+    if (extra < bestExtra) {
+      best = c.id
+      bestExtra = extra
+      ties = 1
+    } else if (extra === bestExtra) ties++
   }
   return ties === 1 ? best : null
 }
@@ -258,7 +362,12 @@ export function matchExercise(name) {
  * keyed by title because Hevy's CSV has no template id column.
  */
 export function matchHevyTitle(name) {
-  const id = HEVY_TITLE_MAP[String(name || '').trim().toLowerCase()]
+  const id =
+    HEVY_TITLE_MAP[
+      String(name || '')
+        .trim()
+        .toLowerCase()
+    ]
   return id && EXIDX[id] ? id : null
 }
 
@@ -275,7 +384,7 @@ const NAME_BP = [
   [/\b(leg curl|leg curls|hamstring curl|nordic)\b/, 'upper legs'],
   [/\b(romanian|rdl|stiff leg|stiff legged|straight leg)\b.*\bdeadlifts?\b|\brdl\b/, 'upper legs'],
   [/\b(curl|curls|bicep|biceps|tricep|triceps|skullcrusher|pushdown)\b/, 'upper arms'],
-  [/\bchest supported\b/, 'back'],   // where the chest rests, not what it trains
+  [/\bchest supported\b/, 'back'], // where the chest rests, not what it trains
   [/\b(bench|chest|pec|fly|flye|crossover|crossovers|dip)\b/, 'chest'],
   [/\b(row|rows|pulldown|pullup|pull up|chin up|lat|lats|back|deadlift|deadlifts|shrug)\b/, 'back'],
   [/\b(shoulder|delt|delts|overhead|lateral raise|front raise|face pull|press up)\b/, 'shoulders'],
@@ -290,22 +399,45 @@ const NAME_BP = [
 // "Chest-Supported Row" are the same names the rules above spell with a space, and the
 // matcher (wordsOf) already treats the two spellings as one exercise — the body part has to agree.
 export const bpFromName = name => {
-  const n = String(name || '').toLowerCase().replace(/[-_/]+/g, ' ').replace(/\s+/g, ' ').trim()
+  const n = String(name || '')
+    .toLowerCase()
+    .replace(/[-_/]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
   return (NAME_BP.find(([re]) => re.test(n)) || [])[1] || null
 }
 
 // Categories the exporters use -> the dataset's body parts, for exercises we invent.
 const CATEGORY_BP = {
-  chest: 'chest', back: 'back', lats: 'back', shoulders: 'shoulders', delts: 'shoulders',
-  legs: 'upper legs', quads: 'upper legs', hamstrings: 'upper legs', glutes: 'upper legs',
-  calves: 'lower legs', abs: 'waist', core: 'waist', obliques: 'waist',
-  arms: 'upper arms', biceps: 'upper arms', triceps: 'upper arms', forearms: 'lower arms',
-  cardio: 'cardio', 'full body': 'upper legs', olympic: 'upper legs', neck: 'neck',
+  chest: 'chest',
+  back: 'back',
+  lats: 'back',
+  shoulders: 'shoulders',
+  delts: 'shoulders',
+  legs: 'upper legs',
+  quads: 'upper legs',
+  hamstrings: 'upper legs',
+  glutes: 'upper legs',
+  calves: 'lower legs',
+  abs: 'waist',
+  core: 'waist',
+  obliques: 'waist',
+  arms: 'upper arms',
+  biceps: 'upper arms',
+  triceps: 'upper arms',
+  forearms: 'lower arms',
+  cardio: 'cardio',
+  'full body': 'upper legs',
+  olympic: 'upper legs',
+  neck: 'neck',
 }
 
 /* ----------------------------------------------------------- conversion --- */
 
-const num = v => { const n = parseFloat(String(v ?? '').replace(',', '.')); return isFinite(n) ? n : 0 }
+const num = v => {
+  const n = parseFloat(String(v ?? '').replace(',', '.'))
+  return isFinite(n) ? n : 0
+}
 // An effort rating out of someone else's export. A blank cell means "not rated" and has to
 // stay absent rather than becoming 0 — and 0 itself means opposite things on the two scales:
 // RIR 0 is a set taken to failure and worth keeping, while RPE has no 0 (the scale is 1–10),
@@ -328,9 +460,11 @@ export function parseWhen(s) {
   let m = v.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[T ](\d{1,2}):(\d{2}))?/)
   if (m) return { d: `${m[1]}-${p2(m[2])}-${p2(m[3])}`, t: hm(m[4], m[5]) }
   m = v.match(/^(\d{1,2})\s+([A-Za-z]{3})[a-z]*\.?\s+(\d{4})(?:,?\s+(\d{1,2}):(\d{2}))?/)
-  if (m && MON[m[2].toLowerCase()]) return { d: `${m[3]}-${p2(MON[m[2].toLowerCase()])}-${p2(m[1])}`, t: hm(m[4], m[5]) }
+  if (m && MON[m[2].toLowerCase()])
+    return { d: `${m[3]}-${p2(MON[m[2].toLowerCase()])}-${p2(m[1])}`, t: hm(m[4], m[5]) }
   m = v.match(/^([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})(?:,?\s+(\d{1,2}):(\d{2}))?/)
-  if (m && MON[m[1].toLowerCase()]) return { d: `${m[3]}-${p2(MON[m[1].toLowerCase()])}-${p2(m[2])}`, t: hm(m[4], m[5]) }
+  if (m && MON[m[1].toLowerCase()])
+    return { d: `${m[3]}-${p2(MON[m[1].toLowerCase()])}-${p2(m[2])}`, t: hm(m[4], m[5]) }
   // Day-first when ambiguous: FitNotes/Strong/Hevy all write unambiguous dates, so a
   // bare numeric one came through a spreadsheet, and those are usually European.
   m = v.match(/^(\d{1,2})[/.](\d{1,2})[/.](\d{4})(?:[, ]+(\d{1,2}):(\d{2}))?/)
@@ -351,14 +485,21 @@ function toMinutes(v) {
   if (s.includes(':')) {
     const p = s.split(':').map(x => parseInt(x, 10) || 0)
     const sec = p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + p[1]
-    return Math.round(sec / 60 * 10) / 10
+    return Math.round((sec / 60) * 10) / 10
   }
-  const m = s.match(/(\d+)\s*h/i), mm = s.match(/(\d+)\s*m/i)      // Strong's "2h 38m"
+  const m = s.match(/(\d+)\s*h/i),
+    mm = s.match(/(\d+)\s*m/i) // Strong's "2h 38m"
   if (m || mm) return (m ? +m[1] * 60 : 0) + (mm ? +mm[1] : 0)
   return Math.round(num(s) * 10) / 10
 }
 const KM = { m: 0.001, km: 1, cm: 0.00001, in: 0.0000254, ft: 0.0003048, yd: 0.0009144, mi: 1.609344 }
-const toKm = (v, unit) => num(v) * (KM[String(unit || 'km').toLowerCase().trim()] ?? 1)
+const toKm = (v, unit) =>
+  num(v) *
+  (KM[
+    String(unit || 'km')
+      .toLowerCase()
+      .trim()
+  ] ?? 1)
 
 /* --------------------------------------------------------------- parse ---- */
 
@@ -376,12 +517,18 @@ export function parseWorkoutCSV(text, { unit = 'kg' } = {}) {
   const dateCol = map.date !== undefined ? 'date' : map.startTime !== undefined ? 'startTime' : null
   if (!dateCol || map.exercise === undefined) return { error: 'unrecognised' }
 
-  const resolved = new Map()          // exercise name -> dataset id | null, resolved once
+  const resolved = new Map() // exercise name -> dataset id | null, resolved once
   const byDate = new Map()
   const created = new Map()
   const unmatched = new Set()
-  let sets = 0, skipped = 0, matched = 0, warmups = 0, rpeSets = 0, rirSets = 0
-  let sawLb = false, sawKg = false
+  let sets = 0,
+    skipped = 0,
+    matched = 0,
+    warmups = 0,
+    rpeSets = 0,
+    rirSets = 0
+  let sawLb = false,
+    sawKg = false
 
   const cell = (r, f) => (map[f] === undefined ? '' : String(r[map[f]] ?? '').trim())
 
@@ -389,13 +536,21 @@ export function parseWorkoutCSV(text, { unit = 'kg' } = {}) {
     const r = rows[i]
     const name = cell(r, 'exercise')
     const when = parseWhen(cell(r, dateCol))
-    if (!name || !when) { skipped++; continue }
+    if (!name || !when) {
+      skipped++
+      continue
+    }
 
     // explicit kg/lb columns beat a generic column plus a unit column
-    let w = 0, rowUnit = ''
-    if (map.weightKg !== undefined && cell(r, 'weightKg')) { w = num(cell(r, 'weightKg')); rowUnit = 'kg' }
-    else if (map.weightLb !== undefined && cell(r, 'weightLb')) { w = num(cell(r, 'weightLb')); rowUnit = 'lb' }
-    else {
+    let w = 0,
+      rowUnit = ''
+    if (map.weightKg !== undefined && cell(r, 'weightKg')) {
+      w = num(cell(r, 'weightKg'))
+      rowUnit = 'kg'
+    } else if (map.weightLb !== undefined && cell(r, 'weightLb')) {
+      w = num(cell(r, 'weightLb'))
+      rowUnit = 'lb'
+    } else {
       w = num(cell(r, 'weight'))
       const u = cell(r, 'weightUnit').toLowerCase()
       rowUnit = u.startsWith('lb') ? 'lb' : u.startsWith('kg') ? 'kg' : ''
@@ -405,11 +560,15 @@ export function parseWorkoutCSV(text, { unit = 'kg' } = {}) {
 
     const reps = Math.round(num(cell(r, 'reps')))
     const secs = num(cell(r, 'seconds'))
-    const mins = secs > 0 ? Math.round(secs / 60 * 10) / 10 : toMinutes(cell(r, 'time'))
-    const km = map.distanceKm !== undefined && cell(r, 'distanceKm')
-      ? num(cell(r, 'distanceKm'))
-      : toKm(cell(r, 'distance'), cell(r, 'distanceUnit'))
-    if (!w && !reps && !mins && !km) { skipped++; continue }
+    const mins = secs > 0 ? Math.round((secs / 60) * 10) / 10 : toMinutes(cell(r, 'time'))
+    const km =
+      map.distanceKm !== undefined && cell(r, 'distanceKm')
+        ? num(cell(r, 'distanceKm'))
+        : toKm(cell(r, 'distance'), cell(r, 'distanceUnit'))
+    if (!w && !reps && !mins && !km) {
+      skipped++
+      continue
+    }
     const warmup = /warm/i.test(cell(r, 'setType'))
     if (warmup) warmups++
 
@@ -426,9 +585,17 @@ export function parseWorkoutCSV(text, { unit = 'kg' } = {}) {
       let c = created.get(key)
       if (!c) {
         c = {
-          id: 'im' + uid(), n: name.toLowerCase(), custom: true, eq: 'custom', tg: '', desc: '',
-          bp: CATEGORY_BP[cell(r, 'category').toLowerCase()] || (km || (mins && !reps) ? 'cardio' : null)
-            || bpFromName(name.toLowerCase()) || 'upper legs',
+          id: 'im' + uid(),
+          n: name.toLowerCase(),
+          custom: true,
+          eq: 'custom',
+          tg: '',
+          desc: '',
+          bp:
+            CATEGORY_BP[cell(r, 'category').toLowerCase()] ||
+            (km || (mins && !reps) ? 'cardio' : null) ||
+            bpFromName(name.toLowerCase()) ||
+            'upper legs',
         }
         created.set(key, c)
         unmatched.add(name)
@@ -440,7 +607,12 @@ export function parseWorkoutCSV(text, { unit = 'kg' } = {}) {
     // `u` carries the row's own unit into the conversion pass below and is dropped there —
     // it never reaches the stored set.
     const set = isCardio
-      ? { min: mins || 0, speed: mins > 0 ? Math.round(km / (mins / 60) * 10) / 10 : 0, done: true, ...(warmup ? { phase: 'warmup' } : {}) }
+      ? {
+          min: mins || 0,
+          speed: mins > 0 ? Math.round((km / (mins / 60)) * 10) / 10 : 0,
+          done: true,
+          ...(warmup ? { phase: 'warmup' } : {}),
+        }
       : { w, r: reps || 0, done: true, u: rowUnit, ...(warmup ? { phase: 'warmup' } : {}) }
     // Effort rides along only where the app can show it again: a weighted rep set. A treadmill
     // row with an RPE would have nowhere to put it. A set is kept on one scale, so a file
@@ -448,8 +620,13 @@ export function parseWorkoutCSV(text, { unit = 'kg' } = {}) {
     if (!isCardio) {
       const rir = effortNum(cell(r, 'rir'), true)
       const rpe = rir == null ? effortNum(cell(r, 'rpe'), false) : null
-      if (rir != null) { set.rir = rir; rirSets++ }
-      else if (rpe != null) { set.rpe = rpe; rpeSets++ }
+      if (rir != null) {
+        set.rir = rir
+        rirSets++
+      } else if (rpe != null) {
+        set.rpe = rpe
+        rpeSets++
+      }
     }
 
     let day = byDate.get(when.d)
@@ -458,8 +635,12 @@ export function parseWorkoutCSV(text, { unit = 'kg' } = {}) {
       byDate.set(when.d, day)
     }
     if (!day.name) day.name = cell(r, 'workoutName') || ''
-    if (map.endTime !== undefined) { const e = parseWhen(cell(r, 'endTime')); if (e && e.t != null) day.end = e.t }
-    else if (map.time !== undefined && !map.seconds && reps) { /* FitNotes' Time is per-set */ }
+    if (map.endTime !== undefined) {
+      const e = parseWhen(cell(r, 'endTime'))
+      if (e && e.t != null) day.end = e.t
+    } else if (map.time !== undefined && !map.seconds && reps) {
+      /* FitNotes' Time is per-set */
+    }
     if (!day.ex.has(id)) day.ex.set(id, [])
     day.ex.get(id).push(set)
     sets++
@@ -473,7 +654,7 @@ export function parseWorkoutCSV(text, { unit = 'kg' } = {}) {
   const fileUnit = sawLb && !sawKg ? 'lb' : sawKg && !sawLb ? 'kg' : ''
   const mixedUnits = sawLb && sawKg
   const toKg = x => Math.round(x * LB_TO_KG * 10) / 10
-  const toLb = x => Math.round(x / LB_TO_KG * 10) / 10
+  const toLb = x => Math.round((x / LB_TO_KG) * 10) / 10
   // A row without its own unit follows the file's, and a file that says nothing is taken
   // to already be in the profile's unit.
   const convRow = s => {
@@ -495,24 +676,45 @@ export function parseWorkoutCSV(text, { unit = 'kg' } = {}) {
     const start = base + (day.start ?? 18 * 3600000)
     const end = day.end != null ? base + day.end : start
     const w = {
-      id: 'iw' + uid(), d, start, end: end > start ? end : start,
-      routineId: null, name: day.name || 'Imported', entries, prs: [],
+      id: 'iw' + uid(),
+      d,
+      start,
+      end: end > start ? end : start,
+      routineId: null,
+      name: day.name || 'Imported',
+      entries,
+      prs: [],
     }
     // Work sets only, like `workoutVolume` for a workout finished in the app: warm-ups are
     // promised to stay out of the volume, and this number is stored with the workout for good.
-    w.vol = entries.reduce((a, e) => a + e.sets.reduce((b, s) => b + (isWarmupRow(s) ? 0 : (s.w || 0) * (s.r || 0)), 0), 0)
+    w.vol = entries.reduce(
+      (a, e) => a + e.sets.reduce((b, s) => b + (isWarmupRow(s) ? 0 : (s.w || 0) * (s.r || 0)), 0),
+      0,
+    )
     return w
   })
 
   return {
-    kind: 'workouts', source, workouts, customEx: [...created.values()],
+    kind: 'workouts',
+    source,
+    workouts,
+    customEx: [...created.values()],
     // distinct library exercises behind the matched rows — the summary calls this
     // "exercises matched", and counting rows there made three exercises read as five
     matched: new Set([...resolved.values()].filter(Boolean)).size,
     matchedSets: matched,
-    created: created.size, unmatchedNames: [...unmatched].sort(),
-    sets, skipped, warmups, fileUnit, mixedUnits, converted, rpeSets, rirSets,
-    from: dates[0] || null, to: dates[dates.length - 1] || null,
+    created: created.size,
+    unmatchedNames: [...unmatched].sort(),
+    sets,
+    skipped,
+    warmups,
+    fileUnit,
+    mixedUnits,
+    converted,
+    rpeSets,
+    rirSets,
+    from: dates[0] || null,
+    to: dates[dates.length - 1] || null,
   }
 }
 
@@ -528,7 +730,7 @@ export function parseWorkoutCSV(text, { unit = 'kg' } = {}) {
  */
 export function parseBodyweight(text, { unit = 'kg' } = {}) {
   const s = String(text)
-  const out = new Map()          // iso date -> { w, t }  (one weigh-in per day, the last)
+  const out = new Map() // iso date -> { w, t }  (one weigh-in per day, the last)
   let fileUnit = ''
 
   if (s.includes('HKQuantityTypeIdentifierBodyMass')) {
@@ -566,13 +768,19 @@ export function parseBodyweight(text, { unit = 'kg' } = {}) {
   if (!out.size) return { error: 'unrecognised' }
   const converted = !!fileUnit && fileUnit !== unit
   const conv = converted
-    ? (fileUnit === 'lb' ? x => Math.round(x * LB_TO_KG * 10) / 10 : x => Math.round(x / LB_TO_KG * 10) / 10)
+    ? fileUnit === 'lb'
+      ? x => Math.round(x * LB_TO_KG * 10) / 10
+      : x => Math.round((x / LB_TO_KG) * 10) / 10
     : x => Math.round(x * 10) / 10
   const dates = [...out.keys()].sort()
   return {
-    kind: 'bodyweight', source: 'Apple Health',
+    kind: 'bodyweight',
+    source: 'Apple Health',
     bodyweight: dates.map(d => ({ d, w: conv(out.get(d).w), t: out.get(d).t || new Date(d).getTime() })),
-    fileUnit, converted, from: dates[0], to: dates[dates.length - 1],
+    fileUnit,
+    converted,
+    from: dates[0],
+    to: dates[dates.length - 1],
   }
 }
 
@@ -603,22 +811,32 @@ export function mergeImport(S, parsed) {
   // the way mergeHevyRoutines and mergePlan do; otherwise the Library lists "Grip Trainer" twice,
   // each with half the history. Only a name with no match becomes a new exercise.
   S.customEx = S.customEx || []
-  const nameKey = n => String(n || '').toLowerCase().replace(/\s+/g, ' ').trim()
+  const nameKey = n =>
+    String(n || '')
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim()
   const exIdMap = {}
   parsed.customEx.forEach(c => {
     const same = S.customEx.find(x => x.id !== c.id && nameKey(x.n) === nameKey(c.n))
     if (same) exIdMap[c.id] = same.id
   })
-  const fresh = parsed.workouts.filter(w => !have.has(w.d))
+  const fresh = parsed.workouts
+    .filter(w => !have.has(w.d))
     .map(w => ({ ...w, entries: w.entries.map(e => (exIdMap[e.id] ? { ...e, id: exIdMap[e.id] } : e)) }))
   const used = new Set(fresh.flatMap(w => w.entries.map(e => e.id)))
   const customs = parsed.customEx.filter(c => used.has(c.id) && !EXIDX[c.id])
   S.customEx = [...S.customEx, ...customs]
   S.workouts = [...S.workouts, ...fresh].sort((a, b) => (a.d < b.d ? -1 : 1))
   // seed the weight suggestions from the newest imported set of each lift
-  fresh.forEach(w => w.entries.forEach(e => {
-    const mx = Math.max(0, ...e.sets.map(s => s.w || 0), e.topW || 0)
-    if (mx > 0) { const cur = S.exWeights[e.id]; if (!cur || w.d >= cur.d) S.exWeights[e.id] = { w: mx, d: w.d } }
-  }))
+  fresh.forEach(w =>
+    w.entries.forEach(e => {
+      const mx = Math.max(0, ...e.sets.map(s => s.w || 0), e.topW || 0)
+      if (mx > 0) {
+        const cur = S.exWeights[e.id]
+        if (!cur || w.d >= cur.d) S.exWeights[e.id] = { w: mx, d: w.d }
+      }
+    }),
+  )
   return { added: fresh.length, skipped: parsed.workouts.length - fresh.length }
 }

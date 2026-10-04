@@ -54,15 +54,25 @@ vi.mock('../coach.css', () => ({}))
 const consentedCoach = () => ({
   coach: {
     consent: { agreedAt: '2026-01-01T00:00:00.000Z', version: CONSENT_VERSION },
-    profile: null, cadence: 'off', lastReview: null,
-    log: [], snapshots: [], chat: [], timings: [],
+    profile: null,
+    cadence: 'off',
+    lastReview: null,
+    log: [],
+    snapshots: [],
+    chat: [],
+    timings: [],
   },
 })
 const unansweredCoach = () => ({
   coach: {
     consent: null,
-    profile: null, cadence: 'off', lastReview: null,
-    log: [], snapshots: [], chat: [], timings: [],
+    profile: null,
+    cadence: 'off',
+    lastReview: null,
+    log: [],
+    snapshots: [],
+    chat: [],
+    timings: [],
   },
 })
 
@@ -77,15 +87,19 @@ function render() {
 }
 
 const heading = host => host.querySelector('.ob-h').textContent
-const choice = (host, title) =>
-  [...host.querySelectorAll('.ob-choice')].find(b => b.textContent.includes(title))
+const choice = (host, title) => [...host.querySelectorAll('.ob-choice')].find(b => b.textContent.includes(title))
 const primaryFoot = host => host.querySelector('.ob-foot button')
 const footByLabel = (host, label) =>
   [...host.querySelectorAll('.ob-foot button')].find(b => b.textContent.includes(label))
-const pick = (host, title) => act(() => { choice(host, title).click() })
+const pick = (host, title) =>
+  act(() => {
+    choice(host, title).click()
+  })
 const step = (host, choiceTitle) => {
   if (choiceTitle) pick(host, choiceTitle)
-  act(() => { primaryFoot(host).click() })
+  act(() => {
+    primaryFoot(host).click()
+  })
 }
 
 beforeEach(() => {
@@ -100,7 +114,11 @@ beforeEach(() => {
   mocks.S = consentedCoach()
   document.body.innerHTML = ''
 })
-afterEach(() => { act(() => { mounted.splice(0).forEach(root => root.unmount()) }) })
+afterEach(() => {
+  act(() => {
+    mounted.splice(0).forEach(root => root.unmount())
+  })
+})
 
 describe('Coach intake', () => {
   it('leads with the consent disclosure and renders its category list', async () => {
@@ -110,8 +128,7 @@ describe('Coach intake', () => {
 
     expect(heading(host)).toBe('Meet the Coach')
     expect(mocks.disclosure).toHaveBeenCalledTimes(1)
-    const rows = [...host.querySelectorAll('.ob-consent-row')]
-      .map(r => r.querySelector('b').textContent)
+    const rows = [...host.querySelectorAll('.ob-consent-row')].map(r => r.querySelector('b').textContent)
     // exactly the categories the payload builder uses — no hard-coded list here
     expect(rows).toEqual(['Your plan', 'Your logged training'])
     expect(host.textContent).toContain('Groq')
@@ -123,7 +140,9 @@ describe('Coach intake', () => {
     const host = render()
     await act(async () => {})
 
-    act(() => { footByLabel(host, 'Not now').click() })
+    act(() => {
+      footByLabel(host, 'Not now').click()
+    })
 
     expect(mocks.nav).toHaveBeenCalledWith('/plan')
     expect(mocks.S.coach.consent).toBeNull()
@@ -135,7 +154,9 @@ describe('Coach intake', () => {
     const host = render()
     await act(async () => {})
 
-    act(() => { footByLabel(host, 'I understand').click() })
+    act(() => {
+      footByLabel(host, 'I understand').click()
+    })
 
     expect(mocks.S.coach.consent.version).toBe(CONSENT_VERSION)
     expect(typeof mocks.S.coach.consent.agreedAt).toBe('string')
@@ -156,7 +177,9 @@ describe('Coach intake', () => {
     expect(host.querySelector('.ob-hint')).toBeNull()
     next = primaryFoot(host)
     expect(next.disabled).toBe(false)
-    act(() => { next.click() })
+    act(() => {
+      next.click()
+    })
     expect(heading(host)).toBe('Where are you starting from?')
   })
 
@@ -177,15 +200,16 @@ describe('Coach intake', () => {
     expect(heading(host)).toBe('Anything to work around?')
     const ta = host.querySelector('textarea')
     act(() => {
-      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')
-        .set.call(ta, 'bad shoulder')
+      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set.call(ta, 'bad shoulder')
       ta.dispatchEvent(new Event('input', { bubbles: true }))
     })
     step(host)
     expect(heading(host)).toBe('Anything else?')
     expect(primaryFoot(host).textContent).toContain('Build my plan')
 
-    await act(async () => { primaryFoot(host).click() })
+    await act(async () => {
+      primaryFoot(host).click()
+    })
 
     expect(mocks.requestPlan).toHaveBeenCalledTimes(1)
     expect(mocks.requestPlan).toHaveBeenCalledWith({

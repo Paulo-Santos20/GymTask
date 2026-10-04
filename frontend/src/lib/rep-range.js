@@ -4,9 +4,7 @@ export function normalizeRepRange(reps, repsMin, stride = 1) {
   const step = Number.isInteger(stride) && stride > 0 ? stride : 1
   const upper = align(positiveInt(reps, 10), step)
   const lower = align(positiveInt(repsMin, Math.max(1, upper - 2)), step)
-  return lower >= upper
-    ? { reps: lower + step, repsMin: lower }
-    : { reps: upper, repsMin: lower }
+  return lower >= upper ? { reps: lower + step, repsMin: lower } : { reps: upper, repsMin: lower }
 }
 
 function align(value, stride) {

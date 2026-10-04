@@ -36,15 +36,20 @@ export async function unsubscribeDailyTopic() {
 // main.jsx registers the service worker on https only, so on any other origin there is no
 // worker and `navigator.serviceWorker.ready` never settles — the toggle looked usable and hung.
 const secureOrigin = () => typeof location === 'undefined' || location.protocol === 'https:'
-export const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && secureOrigin()
+export const pushSupported = () =>
+  'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && secureOrigin()
 export const pushPermission = () => (pushSupported() ? Notification.permission : 'unsupported')
 
 const urlBase64ToUint8Array = b64 => {
-  const padded = (b64 + '='.repeat((4 - b64.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/')
+  const padded = (b64 + '='.repeat((4 - (b64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/')
   const raw = atob(padded)
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)))
 }
-const bytesToUrlBase64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+const bytesToUrlBase64 = buf =>
+  btoa(String.fromCharCode(...new Uint8Array(buf)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
 
 // One token per browser profile, made up here and never shown: it tells the server which of
 // the account's subscriptions belong to this device, so a rest-timer alert goes to the phone
@@ -54,21 +59,31 @@ export function deviceId() {
   try {
     let id = localStorage.getItem(DEVICE_KEY)
     if (!id) {
-      id = (crypto.randomUUID?.() || Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('')).replace(/-/g, '')
+      id = (
+        crypto.randomUUID?.() ||
+        Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('')
+      ).replace(/-/g, '')
       localStorage.setItem(DEVICE_KEY, id)
     }
     return id
-  } catch { return undefined }
+  } catch {
+    return undefined
+  }
 }
 
 // The worker is registered at boot; on https it is there within a moment, but a promise that
 // never settles must not hang a settings screen or the boot path — give it a bounded wait.
-const readyWorker = (ms = 8000) => Promise.race([
-  navigator.serviceWorker.ready,
-  new Promise((_, reject) => setTimeout(() => reject(new Error('Service worker not ready')), ms))
-])
+const readyWorker = (ms = 8000) =>
+  Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Service worker not ready')), ms)),
+  ])
 
-const register = sub => api('/api/push/subscribe', { method: 'POST', body: JSON.stringify({ subscription: sub.toJSON(), deviceId: deviceId() }) })
+const register = sub =>
+  api('/api/push/subscribe', {
+    method: 'POST',
+    body: JSON.stringify({ subscription: sub.toJSON(), deviceId: deviceId() }),
+  })
 
 export async function enablePush() {
   if (!pushSupported()) throw new Error('Push notifications are not supported in this browser')
@@ -76,7 +91,10 @@ export async function enablePush() {
   if (perm !== 'granted') throw new Error('Notifications permission was not granted')
   const reg = await readyWorker()
   const { key } = await api('/api/push/public-key')
-  const subscription = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(key) })
+  const subscription = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(key),
+  })
   await register(subscription)
   // Topic subscription rides along with the toggle (PushCard calls this on enable). Best
   // effort: a missing VAPID key or an FCM hiccup must not undo the Web Push that just worked.
@@ -91,7 +109,9 @@ export async function disablePush() {
   const sub = await reg.pushManager.getSubscription()
   if (!sub) return
   await sub.unsubscribe()
-  await api('/api/push/unsubscribe', { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint }) }).catch(() => {})
+  await api('/api/push/unsubscribe', { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint }) }).catch(
+    () => {},
+  )
 }
 
 /* Brings the server's copy of this browser's subscription back in line with the browser's.

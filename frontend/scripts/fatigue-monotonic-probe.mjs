@@ -8,10 +8,12 @@ const ID = '1254'
 const workout = (start, weight, count = 8) => ({
   d: new Date(start).toISOString(),
   start,
-  entries: [{
-    id: ID,
-    sets: Array.from({ length: count }, () => ({ done: true, w: weight, r: 8 })),
-  }],
+  entries: [
+    {
+      id: ID,
+      sets: Array.from({ length: count }, () => ({ done: true, w: weight, r: 8 })),
+    },
+  ],
 })
 
 // Deterministic LCG: failures reproduce exactly without an external property-testing dependency.
@@ -39,9 +41,7 @@ for (let historyIndex = 0; historyIndex < 100; historyIndex += 1) {
     const increase = current - previous
     largestIncrease = Math.max(largestIncrease, increase)
     if (increase > 1e-12) {
-      throw new Error(
-        `fatigue increased in history ${historyIndex} at hour ${hour}: ${previous} -> ${current}`,
-      )
+      throw new Error(`fatigue increased in history ${historyIndex} at hour ${hour}: ${previous} -> ${current}`)
     }
     previous = current
     comparisons += 1
@@ -49,12 +49,15 @@ for (let historyIndex = 0; historyIndex < 100; historyIndex += 1) {
 
   const beforeDeletion = fatigueOf(history, BASE)
   for (let deleted = 0; deleted < history.length; deleted += 1) {
-    const afterDeletion = fatigueOf(history.filter((_, index) => index !== deleted), BASE)
+    const afterDeletion = fatigueOf(
+      history.filter((_, index) => index !== deleted),
+      BASE,
+    )
     for (const [slug, before] of Object.entries(beforeDeletion)) {
       if (afterDeletion[slug] > before + Number.EPSILON) {
         throw new Error(
-          `deleting workout ${deleted} in history ${historyIndex} increased ${slug}: `
-          + `${before} -> ${afterDeletion[slug]}`,
+          `deleting workout ${deleted} in history ${historyIndex} increased ${slug}: ` +
+            `${before} -> ${afterDeletion[slug]}`,
         )
       }
       deletionComparisons += 1
@@ -95,6 +98,6 @@ for (let deleted = 0; deleted < deletionHistory.length; deleted += 1) {
 
 console.log(`monotonic probe: ${comparisons} comparisons, largest increase ${largestIncrease}, PASS`)
 console.log(
-  `history-edit probe: out-of-scan imports stable; ${deletionComparisons} randomized `
-  + 'single-workout deletion comparisons non-increasing, PASS',
+  `history-edit probe: out-of-scan imports stable; ${deletionComparisons} randomized ` +
+    'single-workout deletion comparisons non-increasing, PASS',
 )

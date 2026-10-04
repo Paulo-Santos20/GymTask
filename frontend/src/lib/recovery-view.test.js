@@ -31,11 +31,14 @@ describe('production recovery view selectors', () => {
   })
 
   it('renders fatigue bands on a fixed absolute scale rather than relative to the map maximum', () => {
-    const levels = levelsOf({
-      chest: 0.25,
-      biceps: 0.6,
-      triceps: 0.1,
-    }, FATIGUE_BANDS)
+    const levels = levelsOf(
+      {
+        chest: 0.25,
+        biceps: 0.6,
+        triceps: 0.1,
+      },
+      FATIGUE_BANDS,
+    )
     expect(levels.chest).toBe(2)
     expect(levels.biceps).toBe(0)
     expect(levels.triceps).toBe(4)

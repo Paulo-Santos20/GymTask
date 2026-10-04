@@ -47,7 +47,7 @@ vi.mock('../store/useStore.js', () => {
   return { useStore }
 })
 vi.mock('../store/useUI.js', () => {
-  const useUI = selector => selector ? selector(mocks.uiSnapshot()) : mocks.uiSnapshot()
+  const useUI = selector => (selector ? selector(mocks.uiSnapshot()) : mocks.uiSnapshot())
   useUI.getState = mocks.uiSnapshot
   return { useUI }
 })
@@ -70,7 +70,9 @@ vi.mock('../sheets.jsx', () => ({
 vi.mock('../components/Media.jsx', () => ({ default: () => null }))
 vi.mock('../lib/api.js', () => ({
   api: vi.fn(() => Promise.resolve({})),
-  IS_APPLE: false, IS_ANDROID: false, BIO: 'biometrics',
+  IS_APPLE: false,
+  IS_ANDROID: false,
+  BIO: 'biometrics',
 }))
 
 let dom
@@ -88,8 +90,14 @@ function exercise(id, sets, extra = {}) {
 
 function workout(entries, cur = 0) {
   return {
-    unit: 'kg', restSec: 90, sound: false, effort: 'none', gifSize: 'full',
-    workouts: [], exWeights: {}, routines: [],
+    unit: 'kg',
+    restSec: 90,
+    sound: false,
+    effort: 'none',
+    gifSize: 'full',
+    workouts: [],
+    exWeights: {},
+    routines: [],
     active: { id: 'active', name: 'Test workout', start: Date.now(), cur, entries },
   }
 }
@@ -110,12 +118,16 @@ function installDom() {
 async function mount(entries, cur = 0) {
   mocks.S = workout(entries, cur)
   installDom()
-  await act(async () => { root.render(React.createElement(Workout)) })
+  await act(async () => {
+    root.render(React.createElement(Workout))
+  })
 }
 
 async function unmount() {
   if (!root) return
-  await act(async () => { root.unmount() })
+  await act(async () => {
+    root.unmount()
+  })
   root = null
   container = null
   dom = null
@@ -136,7 +148,9 @@ function stepperButton(exidx, setRow, col, direction) {
 
 async function tap(button) {
   expect(button).toBeTruthy()
-  await act(async () => { button.dispatchEvent(new dom.Event('click', { bubbles: true })) })
+  await act(async () => {
+    button.dispatchEvent(new dom.Event('click', { bubbles: true }))
+  })
 }
 
 beforeEach(() => {
@@ -151,10 +165,7 @@ describe('superset stepper — one tap moves one step', () => {
   // Weight steps by 2.5. A single tap on the first exercise of a superset must land on 62.5,
   // not stay at 60 waiting for a second tap.
   it('increments a superset member weight by one step per tap', async () => {
-    await mount([
-      exercise('press', [false], { sg: 'group' }),
-      exercise('row', [false], { sg: 'group' }),
-    ])
+    await mount([exercise('press', [false], { sg: 'group' }), exercise('row', [false], { sg: 'group' })])
 
     await tap(stepperButton(0, 0, 0, 'Increase'))
 
@@ -165,10 +176,7 @@ describe('superset stepper — one tap moves one step', () => {
   // Three taps must reach 8 (5 -> 6 -> 7 -> 8); the stale closure made every tap after the
   // first re-apply against last render's value, so the count would lag behind the taps.
   it('advances reps by exactly one per tap across repeated taps', async () => {
-    await mount([
-      exercise('press', [false], { sg: 'group' }),
-      exercise('row', [false], { sg: 'group' }),
-    ])
+    await mount([exercise('press', [false], { sg: 'group' }), exercise('row', [false], { sg: 'group' })])
 
     await tap(stepperButton(0, 0, 1, 'Increase'))
     await tap(stepperButton(0, 0, 1, 'Increase'))
@@ -181,10 +189,7 @@ describe('superset stepper — one tap moves one step', () => {
   // stepper after the first exercise has already been bumped must still act on the partner's own
   // current value, not a snapshot from before the clone.
   it('steps the partner exercise correctly after the first member was changed', async () => {
-    await mount([
-      exercise('press', [false], { sg: 'group' }),
-      exercise('row', [false], { sg: 'group' }),
-    ])
+    await mount([exercise('press', [false], { sg: 'group' }), exercise('row', [false], { sg: 'group' })])
 
     await tap(stepperButton(0, 0, 1, 'Increase'))
     await tap(stepperButton(1, 0, 1, 'Increase'))
@@ -195,10 +200,7 @@ describe('superset stepper — one tap moves one step', () => {
 
   // Decrement walks the same path and must not undershoot or need a double tap either.
   it('decrements a superset member weight by one step per tap', async () => {
-    await mount([
-      exercise('press', [false], { sg: 'group' }),
-      exercise('row', [false], { sg: 'group' }),
-    ])
+    await mount([exercise('press', [false], { sg: 'group' }), exercise('row', [false], { sg: 'group' })])
 
     await tap(stepperButton(0, 0, 0, 'Decrease'))
 

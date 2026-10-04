@@ -19,7 +19,7 @@ describe('tappable', () => {
     const space = keyEvent(' ', el)
     p.onKeyDown(space)
     expect(onClick).toHaveBeenCalledTimes(2)
-    expect(space.preventDefault).toHaveBeenCalled()   // Space must not scroll the page
+    expect(space.preventDefault).toHaveBeenCalled() // Space must not scroll the page
   })
 
   it('ignores other keys and keys from nested controls', () => {
@@ -41,21 +41,22 @@ describe('tappable', () => {
 
 // A strip is 300px wide showing content from scrollLeft; chips are 80px wide, 8px apart.
 const strip = (scrollLeft = 0, width = 300) => ({
-  scrollLeft, clientWidth: width,
-  getBoundingClientRect: () => ({ left: 20, width })
+  scrollLeft,
+  clientWidth: width,
+  getBoundingClientRect: () => ({ left: 20, width }),
 })
 const chipAt = (contentX, strip) => ({
-  getBoundingClientRect: () => ({ left: 20 + contentX - strip.scrollLeft, width: 80 })
+  getBoundingClientRect: () => ({ left: 20 + contentX - strip.scrollLeft, width: 80 }),
 })
 
 describe('revealChip', () => {
   it('scrolls the strip, and only the strip, until the active chip is inside it', () => {
     const s = strip(0)
     expect(revealChip(s, chipAt(500, s))).toBe(true)
-    expect(s.scrollLeft).toBe(500 + 80 + 16 - 300)   // chip's right edge plus the padding at the right edge
+    expect(s.scrollLeft).toBe(500 + 80 + 16 - 300) // chip's right edge plus the padding at the right edge
     const back = strip(400)
     expect(revealChip(back, chipAt(100, back))).toBe(true)
-    expect(back.scrollLeft).toBe(100 - 16)            // padding at the left edge
+    expect(back.scrollLeft).toBe(100 - 16) // padding at the left edge
   })
 
   it('leaves a visible chip where it is', () => {
@@ -70,6 +71,8 @@ describe('revealChip', () => {
     revealChip(s, chip)
     expect(chip.scrollIntoView).not.toHaveBeenCalled()
     expect(revealChip(null, chip)).toBe(false)
-    expect(revealChip({ scrollLeft: 0, clientWidth: 0, getBoundingClientRect: () => ({ left: 0, width: 0 }) }, chip)).toBe(false)
+    expect(
+      revealChip({ scrollLeft: 0, clientWidth: 0, getBoundingClientRect: () => ({ left: 0, width: 0 }) }, chip),
+    ).toBe(false)
   })
 })

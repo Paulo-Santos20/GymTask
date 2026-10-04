@@ -13,11 +13,19 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
 const mocks = vi.hoisted(() => {
   const state = { S: null }
-  state.snapshot = () => ({ S: state.S, user: null, update: mut => { const next = structuredClone(state.S); mut(next); state.S = next } })
+  state.snapshot = () => ({
+    S: state.S,
+    user: null,
+    update: mut => {
+      const next = structuredClone(state.S)
+      mut(next)
+      state.S = next
+    },
+  })
   return state
 })
 vi.mock('../store/useStore.js', () => {
-  const useStore = selector => selector ? selector(mocks.snapshot()) : mocks.snapshot()
+  const useStore = selector => (selector ? selector(mocks.snapshot()) : mocks.snapshot())
   useStore.getState = mocks.snapshot
   return { useStore }
 })
@@ -33,19 +41,35 @@ function render() {
   act(() => root.render(<Library />))
   return host
 }
-const names = host => [...host.querySelectorAll('.item .tt')].map(el => el.textContent).slice(1)   // drop "Create your own"
+const names = host => [...host.querySelectorAll('.item .tt')].map(el => el.textContent).slice(1) // drop "Create your own"
 const cssSource = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
 
 beforeEach(() => {
-  mocks.S = { unit: 'kg', lang: 'en', routines: [], workouts: [], customEx: [], exWeights: {}, equipProfiles: [], activeEquipId: null, equipFilterOn: false }
+  mocks.S = {
+    unit: 'kg',
+    lang: 'en',
+    routines: [],
+    workouts: [],
+    customEx: [],
+    exWeights: {},
+    equipProfiles: [],
+    activeEquipId: null,
+    equipFilterOn: false,
+  }
   document.body.innerHTML = ''
 })
-afterEach(() => { act(() => { mounted.splice(0).forEach(root => root.unmount()) }) })
+afterEach(() => {
+  act(() => {
+    mounted.splice(0).forEach(root => root.unmount())
+  })
+})
 
 describe('Library favourites', () => {
   it('puts favourites first, marked with a star, and leaves the rest in catalogue order', () => {
     const plain = names(render())
-    act(() => { mounted.splice(0).forEach(root => root.unmount()) })
+    act(() => {
+      mounted.splice(0).forEach(root => root.unmount())
+    })
     const fav = [plain[6], plain[2]]
     mocks.S.favEx = fav.map(n => EXDB.find(e => e.n === n).id)
     const host = render()

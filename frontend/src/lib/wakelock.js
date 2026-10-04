@@ -9,28 +9,37 @@ import { useEffect } from 'react'
 
 export const wakeLockSupported = () => 'wakeLock' in navigator
 
-let sentinel = null       // the live WakeLockSentinel, null when we hold nothing
-let wanted = false        // do we currently want the screen to stay on?
-let pending = false       // a request() is in flight — don't stack a second one
+let sentinel = null // the live WakeLockSentinel, null when we hold nothing
+let wanted = false // do we currently want the screen to stay on?
+let pending = false // a request() is in flight — don't stack a second one
 
 async function acquire() {
   if (!wanted || sentinel || pending || !wakeLockSupported()) return
-  if (document.visibilityState !== 'visible') return   // request() rejects on a hidden document
+  if (document.visibilityState !== 'visible') return // request() rejects on a hidden document
   pending = true
   try {
     const s = await navigator.wakeLock.request('screen')
-    if (!wanted) { s.release().catch(() => {}); return }   // released while we were awaiting
+    if (!wanted) {
+      s.release().catch(() => {})
+      return
+    } // released while we were awaiting
     sentinel = s
-    s.addEventListener('release', () => { if (sentinel === s) sentinel = null })
+    s.addEventListener('release', () => {
+      if (sentinel === s) sentinel = null
+    })
   } catch (e) {
     // iOS refuses in Low Power Mode, and some browsers refuse on low battery. Nothing to
     // do about it and nothing the user could act on — stay quiet and try again next time
     // the document becomes visible.
     sentinel = null
-  } finally { pending = false }
+  } finally {
+    pending = false
+  }
 }
 
-const onVisible = () => { if (document.visibilityState === 'visible') acquire() }
+const onVisible = () => {
+  if (document.visibilityState === 'visible') acquire()
+}
 
 export function requestWakeLock() {
   if (wanted) return

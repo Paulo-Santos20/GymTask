@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { insertionIndexAfterCurrentUnit, nextUnfinishedUnit, setProgressHighWater, supersetFlowStep, restAfterSet, restOnRecheck, restSecFor, warmupRestSecFor } from './supersetFlow.js'
+import {
+  insertionIndexAfterCurrentUnit,
+  nextUnfinishedUnit,
+  setProgressHighWater,
+  supersetFlowStep,
+  restAfterSet,
+  restOnRecheck,
+  restSecFor,
+  warmupRestSecFor,
+} from './supersetFlow.js'
 
 const entry = done => ({ sets: done.map(value => ({ done: value })) })
 
@@ -38,7 +47,7 @@ describe('supersetFlowStep', () => {
     expect(supersetFlowStep(entries, [0, 1], 0)).toEqual({
       unitDone: false,
       roundDone: true,
-      nextIdx: 0
+      nextIdx: 0,
     })
   })
 
@@ -47,7 +56,7 @@ describe('supersetFlowStep', () => {
     expect(supersetFlowStep(entries, [0, 1], 1)).toEqual({
       unitDone: false,
       roundDone: true,
-      nextIdx: 0
+      nextIdx: 0,
     })
   })
 })
@@ -172,7 +181,10 @@ describe('warmupRestSecFor', () => {
   })
 
   it('is safe on a legacy warmup boolean and on missing entries', () => {
-    const legacy = { target: { warmupRestSec: 45 }, sets: [{ warmup: true, done: false }, { warmup: true, done: false }, { done: false }] }
+    const legacy = {
+      target: { warmupRestSec: 45 },
+      sets: [{ warmup: true, done: false }, { warmup: true, done: false }, { done: false }],
+    }
     expect(warmupRestSecFor(legacy, 0, 120)).toBe(45)
     expect(warmupRestSecFor(undefined, 0, 120)).toBe(120)
     expect(warmupRestSecFor({ target: {}, sets: [] }, 0, 120)).toBe(120)

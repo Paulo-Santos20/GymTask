@@ -22,30 +22,43 @@ const spec = yaml.load(fs.readFileSync(specPath, 'utf8'))
 
 /* ------------------------------------------------------------------ helpers */
 
-const esc = s => String(s)
-  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 // The subset of markdown the spec actually uses: `code`, **bold**, *italic*, links.
-const mdInline = s => esc(String(s).trim())
-  .replace(/`([^`]+)`/g, '<code>$1</code>')
-  .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
-  .replace(/(^|[\s(—>])\*([^*\n]+)\*(?=[\s.,;:)—]|$)/g, '$1<i>$2</i>')
-  .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" rel="noopener">$1</a>')
+const mdInline = s =>
+  esc(String(s).trim())
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/(^|[\s(—>])\*([^*\n]+)\*(?=[\s.,;:)—]|$)/g, '$1<i>$2</i>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" rel="noopener">$1</a>')
 
 // One description onto one line (for table cells and card subtitles).
 const mdCell = s => mdInline(String(s).replace(/\s*\n\s*/g, ' '))
 
 // Block markdown: paragraphs and "- " lists (with wrapped continuation lines).
-function mdBlock (src) {
+function mdBlock(src) {
   const out = []
-  let para = [], list = null
-  const flushPara = () => { if (para.length) { out.push(`<p>${mdInline(para.join(' '))}</p>`); para = [] } }
+  let para = [],
+    list = null
+  const flushPara = () => {
+    if (para.length) {
+      out.push(`<p>${mdInline(para.join(' '))}</p>`)
+      para = []
+    }
+  }
   const flushList = () => {
-    if (list) { out.push(`<ul>${list.map(li => `<li>${mdInline(li)}</li>`).join('')}</ul>`); list = null }
+    if (list) {
+      out.push(`<ul>${list.map(li => `<li>${mdInline(li)}</li>`).join('')}</ul>`)
+      list = null
+    }
   }
   for (const raw of String(src).split('\n')) {
     const line = raw.trimEnd()
-    if (!line.trim()) { flushPara(); flushList(); continue }
+    if (!line.trim()) {
+      flushPara()
+      flushList()
+      continue
+    }
     if (/^- /.test(line.trim()) && !para.length) {
       flushPara()
       list = list || []
@@ -57,7 +70,8 @@ function mdBlock (src) {
       para.push(line.trim())
     }
   }
-  flushPara(); flushList()
+  flushPara()
+  flushList()
   return out.join('\n')
 }
 
@@ -65,7 +79,7 @@ const refName = ref => ref.split('/').pop()
 const schemaLink = ref => `<a href="#schema-${refName(ref)}">${esc(refName(ref))}</a>`
 
 // A compact, human type for one JSON-schema node.
-function fmtType (s) {
+function fmtType(s) {
   if (!s) return 'any'
   if (s.$ref) return schemaLink(s.$ref)
   if (s.oneOf) return s.oneOf.map(fmtType).join(' | ')
@@ -75,7 +89,7 @@ function fmtType (s) {
     const it = s.items ? fmtType(s.items) : 'any'
     return (/[ |]/.test(it.replace(/<[^>]*>/g, '')) ? `(${it})` : it) + '[]'
   }
-  let t = Array.isArray(s.type) ? s.type.join(' | ') : (s.type || 'object')
+  let t = Array.isArray(s.type) ? s.type.join(' | ') : s.type || 'object'
   const bits = []
   if (s.format) bits.push(s.format)
   if (s.maxLength) bits.push(`&le; ${s.maxLength} chars`)
@@ -85,36 +99,50 @@ function fmtType (s) {
 }
 
 // One-line shape signature for a response body: { user: SessionUser }
-function fmtSig (s) {
+function fmtSig(s) {
   if (!s) return ''
   if (s.$ref) return schemaLink(s.$ref)
   if (s.properties) {
-    return '{ ' + Object.entries(s.properties)
-      .map(([k, v]) => `${esc(k)}: ${fmtType(v)}`).join(', ') + ' }'
+    return (
+      '{ ' +
+      Object.entries(s.properties)
+        .map(([k, v]) => `${esc(k)}: ${fmtType(v)}`)
+        .join(', ') +
+      ' }'
+    )
   }
   return fmtType(s)
 }
 
 // Rows for a property table, nesting one level into objects and object arrays.
-function * propRows (schema, prefix = '', depth = 0) {
+function* propRows(schema, prefix = '', depth = 0) {
   const req = new Set(schema.required || [])
   for (const [k, v] of Object.entries(schema.properties || {})) {
     yield { name: prefix + k, required: req.has(k), type: fmtType(v), desc: v.description || '' }
     if (depth < 2) {
-      if (v.type === 'object' && v.properties) yield * propRows(v, `${prefix}${k}.`, depth + 1)
-      else if (v.type === 'array' && v.items && v.items.properties) yield * propRows(v.items, `${prefix}${k}[].`, depth + 1)
+      if (v.type === 'object' && v.properties) yield* propRows(v, `${prefix}${k}.`, depth + 1)
+      else if (v.type === 'array' && v.items && v.items.properties)
+        yield* propRows(v.items, `${prefix}${k}[].`, depth + 1)
     }
   }
 }
 
-function ptab (rows) {
+function ptab(rows) {
   if (!rows.length) return ''
-  return `<div class="ptab">` + rows.map(r => `
+  return (
+    `<div class="ptab">` +
+    rows
+      .map(
+        r => `
   <div class="prow">
     <span class="p-name">${esc(r.name)}${r.required ? '<em class="p-req" title="required">required</em>' : ''}</span>
     <span class="p-type">${r.type}</span>
     <span class="p-desc">${r.desc ? mdCell(r.desc) : ''}</span>
-  </div>`).join('') + `\n</div>`
+  </div>`,
+      )
+      .join('') +
+    `\n</div>`
+  )
 }
 
 /* ------------------------------------------------------------ endpoint cards */
@@ -125,7 +153,7 @@ const TAGS = {
   data: { title: 'Data', side: 'State sync' },
   push: { title: 'Push', side: 'Notifications &amp; rest timer' },
   activity: { title: 'Activity', side: 'Live presence' },
-  admin: { title: 'Admin', side: 'Users, invites, audit log' }
+  admin: { title: 'Admin', side: 'Users, invites, audit log' },
 }
 
 // "Admin: list all users" → "List all users": the section heading and the ADMIN
@@ -135,52 +163,54 @@ const sumText = s => {
   return t.charAt(0).toUpperCase() + t.slice(1)
 }
 
-function authOf (op, tag) {
+function authOf(op, tag) {
   if (Array.isArray(op.security) && op.security.length === 0) {
     return { chip: 'public', line: 'Public — no authentication required.' }
   }
   if (tag === 'admin') {
     return {
       chip: 'admin',
-      line: 'Admin only — a signed-in session whose user is an admin (<code>ADMIN_UIDS</code> or <code>admin:true</code>), as the session cookie or a Bearer token.'
+      line: 'Admin only — a signed-in session whose user is an admin (<code>ADMIN_UIDS</code> or <code>admin:true</code>), as the session cookie or a Bearer token.',
     }
   }
   return {
     chip: null,
-    line: 'Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code>.'
+    line: 'Requires a session — the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code>.',
   }
 }
 
-function responseRows (op) {
-  return Object.entries(op.responses || {}).map(([code, r]) => {
-    if (r.$ref) r = spec.components.responses[refName(r.$ref)]
-    const cls = 's' + code[0]
-    const content = r.content && r.content['application/json']
-    const extras = []
-    if (code.startsWith('2')) {
-      if (content && content.schema) extras.push(fmtSig(content.schema))
-      if (r.headers) extras.push(`sets <code>${Object.keys(r.headers).map(esc).join('</code>, <code>')}</code>`)
-    } else if (content) {
-      const exs = []
-      if (content.example) exs.push(content.example)
-      if (content.examples) for (const e of Object.values(content.examples)) exs.push(e.value)
-      if (content.schema && content.schema.example) exs.push(content.schema.example)
-      for (const e of exs) if (e && e.error) extras.push(`<code>${esc(JSON.stringify({ error: e.error }))}</code>`)
-    }
-    return `
+function responseRows(op) {
+  return Object.entries(op.responses || {})
+    .map(([code, r]) => {
+      if (r.$ref) r = spec.components.responses[refName(r.$ref)]
+      const cls = 's' + code[0]
+      const content = r.content && r.content['application/json']
+      const extras = []
+      if (code.startsWith('2')) {
+        if (content && content.schema) extras.push(fmtSig(content.schema))
+        if (r.headers) extras.push(`sets <code>${Object.keys(r.headers).map(esc).join('</code>, <code>')}</code>`)
+      } else if (content) {
+        const exs = []
+        if (content.example) exs.push(content.example)
+        if (content.examples) for (const e of Object.values(content.examples)) exs.push(e.value)
+        if (content.schema && content.schema.example) exs.push(content.schema.example)
+        for (const e of exs) if (e && e.error) extras.push(`<code>${esc(JSON.stringify({ error: e.error }))}</code>`)
+      }
+      return `
   <div class="prow rrow">
     <span class="r-code ${cls}">${esc(code)}</span>
     <span class="p-desc">${mdCell(r.description || '')}${extras.length ? `<span class="r-sig">${extras.join(' &middot; ')}</span>` : ''}</span>
   </div>`
-  }).join('')
+    })
+    .join('')
 }
 
-function endpointCard (pathKey, method, op) {
+function endpointCard(pathKey, method, op) {
   const tag = (op.tags || [])[0] || 'meta'
   const auth = authOf(op, tag)
   const body = op.requestBody
   const bodySchema = body && body.content && body.content['application/json'] && body.content['application/json'].schema
-  const example = bodySchema && (bodySchema.example ?? (body.content['application/json'].example))
+  const example = bodySchema && (bodySchema.example ?? body.content['application/json'].example)
 
   let bodyHtml = ''
   if (bodySchema) {
@@ -188,7 +218,8 @@ function endpointCard (pathKey, method, op) {
     if (bodySchema.$ref) {
       bodyHtml = `<p class="ep-h">Request body${optional}</p><p class="p-desc">${schemaLink(bodySchema.$ref)}</p>`
     } else {
-      bodyHtml = `<p class="ep-h">Request body <span class="p-hint">(JSON)</span>${optional}</p>` +
+      bodyHtml =
+        `<p class="ep-h">Request body <span class="p-hint">(JSON)</span>${optional}</p>` +
         ptab([...propRows(bodySchema)])
     }
     if (example) {
@@ -200,16 +231,22 @@ function endpointCard (pathKey, method, op) {
     name: p.name + (p.in && p.in !== 'query' ? ` <span class="p-hint">(${esc(p.in)})</span>` : ''),
     required: !!p.required,
     type: fmtType(p.schema),
-    desc: p.description || ''
+    desc: p.description || '',
   }))
   // p.name may contain markup now; ptab escapes r.name — build rows pre-escaped instead:
   const paramTab = params.length
-    ? `<p class="ep-h">Query parameters</p><div class="ptab">` + params.map(r => `
+    ? `<p class="ep-h">Query parameters</p><div class="ptab">` +
+      params
+        .map(
+          r => `
   <div class="prow">
     <span class="p-name">${r.name}${r.required ? '<em class="p-req" title="required">required</em>' : ''}</span>
     <span class="p-type">${r.type}</span>
     <span class="p-desc">${r.desc ? mdCell(r.desc) : ''}</span>
-  </div>`).join('') + `\n</div>`
+  </div>`,
+        )
+        .join('') +
+      `\n</div>`
     : ''
 
   return `
@@ -237,7 +274,7 @@ ${bodyHtml}
 // A schema has no summary of its own, so the collapsed row borrows the first
 // sentence of its description — and the body then starts at the second, rather
 // than repeating what the reader just read on the way in.
-function schemaCard (name, s) {
+function schemaCard(name, s) {
   const desc = (s.description || '').trim()
   const flat = desc.replace(/\s*\n\s*/g, ' ')
   const m = flat.match(/^(.+?[.!?])(\s|$)/)
@@ -261,34 +298,49 @@ ${rows.length ? ptab(rows) : '<p class="p-desc">Free-form object.</p>'}
 /* ----------------------------------------------------------------- overview */
 
 // The spec's info.description carries "### Heading" sections — each becomes a card.
-const infoParts = spec.info.description.split(/^### /m).slice(1).map(chunk => {
-  const nl = chunk.indexOf('\n')
-  return { title: chunk.slice(0, nl).trim(), body: chunk.slice(nl + 1) }
-})
+const infoParts = spec.info.description
+  .split(/^### /m)
+  .slice(1)
+  .map(chunk => {
+    const nl = chunk.indexOf('\n')
+    return { title: chunk.slice(0, nl).trim(), body: chunk.slice(nl + 1) }
+  })
 
-const serversHtml = spec.servers.map(s => `
-  <div class="srv-row"><code>${esc(s.url)}</code><span>${mdCell(s.description || '')}</span></div>`).join('')
+const serversHtml = spec.servers
+  .map(
+    s => `
+  <div class="srv-row"><code>${esc(s.url)}</code><span>${mdCell(s.description || '')}</span></div>`,
+  )
+  .join('')
 
-const overviewCards = infoParts.map(p => `
+const overviewCards = infoParts
+  .map(
+    p => `
   <div class="ov">
     <h3>${esc(p.title)}</h3>
 ${mdBlock(p.body)}
-  </div>`).join('')
+  </div>`,
+  )
+  .join('')
 
 /* ---------------------------------------------------------------- assemble */
 
-const lockSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>'
+const lockSvg =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>'
 
 const ops = []
 for (const [p, methods] of Object.entries(spec.paths)) {
   for (const [m, op] of Object.entries(methods)) ops.push({ path: p, method: m, op })
 }
 
-const tagSections = Object.keys(TAGS).map(tag => {
-  const t = spec.tags.find(x => x.name === tag) || {}
-  const cards = ops.filter(o => (o.op.tags || [])[0] === tag)
-    .map(o => endpointCard(o.path, o.method, o.op)).join('\n')
-  return `
+const tagSections = Object.keys(TAGS)
+  .map(tag => {
+    const t = spec.tags.find(x => x.name === tag) || {}
+    const cards = ops
+      .filter(o => (o.op.tags || [])[0] === tag)
+      .map(o => endpointCard(o.path, o.method, o.op))
+      .join('\n')
+    return `
 <section class="api-sec" id="${tag}">
   <h2>${TAGS[tag].title}</h2>
   <p class="sub">${mdCell(t.description || '')}</p>
@@ -296,14 +348,16 @@ const tagSections = Object.keys(TAGS).map(tag => {
 ${cards}
   </div>
 </section>`
-}).join('\n')
+  })
+  .join('\n')
 
 const schemaCards = Object.entries(spec.components.schemas)
-  .map(([n, s]) => schemaCard(n, s)).join('\n')
+  .map(([n, s]) => schemaCard(n, s))
+  .join('\n')
 
-const railTags = Object.keys(TAGS).map(tag =>
-  `  <a class="side-link" href="#${tag}"><b>${TAGS[tag].title}</b><span>${TAGS[tag].side}</span></a>`
-).join('\n')
+const railTags = Object.keys(TAGS)
+  .map(tag => `  <a class="side-link" href="#${tag}"><b>${TAGS[tag].title}</b><span>${TAGS[tag].side}</span></a>`)
+  .join('\n')
 
 const css = `
 /* ------------------------------------------------------------- API reference
@@ -613,4 +667,6 @@ ${schemaCards}
 `
 
 fs.writeFileSync(outPath, html)
-console.log(`wrote ${path.relative(root, outPath)} — ${ops.length} endpoints, ${Object.keys(spec.components.schemas).length} schemas, ${(html.length / 1024).toFixed(1)} KB`)
+console.log(
+  `wrote ${path.relative(root, outPath)} — ${ops.length} endpoints, ${Object.keys(spec.components.schemas).length} schemas, ${(html.length / 1024).toFixed(1)} KB`,
+)

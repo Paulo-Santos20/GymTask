@@ -12,19 +12,34 @@ const mountStrip = ({ scrollWidth = 800, clientWidth = 300 } = {}) => {
   })
   let left = 0
   Object.defineProperty(row, 'scrollLeft', {
-    get() { return left },
-    set(v) { left = Math.max(0, Math.min(v, scrollWidth - clientWidth)) },
+    get() {
+      return left
+    },
+    set(v) {
+      left = Math.max(0, Math.min(v, scrollWidth - clientWidth))
+    },
     configurable: true,
   })
   return row
 }
 
-const pointer = (type, opts = {}) => new PointerEvent(type, {
-  bubbles: true, cancelable: true, pointerId: 1, pointerType: 'mouse', button: 0, ...opts,
-})
+const pointer = (type, opts = {}) =>
+  new PointerEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    pointerId: 1,
+    pointerType: 'mouse',
+    button: 0,
+    ...opts,
+  })
 
 let stop = () => {}
-afterEach(() => { stop(); stop = () => {}; document.body.className = ''; document.body.innerHTML = '' })
+afterEach(() => {
+  stop()
+  stop = () => {}
+  document.body.className = ''
+  document.body.innerHTML = ''
+})
 
 describe('installChipDrag', () => {
   const drag = (chip, ...xs) => {
@@ -37,11 +52,11 @@ describe('installChipDrag', () => {
     stop = installChipDrag(document)
     const chip = document.querySelector('.chip')
 
-    drag(chip, 200, 197)                       // 3px — still a click, nothing moves
+    drag(chip, 200, 197) // 3px — still a click, nothing moves
     expect(row.scrollLeft).toBe(0)
     expect(document.body.classList.contains('chips-dragging')).toBe(false)
 
-    window.dispatchEvent(pointer('pointermove', { clientX: 140 }))   // now 60px left
+    window.dispatchEvent(pointer('pointermove', { clientX: 140 })) // now 60px left
     expect(row.scrollLeft).toBe(60)
     expect(document.body.classList.contains('chips-dragging')).toBe(true)
 

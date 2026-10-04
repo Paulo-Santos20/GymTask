@@ -14,17 +14,33 @@ import { todayISO, weekKey, MONDAY } from './format.js'
 // The muscles a map can shade, in head-to-toe order — also the order of any list
 // built from them, so "what am I neglecting" reads top-down like a body.
 export const MUSCLES = [
-  'trapezius', 'deltoids', 'chest', 'upper-back', 'serratus',
-  'biceps', 'triceps', 'forearm',
-  'abs', 'obliques', 'lower-back',
-  'gluteal', 'quadriceps', 'hamstring', 'adductors', 'hip-flexors',
-  'calves', 'tibialis',
+  'trapezius',
+  'deltoids',
+  'chest',
+  'upper-back',
+  'serratus',
+  'biceps',
+  'triceps',
+  'forearm',
+  'abs',
+  'obliques',
+  'lower-back',
+  'gluteal',
+  'quadriceps',
+  'hamstring',
+  'adductors',
+  'hip-flexors',
+  'calves',
+  'tibialis',
 ]
 
 // A picked list in the map's own order rather than the order the chips were tapped in — two
 // people building the same exercise get the same exercise. Unknown names keep their place at the end.
 export const inMuscleOrder = list => {
-  const at = m => { const i = MUSCLES.indexOf(m); return i < 0 ? MUSCLES.length : i }
+  const at = m => {
+    const i = MUSCLES.indexOf(m)
+    return i < 0 ? MUSCLES.length : i
+  }
   return [...(list || [])].sort((a, b) => at(a) - at(b))
 }
 
@@ -35,31 +51,80 @@ export const INERT = ['head', 'hair', 'neck', 'hands', 'feet', 'knees', 'ankles'
 // the cardio pseudo-muscle only under the dataset's own lowercase spelling, and every place
 // that shows it capitalises with CSS — a capitalised key here rendered English everywhere.
 export const MUSCLE_NAME = {
-  trapezius: 'Traps', deltoids: 'Shoulders', chest: 'Chest', 'upper-back': 'Upper back',
-  serratus: 'Serratus', biceps: 'Biceps', triceps: 'Triceps', forearm: 'Forearms',
-  abs: 'Abs', obliques: 'Obliques', 'lower-back': 'Lower back', gluteal: 'Glutes',
-  quadriceps: 'Quads', hamstring: 'Hamstrings', adductors: 'Adductors',
-  'hip-flexors': 'Hip flexors', calves: 'Calves', tibialis: 'Shins', 'cardiovascular system': 'cardiovascular system',
+  trapezius: 'Traps',
+  deltoids: 'Shoulders',
+  chest: 'Chest',
+  'upper-back': 'Upper back',
+  serratus: 'Serratus',
+  biceps: 'Biceps',
+  triceps: 'Triceps',
+  forearm: 'Forearms',
+  abs: 'Abs',
+  obliques: 'Obliques',
+  'lower-back': 'Lower back',
+  gluteal: 'Glutes',
+  quadriceps: 'Quads',
+  hamstring: 'Hamstrings',
+  adductors: 'Adductors',
+  'hip-flexors': 'Hip flexors',
+  calves: 'Calves',
+  tibialis: 'Shins',
+  'cardiovascular system': 'cardiovascular system',
 }
 
 // Every spelling that occurs in the dataset's `tg` and `sm` fields. null = not drawable.
 const ALIAS = {
   // primaries
-  abs: 'abs', pectorals: 'chest', biceps: 'biceps', glutes: 'gluteal', delts: 'deltoids',
-  triceps: 'triceps', 'upper back': 'upper-back', lats: 'upper-back', calves: 'calves',
-  quads: 'quadriceps', forearms: 'forearm', hamstrings: 'hamstring', spine: 'lower-back',
-  traps: 'trapezius', adductors: 'adductors', 'serratus anterior': 'serratus',
-  abductors: 'gluteal', 'levator scapulae': 'trapezius', 'cardiovascular system': 'cardiovascular system',
+  abs: 'abs',
+  pectorals: 'chest',
+  biceps: 'biceps',
+  glutes: 'gluteal',
+  delts: 'deltoids',
+  triceps: 'triceps',
+  'upper back': 'upper-back',
+  lats: 'upper-back',
+  calves: 'calves',
+  quads: 'quadriceps',
+  forearms: 'forearm',
+  hamstrings: 'hamstring',
+  spine: 'lower-back',
+  traps: 'trapezius',
+  adductors: 'adductors',
+  'serratus anterior': 'serratus',
+  abductors: 'gluteal',
+  'levator scapulae': 'trapezius',
+  'cardiovascular system': 'cardiovascular system',
   // secondaries
-  shoulders: 'deltoids', deltoids: 'deltoids', 'rear deltoids': 'deltoids',
-  'rotator cuff': 'deltoids', quadriceps: 'quadriceps', core: 'abs', abdominals: 'abs',
-  'lower abs': 'abs', chest: 'chest', 'upper chest': 'chest', 'hip flexors': 'hip-flexors',
-  obliques: 'obliques', 'lower back': 'lower-back', rhomboids: 'upper-back',
-  trapezius: 'trapezius', back: 'upper-back', 'latissimus dorsi': 'upper-back',
-  brachialis: 'biceps', soleus: 'calves', shins: 'tibialis', wrists: 'forearm',
-  'wrist flexors': 'forearm', 'wrist extensors': 'forearm', 'grip muscles': 'forearm',
-  groin: 'adductors', 'inner thighs': 'adductors',
-  ankles: null, feet: null, hands: null, 'ankle stabilizers': null,
+  shoulders: 'deltoids',
+  deltoids: 'deltoids',
+  'rear deltoids': 'deltoids',
+  'rotator cuff': 'deltoids',
+  quadriceps: 'quadriceps',
+  core: 'abs',
+  abdominals: 'abs',
+  'lower abs': 'abs',
+  chest: 'chest',
+  'upper chest': 'chest',
+  'hip flexors': 'hip-flexors',
+  obliques: 'obliques',
+  'lower back': 'lower-back',
+  rhomboids: 'upper-back',
+  trapezius: 'trapezius',
+  back: 'upper-back',
+  'latissimus dorsi': 'upper-back',
+  brachialis: 'biceps',
+  soleus: 'calves',
+  shins: 'tibialis',
+  wrists: 'forearm',
+  'wrist flexors': 'forearm',
+  'wrist extensors': 'forearm',
+  'grip muscles': 'forearm',
+  groin: 'adductors',
+  'inner thighs': 'adductors',
+  ankles: null,
+  feet: null,
+  hands: null,
+  'ankle stabilizers': null,
   sternocleidomastoid: null,
 }
 
@@ -79,9 +144,9 @@ const BY_BODYPART = {
   cardio: {},
 }
 
-const SECONDARY = 0.4   // a supporting muscle counts this much against a primary
+const SECONDARY = 0.4 // a supporting muscle counts this much against a primary
 
-const arrayOf = value => Array.isArray(value) ? value : value == null || value === '' ? [] : [value]
+const arrayOf = value => (Array.isArray(value) ? value : value == null || value === '' ? [] : [value])
 
 function firstPresent(object, keys) {
   if (!object || typeof object !== 'object') return null
@@ -97,11 +162,20 @@ function firstPresent(object, keys) {
 function metadataOf(ex) {
   if (!ex || typeof ex !== 'object') return ex
   const DIRECT_KEYS = [
-    'muscleGroups', 'muscles', 'targetMuscles', 'muscleWeights',
-    'primaries', 'primaryMuscles', 'primary', 'secondaries', 'secondaryMuscles', 'secondary',
+    'muscleGroups',
+    'muscles',
+    'targetMuscles',
+    'muscleWeights',
+    'primaries',
+    'primaryMuscles',
+    'primary',
+    'secondaries',
+    'secondaryMuscles',
+    'secondary',
   ]
-  const hasDirect = DIRECT_KEYS.some(key => Object.prototype.hasOwnProperty.call(ex, key))
-    || [ex.tg, ex.mg, ...arrayOf(ex.sm)].some(value => value != null && value !== '')
+  const hasDirect =
+    DIRECT_KEYS.some(key => Object.prototype.hasOwnProperty.call(ex, key)) ||
+    [ex.tg, ex.mg, ...arrayOf(ex.sm)].some(value => value != null && value !== '')
   return !hasDirect && ex.muscleSnapshot && typeof ex.muscleSnapshot === 'object' && !Array.isArray(ex.muscleSnapshot)
     ? ex.muscleSnapshot
     : ex
@@ -111,9 +185,11 @@ function explicitPartsOf(ex) {
   if (!ex || typeof ex !== 'object') return null
   const primary = firstPresent(ex, ['primaries', 'primaryMuscles', 'primary'])
   const secondary = firstPresent(ex, ['secondaries', 'secondaryMuscles', 'secondary'])
-  if (primary !== null || secondary !== null) return {
-    primary: arrayOf(primary), secondary: arrayOf(secondary)
-  }
+  if (primary !== null || secondary !== null)
+    return {
+      primary: arrayOf(primary),
+      secondary: arrayOf(secondary),
+    }
   return null
 }
 
@@ -146,7 +222,9 @@ export function hasExplicitMuscleMetadata(entry) {
 }
 
 function canonicalMuscle(value) {
-  const name = String(value || '').toLowerCase().trim()
+  const name = String(value || '')
+    .toLowerCase()
+    .trim()
   if (MUSCLES.includes(name)) return name
   return ALIAS[name] || null
 }
@@ -166,9 +244,7 @@ export function muscleGroupsOf(entry) {
   const parts = explicitPartsOf(ex)
   const explicit = explicitGroupsOf(ex)
   const useParts = parts && [...parts.primary, ...parts.secondary].some(value => canonicalMuscle(value))
-  const source = useParts
-    ? [...parts.primary, ...parts.secondary]
-    : explicit || [ex?.tg, ex?.mg, ...arrayOf(smOf(ex))]
+  const source = useParts ? [...parts.primary, ...parts.secondary] : explicit || [ex?.tg, ex?.mg, ...arrayOf(smOf(ex))]
   const out = canonicalUnique(source)
   if (!out.length && !useParts) {
     canonicalUnique(Object.keys(BY_BODYPART[ex?.bp] || {})).forEach(slug => out.push(slug))
@@ -252,7 +328,7 @@ export function loadOf(items) {
     const { id, sets } = item || {}
     if (!sets) return
     const historical = item.ex || item.exercise
-    const source = historical?.muscleWeights ? historical : (EXIDX[id] || historical || item)
+    const source = historical?.muscleWeights ? historical : EXIDX[id] || historical || item
     const m = musclesOf(source)
     for (const slug in m) load[slug] = (load[slug] || 0) + m[slug] * sets
   })
@@ -266,8 +342,15 @@ export function loadOf(items) {
  * near failure.
  */
 export const loadOfWorkouts = (workouts, pick) =>
-  loadOf((workouts || []).flatMap(w =>
-    (w.entries || []).map(e => ({ id: e.id, ex: e.exercise || e, sets: (e.sets || []).filter(s => s.done && !isWarmupRow(s) && (!pick || pick(s))).length }))))
+  loadOf(
+    (workouts || []).flatMap(w =>
+      (w.entries || []).map(e => ({
+        id: e.id,
+        ex: e.exercise || e,
+        sets: (e.sets || []).filter(s => s.done && !isWarmupRow(s) && (!pick || pick(s))).length,
+      })),
+    ),
+  )
 
 /**
  * Workouts in one existing Muscle balance range, with time injected for deterministic tests.
@@ -276,20 +359,27 @@ export const loadOfWorkouts = (workouts, pick) =>
  * first weekday — the caller passes it since this takes workouts rather than the whole state.
  */
 export function muscleBalanceWindow(workouts, win, now = Date.now(), today = todayISO(), ws = MONDAY) {
-  return (workouts || []).filter(workout => win === 0
-    ? true
-    : win === 7
-      ? weekKey(workout.d, ws) === weekKey(today, ws)
-      : (workout.start || new Date(workout.d).getTime()) > now - win * 86400000)
+  return (workouts || []).filter(workout =>
+    win === 0
+      ? true
+      : win === 7
+        ? weekKey(workout.d, ws) === weekKey(today, ws)
+        : (workout.start || new Date(workout.d).getTime()) > now - win * 86400000,
+  )
 }
 
 /** Load a routine *would* produce, from its planned set counts. */
-export const loadOfRoutine = routine =>
-  loadOf((routine?.ex || []).map(c => ({ id: c.id, ex: c, sets: c.sets || 1 })))
+export const loadOfRoutine = routine => loadOf((routine?.ex || []).map(c => ({ id: c.id, ex: c, sets: c.sets || 1 })))
 
 /** Load for a workout still in progress — the sets ticked so far. */
 export const loadOfActive = active =>
-  loadOf((active?.entries || []).map(e => ({ id: e.id, ex: e.exercise || e, sets: (e.sets || []).filter(s => s.done && !isWarmupRow(s)).length })))
+  loadOf(
+    (active?.entries || []).map(e => ({
+      id: e.id,
+      ex: e.exercise || e,
+      sets: (e.sets || []).filter(s => s.done && !isWarmupRow(s)).length,
+    })),
+  )
 
 /**
  * Shade buckets 0–4 per muscle.
@@ -321,15 +411,16 @@ export function levelsOf(load, thresholds) {
   const lv = {}
   MUSCLES.forEach(m => {
     const v = load[m] || 0
-    lv[m] = !v ? 0 : max <= 0 ? 0 : Math.max(1, Math.min(4, Math.ceil(v / max * 4)))
+    lv[m] = !v ? 0 : max <= 0 ? 0 : Math.max(1, Math.min(4, Math.ceil((v / max) * 4)))
   })
   return lv
 }
 
 /** Muscles sorted hardest-worked first; untrained ones last, in body order. */
 export function rankOf(load) {
-  const worked = MUSCLES.filter(m => (load[m] || 0) > 0)
-    .sort((a, b) => load[b] - load[a] || MUSCLES.indexOf(a) - MUSCLES.indexOf(b))
+  const worked = MUSCLES.filter(m => (load[m] || 0) > 0).sort(
+    (a, b) => load[b] - load[a] || MUSCLES.indexOf(a) - MUSCLES.indexOf(b),
+  )
   const missed = MUSCLES.filter(m => !(load[m] > 0))
   return { worked, missed }
 }

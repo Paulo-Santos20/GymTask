@@ -11,7 +11,7 @@ export function convertWeight(value, from, to) {
   if (from === to || value == null || value === '' || !Number.isFinite(Number(value))) return value
   const v = Number(value)
   if (to === 'lb') return Math.round(v * LB_PER_KG * 2) / 2
-  return Math.round(v / LB_PER_KG * 4) / 4
+  return Math.round((v / LB_PER_KG) * 4) / 4
 }
 
 // Body weight is not loaded on a bar: the weigh-in sheet steps and stores it at 0.1, so plate
@@ -26,9 +26,14 @@ export function convertBodyWeight(value, from, to) {
 const convSet = (set, from, to) => {
   if (!set || typeof set !== 'object') return set
   const out = { ...set }
-  if (isSideSet(set)) return syncSideAggregate({ ...set, sides: {
-    L: convSet(set.sides.L, from, to), R: convSet(set.sides.R, from, to),
-  } })
+  if (isSideSet(set))
+    return syncSideAggregate({
+      ...set,
+      sides: {
+        L: convSet(set.sides.L, from, to),
+        R: convSet(set.sides.R, from, to),
+      },
+    })
   if (out.w != null) out.w = convertWeight(out.w, from, to)
   if (Array.isArray(out.drops)) out.drops = out.drops.map(d => ({ ...d, w: convertWeight(d.w, from, to) }))
   return out
@@ -39,7 +44,8 @@ const convTarget = (cfg, from, to) => {
   if (out.weight != null) out.weight = convertWeight(out.weight, from, to)
   // A per-exercise increment is a load too — 2.5 kg is 5 lb, not 2.5 lb.
   if (out.inc > 0 && (out.mode == null || out.mode === 'reps')) out.inc = convertWeight(out.inc, from, to)
-  if (Array.isArray(out.warmup)) out.warmup = out.warmup.map(w => (w && w.weight != null ? { ...w, weight: convertWeight(w.weight, from, to) } : w))
+  if (Array.isArray(out.warmup))
+    out.warmup = out.warmup.map(w => (w && w.weight != null ? { ...w, weight: convertWeight(w.weight, from, to) } : w))
   return out
 }
 const convEntry = (e, from, to) => {
@@ -71,9 +77,13 @@ export function convertStateUnit(S, to) {
   const out = { ...S, unit: to }
   if (Array.isArray(S.bodyweight)) out.bodyweight = S.bodyweight.map(b => ({ ...b, w: bw(b.w) }))
   if (S.targetW != null) out.targetW = bw(S.targetW)
-  if (S.exWeights) out.exWeights = Object.fromEntries(Object.entries(S.exWeights).map(([k, v]) => [k, v && typeof v === 'object' ? { ...v, w: c(v.w) } : c(v)]))
+  if (S.exWeights)
+    out.exWeights = Object.fromEntries(
+      Object.entries(S.exWeights).map(([k, v]) => [k, v && typeof v === 'object' ? { ...v, w: c(v.w) } : c(v)]),
+    )
   if (S.barWeights) out.barWeights = Object.fromEntries(Object.entries(S.barWeights).map(([k, v]) => [k, c(v)]))
-  if (Array.isArray(S.routines)) out.routines = S.routines.map(r => ({ ...r, ex: (r.ex || []).map(cfg => convTarget(cfg, from, to)) }))
+  if (Array.isArray(S.routines))
+    out.routines = S.routines.map(r => ({ ...r, ex: (r.ex || []).map(cfg => convTarget(cfg, from, to)) }))
   if (Array.isArray(S.workouts)) out.workouts = S.workouts.map(convSession)
   if (S.active) out.active = convSession(S.active)
   return out

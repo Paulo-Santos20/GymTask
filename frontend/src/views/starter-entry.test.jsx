@@ -12,9 +12,15 @@ import Plan from './Plan.jsx'
 
 vi.mock('react-router-dom', () => ({ useNavigate: () => () => {} }))
 vi.mock('../sheets.jsx', () => ({
-  starterPlanSheet: vi.fn(), bwSheet: vi.fn(), goalSheet: vi.fn(), dayOverrideSheet: vi.fn(),
-  calendarSheet: vi.fn(), startFlow: vi.fn(), bwDeltaColor: () => '',
-  dayAssignSheet: vi.fn(), planToolsSheet: vi.fn(),
+  starterPlanSheet: vi.fn(),
+  bwSheet: vi.fn(),
+  goalSheet: vi.fn(),
+  dayOverrideSheet: vi.fn(),
+  calendarSheet: vi.fn(),
+  startFlow: vi.fn(),
+  bwDeltaColor: () => '',
+  dayAssignSheet: vi.fn(),
+  planToolsSheet: vi.fn(),
 }))
 
 let host, root
@@ -33,13 +39,18 @@ afterEach(() => {
 
 const starterButton = () => [...host.querySelectorAll('button')].find(b => b.textContent === 'Load starter plan')
 
-describe.each([['Home', Home], ['Plan', Plan]])('%s empty state', (_name, View) => {
+describe.each([
+  ['Home', Home],
+  ['Plan', Plan],
+])('%s empty state', (_name, View) => {
   it('opens the starter plan chooser instead of loading one plan blind', () => {
     act(() => root.render(<View />))
     const button = starterButton()
     expect(button).toBeTruthy()
 
-    act(() => { button.click() })
+    act(() => {
+      button.click()
+    })
     expect(starterPlanSheet).toHaveBeenCalledTimes(1)
   })
 

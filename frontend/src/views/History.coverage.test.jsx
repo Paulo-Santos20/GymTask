@@ -25,7 +25,11 @@ vi.mock('../store/useStore.js', () => {
   return { useStore }
 })
 vi.mock('../sheets.jsx', () => ({
-  WorkoutRow: ({ w, onClick }) => <button className="hrow" onClick={onClick}>{w.name}</button>,
+  WorkoutRow: ({ w, onClick }) => (
+    <button className="hrow" onClick={onClick}>
+      {w.name}
+    </button>
+  ),
   workoutDetailSheet: mocks.detail,
   logPastWorkoutSheet: mocks.logPast,
 }))
@@ -41,8 +45,7 @@ function render() {
 }
 
 const rowNames = host => [...host.querySelectorAll('.hrow')].map(el => el.textContent)
-const byText = (host, text) =>
-  [...host.querySelectorAll('button')].find(b => b.textContent.trim() === text)
+const byText = (host, text) => [...host.querySelectorAll('button')].find(b => b.textContent.trim() === text)
 
 beforeEach(() => {
   mocks.nav.mockReset()
@@ -51,7 +54,11 @@ beforeEach(() => {
   mocks.workouts = []
   document.body.innerHTML = ''
 })
-afterEach(() => { act(() => { mounted.splice(0).forEach(root => root.unmount()) }) })
+afterEach(() => {
+  act(() => {
+    mounted.splice(0).forEach(root => root.unmount())
+  })
+})
 
 describe('History view', () => {
   it("lists the store's workouts newest-first with the count in the header", () => {

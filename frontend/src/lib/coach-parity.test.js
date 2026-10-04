@@ -34,7 +34,7 @@ const CONFIGS = [
   { side: false },
   { side: true, bodyweight: true, mode: 'reps' },
   { reps: 8, sets: 3 },
-  { repsMax: 20, reps: 12 }
+  { repsMax: 20, reps: 12 },
 ]
 
 describe('server/client reading rules agree', () => {

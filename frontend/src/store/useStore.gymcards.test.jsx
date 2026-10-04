@@ -78,7 +78,9 @@ describe('lastGymCardId', () => {
   })
 
   it('persists to localStorage like any other field', () => {
-    useStore.getState().update(s => { s.lastGymCardId = 'c9' }, false)
+    useStore.getState().update(s => {
+      s.lastGymCardId = 'c9'
+    }, false)
     const saved = JSON.parse(localStorage.getItem('gym_state_v1'))
     expect(saved.lastGymCardId).toBe('c9')
   })
@@ -138,7 +140,7 @@ describe('editing a card in place', () => {
     }, false)
 
     const cards = useStore.getState().S.gymCards
-    expect(cards.map(c => c.id)).toEqual(['a', 'b'])          // order + count unchanged
+    expect(cards.map(c => c.id)).toEqual(['a', 'b']) // order + count unchanged
     expect(cards[0]).toMatchObject({ label: 'A', value: '1' }) // sibling untouched
     expect(cards[1]).toMatchObject({ id: 'b', label: 'B renamed', value: 'rescanned', fmt: 'qrcode' })
   })

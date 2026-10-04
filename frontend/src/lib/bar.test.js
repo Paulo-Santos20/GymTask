@@ -1,5 +1,14 @@
 import { describe, expect, test } from 'vitest'
-import { BAR_EQ, DEFAULT_BAR_KG, DEFAULT_BAR_LB, usesBar, defaultBarWeight, barWeightFor, hasBarOverride, plateSplit } from './bar.js'
+import {
+  BAR_EQ,
+  DEFAULT_BAR_KG,
+  DEFAULT_BAR_LB,
+  usesBar,
+  defaultBarWeight,
+  barWeightFor,
+  hasBarOverride,
+  plateSplit,
+} from './bar.js'
 import { EXDB } from './exercises-data.js'
 
 const idOf = eq => EXDB.find(e => e.eq === eq).id
@@ -51,7 +60,7 @@ describe('barWeightFor', () => {
     const S = { unit: 'kg', barWeights: { [ez]: 7.5 } }
     expect(barWeightFor(S, ez)).toBe(7.5)
     expect(hasBarOverride(S, ez)).toBe(true)
-    expect(barWeightFor(S, barbell)).toBe(20)   // other exercises keep their default
+    expect(barWeightFor(S, barbell)).toBe(20) // other exercises keep their default
     expect(hasBarOverride(S, barbell)).toBe(false)
   })
 
@@ -86,8 +95,8 @@ describe('plateSplit', () => {
   })
 
   test('is null when there is nothing sensible to show', () => {
-    expect(plateSplit(20, 20)).toBe(null)    // bar only
-    expect(plateSplit(15, 20)).toBe(null)    // below the bar
+    expect(plateSplit(20, 20)).toBe(null) // bar only
+    expect(plateSplit(15, 20)).toBe(null) // below the bar
     expect(plateSplit(0, 20)).toBe(null)
     // 100 with no bar is 50 a side, not "nothing to show" (issue #138) — see bar-nobar.test.js
     expect(plateSplit(null, 20)).toBe(null)

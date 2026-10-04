@@ -11,13 +11,22 @@ vi.mock('../lib/api.js', () => ({ api: vi.fn() }))
 import { api } from '../lib/api.js'
 import { useStore } from './useStore.js'
 
-beforeEach(() => { api.mockReset(); useStore.setState({ config: null }) })
-afterEach(() => { useStore.setState({ config: null }) })
+beforeEach(() => {
+  api.mockReset()
+  useStore.setState({ config: null })
+})
+afterEach(() => {
+  useStore.setState({ config: null })
+})
 
 describe('server config', () => {
   it('loadConfig fetches once and then answers from the cache', async () => {
     api.mockResolvedValue({ invite_only: true, allow_guest: false, coach: { enabled: true } })
-    expect(await useStore.getState().loadConfig()).toEqual({ invite_only: true, allow_guest: false, coach: { enabled: true } })
+    expect(await useStore.getState().loadConfig()).toEqual({
+      invite_only: true,
+      allow_guest: false,
+      coach: { enabled: true },
+    })
     expect(await useStore.getState().loadConfig()).toMatchObject({ coach: { enabled: true } })
     expect(api).toHaveBeenCalledTimes(1)
     expect(api).toHaveBeenCalledWith('/api/config')
@@ -28,7 +37,11 @@ describe('server config', () => {
     await useStore.getState().loadConfig()
     expect(useStore.getState().config.coach).toBeUndefined()
 
-    api.mockResolvedValueOnce({ invite_only: true, allow_guest: false, coach: { enabled: true, provider: 'anthropic' } })
+    api.mockResolvedValueOnce({
+      invite_only: true,
+      allow_guest: false,
+      coach: { enabled: true, provider: 'anthropic' },
+    })
     await useStore.getState().refreshConfig()
     expect(useStore.getState().config.coach.enabled).toBe(true)
     expect(api).toHaveBeenCalledTimes(2)

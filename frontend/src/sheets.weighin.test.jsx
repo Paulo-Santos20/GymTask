@@ -18,12 +18,16 @@ describe('the weigh-in before a workout is a setting', () => {
   it('on (the default): Start opens the weigh-in and the session waits for it', () => {
     act(() => startFlow([]))
     expect(useUI.getState().sheets).toHaveLength(1)
-    expect(useUI.getState().sheets[0].locked).toBe(true)   // the required weigh-in, not a plain sheet
+    expect(useUI.getState().sheets[0].locked).toBe(true) // the required weigh-in, not a plain sheet
     expect(useStore.getState().S.active).toBeNull()
   })
 
   it('a profile written before the setting existed still asks', () => {
-    useStore.setState(s => { const S = { ...s.S }; delete S.weighIn; return { S } })
+    useStore.setState(s => {
+      const S = { ...s.S }
+      delete S.weighIn
+      return { S }
+    })
     act(() => startFlow([]))
     expect(useUI.getState().sheets).toHaveLength(1)
     expect(useUI.getState().sheets[0].locked).toBe(true)

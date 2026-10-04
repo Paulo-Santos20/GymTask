@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 class FakeCtx {
   constructor() {
-    this.state = 'suspended'      // what every browser hands back outside a user gesture
+    this.state = 'suspended' // what every browser hands back outside a user gesture
     this.currentTime = 0
     this.destination = {}
     this.tones = []
@@ -13,12 +13,30 @@ class FakeCtx {
     this.suspends = 0
     FakeCtx.instances.push(this)
   }
-  resume() { this.resumes++; this.state = 'running'; return Promise.resolve() }
-  suspend() { this.suspends++; this.state = 'suspended'; return Promise.resolve() }
-  createGain() { return { connect() {}, gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} } } }
+  resume() {
+    this.resumes++
+    this.state = 'running'
+    return Promise.resolve()
+  }
+  suspend() {
+    this.suspends++
+    this.state = 'suspended'
+    return Promise.resolve()
+  }
+  createGain() {
+    return { connect() {}, gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} } }
+  }
   createOscillator() {
     const ctx = this
-    const o = { frequency: { value: 0 }, type: '', connect() {}, start(at) { ctx.tones.push({ freq: o.frequency.value, at }) }, stop() {} }
+    const o = {
+      frequency: { value: 0 },
+      type: '',
+      connect() {},
+      start(at) {
+        ctx.tones.push({ freq: o.frequency.value, at })
+      },
+      stop() {},
+    }
     return o
   }
 }
@@ -27,8 +45,10 @@ FakeCtx.instances = []
 let sound
 let session
 const ctx = () => FakeCtx.instances[0]
-const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'
-const MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15'
+const IPHONE =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'
+const MAC =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15'
 const setDevice = (userAgent, maxTouchPoints = 0) => {
   Object.defineProperty(navigator, 'userAgent', { value: userAgent, configurable: true })
   Object.defineProperty(navigator, 'maxTouchPoints', { value: maxTouchPoints, configurable: true })
@@ -44,7 +64,9 @@ beforeEach(async () => {
   vi.resetModules()
   sound = await import('./sound.js')
 })
-afterEach(() => { vi.useRealTimers() })
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('sounds off', () => {
   it('creates no audio context and leaves the audio session alone', () => {
@@ -61,12 +83,12 @@ describe('iOS: silent switch and interruptions (#152)', () => {
     expect(ctx().resumes).toBe(1)
     expect(ctx().state).toBe('running')
     expect(ctx().tones).toEqual([{ freq: 880, at: 0 }])
-    expect(session.type).toBe('auto')         // the silent-switch override is the setting's job
+    expect(session.type).toBe('auto') // the silent-switch override is the setting's job
   })
 
   it('resumes a context that a lock or app switch left suspended before scheduling the tone', () => {
     sound.beep(true, 880, 0.15)
-    ctx().state = 'interrupted'               // what iOS does on screen lock / app switch
+    ctx().state = 'interrupted' // what iOS does on screen lock / app switch
     sound.beep(true, 660, 0.1)
     expect(ctx().resumes).toBe(2)
     expect(ctx().state).toBe('running')
@@ -98,7 +120,8 @@ describe('iOS: silent switch and interruptions (#152)', () => {
 
 describe('the context sleeps between beeps', () => {
   it('suspends about a second after the last tone of a burst has ended', () => {
-    sound.beep(true, 880, 0.25, 0); sound.beep(true, 1320, 0.5, 0.35)   // last tone ends at 0.35 + 0.5 + 0.05 = 0.9s
+    sound.beep(true, 880, 0.25, 0)
+    sound.beep(true, 1320, 0.5, 0.35) // last tone ends at 0.35 + 0.5 + 0.05 = 0.9s
     vi.advanceTimersByTime(1500)
     expect(ctx().state).toBe('running')
     vi.advanceTimersByTime(500)
@@ -107,13 +130,14 @@ describe('the context sleeps between beeps', () => {
   })
 
   it('a later tone pushes the sleep out instead of cutting itself short', () => {
-    sound.beep(true, 660, 0.1)                // 3
+    sound.beep(true, 660, 0.1) // 3
     vi.advanceTimersByTime(1000)
-    sound.beep(true, 660, 0.1)                // 2
+    sound.beep(true, 660, 0.1) // 2
     vi.advanceTimersByTime(1000)
-    sound.beep(true, 660, 0.1)                // 1
+    sound.beep(true, 660, 0.1) // 1
     vi.advanceTimersByTime(1000)
-    sound.beep(true, 880, 0.15, 0); sound.beep(true, 880, 0.15, 0.25)   // 0: last tone ends at 0.25 + 0.15 + 0.05 = 0.45s
+    sound.beep(true, 880, 0.15, 0)
+    sound.beep(true, 880, 0.15, 0.25) // 0: last tone ends at 0.25 + 0.15 + 0.05 = 0.45s
     expect(ctx().suspends).toBe(0)
     vi.advanceTimersByTime(1400)
     expect(ctx().state).toBe('running')
@@ -122,9 +146,9 @@ describe('the context sleeps between beeps', () => {
     expect(ctx().suspends).toBe(1)
   })
 
-  it('a short tone scheduled during a longer one does not shorten the longer one\'s sleep', () => {
-    sound.beep(true, 880, 0.5)                // ends 0.55s → sleep at 1.55s
-    sound.beep(true, 660, 0.1)                // ends 0.15s → must not pull the sleep to 1.15s
+  it("a short tone scheduled during a longer one does not shorten the longer one's sleep", () => {
+    sound.beep(true, 880, 0.5) // ends 0.55s → sleep at 1.55s
+    sound.beep(true, 660, 0.1) // ends 0.15s → must not pull the sleep to 1.15s
     vi.advanceTimersByTime(1200)
     expect(ctx().state).toBe('running')
     vi.advanceTimersByTime(400)
@@ -192,7 +216,11 @@ describe('play on silent (Settings switch, WebKit only)', () => {
   })
 
   it('survives a browser that rejects the type', () => {
-    Object.defineProperty(navigator, 'audioSession', { value: Object.freeze({ type: 'auto' }), configurable: true, writable: true })
+    Object.defineProperty(navigator, 'audioSession', {
+      value: Object.freeze({ type: 'auto' }),
+      configurable: true,
+      writable: true,
+    })
     expect(() => sound.setPlayOnSilent(true)).not.toThrow()
   })
 })

@@ -41,7 +41,9 @@ function dataDir(name) {
   return fs.mkdirSync(path.join(TMP, name), { recursive: true })
 }
 
-afterEach(() => { delete process.env.OPENGYM_UID })
+afterEach(() => {
+  delete process.env.OPENGYM_UID
+})
 
 afterAll(() => {
   closeWatcher()
@@ -49,7 +51,11 @@ afterAll(() => {
   else process.env.OPENGYM_DATA = ORIG_DATA
   if (ORIG_UID === undefined) delete process.env.OPENGYM_UID
   else process.env.OPENGYM_UID = ORIG_UID
-  try { fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 5 }) } catch { /* best-effort */ }
+  try {
+    fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 5 })
+  } catch {
+    /* best-effort */
+  }
 })
 
 describe('state: data directory guard', () => {
@@ -66,17 +72,19 @@ describe('state: data directory guard', () => {
 describe('state: uid resolution', () => {
   test('a single state-<uid>.json picks the profile; stored fields win, the rest take defaults', async () => {
     const dir = dataDir('single')
-    fs.writeFileSync(path.join(dir, 'state-alice.json'),
-      JSON.stringify({ unit: 'lb', targetW: 80, routines: [{ id: 'r1', name: 'Push Day', ex: [] }] }))
+    fs.writeFileSync(
+      path.join(dir, 'state-alice.json'),
+      JSON.stringify({ unit: 'lb', targetW: 80, routines: [{ id: 'r1', name: 'Push Day', ex: [] }] }),
+    )
     const s = await load({ dir })
     s.init()
     expect(s.dataDir()).toBe(dir)
 
     const st = s.getState()
-    expect(st.unit).toBe('lb')            // the file's value beats the default
+    expect(st.unit).toBe('lb') // the file's value beats the default
     expect(st.targetW).toBe(80)
     expect(st.routines).toHaveLength(1)
-    expect(st.restSec).toBe(90)           // defaultsShape merged in — absent from the file
+    expect(st.restSec).toBe(90) // defaultsShape merged in — absent from the file
     expect(st.reminder).toEqual({ on: false, time: '08:00', tz: null })
 
     // No db.json → getUser falls back to a usable identity rather than null/throwing.
@@ -85,10 +93,15 @@ describe('state: uid resolution', () => {
 
   test('with no state file, db.json alone resolves a fresh account to a null state', async () => {
     const dir = dataDir('fresh')
-    fs.writeFileSync(path.join(dir, 'db.json'), JSON.stringify({
-      users: [{ id: 'u1', name: 'Bruna', created: '2026-07-26T00:00:00.000Z' }],
-      creds: [], subs: [], invites: []
-    }))
+    fs.writeFileSync(
+      path.join(dir, 'db.json'),
+      JSON.stringify({
+        users: [{ id: 'u1', name: 'Bruna', created: '2026-07-26T00:00:00.000Z' }],
+        creds: [],
+        subs: [],
+        invites: [],
+      }),
+    )
     const s = await load({ dir })
     // getState() picks the only db user as the uid, then answers null: the account exists
     // but has never signed in on a device, which is a different fact from an empty profile.
@@ -134,7 +147,7 @@ describe('state: cache refresh', () => {
     // without a restart. The mtime is forced forward rather than slept for — fs timestamp
     // granularity and the watcher's coalesced events make waiting on real time flaky.
     fs.writeFileSync(file, JSON.stringify({ unit: 'lb', bodyweight: [{ d: '2026-07-27', w: 80 }] }))
-    const later = (fs.statSync(file).mtimeMs / 1000) + 60
+    const later = fs.statSync(file).mtimeMs / 1000 + 60
     fs.utimesSync(file, later, later)
 
     const st = s.getState()

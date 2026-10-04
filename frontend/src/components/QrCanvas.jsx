@@ -18,9 +18,15 @@ export default function QrCanvas({ value, size = 240, className = '' }) {
     let alive = true
     setOk(false)
     renderQrToCanvas(ref.current, value)
-      .then(mods => { if (alive) setOk(mods > 0) })
-      .catch(() => { if (alive) setOk(false) })
-    return () => { alive = false }
+      .then(mods => {
+        if (alive) setOk(mods > 0)
+      })
+      .catch(() => {
+        if (alive) setOk(false)
+      })
+    return () => {
+      alive = false
+    }
   }, [value])
 
   return (

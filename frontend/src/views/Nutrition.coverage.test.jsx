@@ -33,8 +33,15 @@ function render() {
 }
 
 const breakfast = over => ({
-  id: 'e1', meal: 'cafe', name: 'Oatmeal', grams: 80,
-  kcal: 300, protein: 12, carbs: 50, fat: 6, ...over,
+  id: 'e1',
+  meal: 'cafe',
+  name: 'Oatmeal',
+  grams: 80,
+  kcal: 300,
+  protein: 12,
+  carbs: 50,
+  fat: 6,
+  ...over,
 })
 const rowTitles = host => [...host.querySelectorAll('.lrow-t')].map(el => el.textContent)
 
@@ -43,19 +50,25 @@ beforeEach(() => {
   mocks.toast.mockClear()
   document.body.innerHTML = ''
 })
-afterEach(() => { act(() => { mounted.splice(0).forEach(root => root.unmount()) }) })
+afterEach(() => {
+  act(() => {
+    mounted.splice(0).forEach(root => root.unmount())
+  })
+})
 
 describe('Nutrition diary', () => {
   it('totals the logged day into the summary and lists each meal entry', () => {
     const date = todayISO()
-    act(() => useNutritionStore.setState({
-      log: {
-        [date]: [
-          breakfast(),
-          { id: 'e2', meal: 'almoco', name: 'Rice and beans', grams: 250, kcal: 450, protein: 20, carbs: 80, fat: 5 },
-        ],
-      },
-    }))
+    act(() =>
+      useNutritionStore.setState({
+        log: {
+          [date]: [
+            breakfast(),
+            { id: 'e2', meal: 'almoco', name: 'Rice and beans', grams: 250, kcal: 450, protein: 20, carbs: 80, fat: 5 },
+          ],
+        },
+      }),
+    )
     const host = render()
 
     expect(host.querySelector('h1').textContent).toBe('Nutrition')
@@ -72,8 +85,7 @@ describe('Nutrition diary', () => {
 
     // under target, the header states the remaining calories for this exact day
     const targets = getTargets(DEFAULT_PROFILE)
-    expect(host.querySelector('.nut-rem').textContent)
-      .toBe(`Remaining ${fmtNum(Math.abs(targets.kcal - 750))} kcal`)
+    expect(host.querySelector('.nut-rem').textContent).toBe(`Remaining ${fmtNum(Math.abs(targets.kcal - 750))} kcal`)
 
     // day navigation: today cannot move forward, the previous day is reachable
     expect(host.querySelector("[aria-label='Next day']").disabled).toBe(true)

@@ -5,7 +5,9 @@ import { EXDB } from './exercises-data.js'
 // checklist Settings shows when you build a profile.
 export const ALL_EQUIPMENT = (() => {
   const c = {}
-  EXDB.forEach(e => { if (e.eq) c[e.eq] = (c[e.eq] || 0) + 1 })
+  EXDB.forEach(e => {
+    if (e.eq) c[e.eq] = (c[e.eq] || 0) + 1
+  })
   return Object.keys(c).sort((a, b) => c[b] - c[a] || (a < b ? -1 : 1))
 })()
 

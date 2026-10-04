@@ -4,10 +4,10 @@
  * are closures over the db and the session secret, and passing them in keeps this module free
  * of a cycle (and trivially testable against fakes).
  */
-import * as cfgStore from './config.js';
-import * as jobs from './jobs.js';
-import { computeCohort } from './cohort.js';
-import { DATA_CATEGORIES } from './core/payload.js';
+import * as cfgStore from './config.js'
+import * as jobs from './jobs.js'
+import { computeCohort } from './cohort.js'
+import { DATA_CATEGORIES } from './core/payload.js'
 
 // Job failures the user sees, in the app's own voice. The raw provider detail never reaches
 // them — it goes to the admin card, which is where someone can act on it (FR-47).
@@ -19,22 +19,29 @@ const USER_ERROR = {
   // Verbatim, because it tells the user the one thing that resolves it and names who resolves
   // it. A vaguer message here turns into a support question for the person running the box.
   shared: cfgStore.SHARED_ACCOUNT_REFUSAL,
-  unprivileged: 'the Coach is switched off on this instance for safety reasons'
-};
-const HTTP_FOR = { off: 503, busy: 409, cap: 429, consent: 403, shared: 409, unprivileged: 503 };
+  unprivileged: 'the Coach is switched off on this instance for safety reasons',
+}
+const HTTP_FOR = { off: 503, busy: 409, cap: 429, consent: 403, shared: 409, unprivileged: 503 }
 
 export function coachRoutes({ json, readBody, readSession }) {
   /** Every user route starts the same way: signed in, feature on, feature reachable. */
   const guard = (req, res) => {
-    const user = readSession(req);
-    if (!user) { json(res, 401, { error: 'not signed in' }); return null; }
-    if (!cfgStore.isEnabled() || !cfgStore.isConnected()) { json(res, 503, { error: USER_ERROR.off }); return null; }
-    return user;
-  };
+    const user = readSession(req)
+    if (!user) {
+      json(res, 401, { error: 'not signed in' })
+      return null
+    }
+    if (!cfgStore.isEnabled() || !cfgStore.isConnected()) {
+      json(res, 503, { error: USER_ERROR.off })
+      return null
+    }
+    return user
+  }
   const failEnqueue = (res, e) => {
-    if (e instanceof jobs.CoachError) return json(res, HTTP_FOR[e.code] || 400, { error: USER_ERROR[e.code] || e.message, code: e.code });
-    throw e;
-  };
+    if (e instanceof jobs.CoachError)
+      return json(res, HTTP_FOR[e.code] || 400, { error: USER_ERROR[e.code] || e.message, code: e.code })
+    throw e
+  }
 
   return {
     /* ------------------------------ user ------------------------------ */
@@ -44,91 +51,111 @@ export function coachRoutes({ json, readBody, readSession }) {
     // that reads it sits behind a session anyway, and on an invite-only instance which provider
     // this box is wired to is nobody's business who has not been let in.
     'GET /api/coach/disclosure': async (req, res) => {
-      if (!readSession(req)) return json(res, 401, { error: 'not signed in' });
-      const cfg = cfgStore.load();
+      if (!readSession(req)) return json(res, 401, { error: 'not signed in' })
+      const cfg = cfgStore.load()
       json(res, 200, {
         provider: cfg.provider,
         providerLabel: cfgStore.providerMeta(cfg).label,
         categories: DATA_CATEGORIES,
-        version: 1
-      });
+        version: 1,
+      })
     },
 
     'GET /api/coach/status': async (req, res) => {
-      const user = guard(req, res); if (!user) return;
-      json(res, 200, jobs.status(user.id));
+      const user = guard(req, res)
+      if (!user) return
+      json(res, 200, jobs.status(user.id))
     },
 
     'POST /api/coach/plan': async (req, res) => {
-      const user = guard(req, res); if (!user) return;
-      const body = await readBody(req);
+      const user = guard(req, res)
+      if (!user) return
+      const body = await readBody(req)
       try {
         const job = jobs.enqueue(user.id, {
           kind: 'create',
           intake: body.intake || null,
-          refine: body.refine ? String(body.refine).slice(0, 1000) : null
-        });
-        json(res, 202, { job });
-      } catch (e) { failEnqueue(res, e); }
+          refine: body.refine ? String(body.refine).slice(0, 1000) : null,
+        })
+        json(res, 202, { job })
+      } catch (e) {
+        failEnqueue(res, e)
+      }
     },
 
     'POST /api/coach/review': async (req, res) => {
-      const user = guard(req, res); if (!user) return;
-      const body = await readBody(req);
+      const user = guard(req, res)
+      if (!user) return
+      const body = await readBody(req)
       try {
-        const job = jobs.enqueue(user.id, { kind: 'review', note: body.note ? String(body.note).slice(0, 1000) : null });
-        json(res, 202, { job });
-      } catch (e) { failEnqueue(res, e); }
+        const job = jobs.enqueue(user.id, { kind: 'review', note: body.note ? String(body.note).slice(0, 1000) : null })
+        json(res, 202, { job })
+      } catch (e) {
+        failEnqueue(res, e)
+      }
     },
 
     // One workout, read closely. Nothing to apply — the card is kept in the user's log.
     'POST /api/coach/debrief': async (req, res) => {
-      const user = guard(req, res); if (!user) return;
-      const body = await readBody(req);
+      const user = guard(req, res)
+      if (!user) return
+      const body = await readBody(req)
       try {
-        const job = jobs.enqueue(user.id, { kind: 'debrief', workoutId: body.workoutId ? String(body.workoutId).slice(0, 40) : null });
-        json(res, 202, { job });
-      } catch (e) { failEnqueue(res, e); }
+        const job = jobs.enqueue(user.id, {
+          kind: 'debrief',
+          workoutId: body.workoutId ? String(body.workoutId).slice(0, 40) : null,
+        })
+        json(res, 202, { job })
+      } catch (e) {
+        failEnqueue(res, e)
+      }
     },
 
     /* How this profile sits against everyone else on the instance who opted in: medians only,
        at least three people, and nothing for a profile that does not share itself. */
     'GET /api/coach/cohort': async (req, res) => {
-      const user = guard(req, res); if (!user) return;
-      if (!cfgStore.load().community) return json(res, 200, { ok: false, enabled: false });
-      json(res, 200, computeCohort(user.id));
+      const user = guard(req, res)
+      if (!user) return
+      if (!cfgStore.load().community) return json(res, 200, { ok: false, enabled: false })
+      json(res, 200, computeCohort(user.id))
     },
     'POST /api/coach/cohort/share': async (req, res) => {
-      const user = guard(req, res); if (!user) return;
-      const body = await readBody(req);
-      json(res, 200, { ok: true, sharing: jobs.setShare(user.id, !!body.share) });
+      const user = guard(req, res)
+      if (!user) return
+      const body = await readBody(req)
+      json(res, 200, { ok: true, sharing: jobs.setShare(user.id, !!body.share) })
     },
 
     'POST /api/coach/pending/resolve': async (req, res) => {
-      const user = guard(req, res); if (!user) return;
-      const body = await readBody(req);
-      json(res, 200, jobs.resolvePending(user.id, {
-        accepted: Array.isArray(body.accepted) ? body.accepted : [],
-        rejected: Array.isArray(body.rejected) ? body.rejected : [],
-        dismissed: !!body.dismissed
-      }));
+      const user = guard(req, res)
+      if (!user) return
+      const body = await readBody(req)
+      json(
+        res,
+        200,
+        jobs.resolvePending(user.id, {
+          accepted: Array.isArray(body.accepted) ? body.accepted : [],
+          rejected: Array.isArray(body.rejected) ? body.rejected : [],
+          dismissed: !!body.dismissed,
+        }),
+      )
     },
 
     // Consent withdrawn, or the profile turned the Coach off: drop everything held server-side
     // for them at once, without waiting for a sync to carry the news (D5).
     'POST /api/coach/forget': async (req, res) => {
-      const user = readSession(req);
-      if (!user) return json(res, 401, { error: 'not signed in' });
-      jobs.clearUser(user.id);
-      json(res, 200, { ok: true });
+      const user = readSession(req)
+      if (!user) return json(res, 401, { error: 'not signed in' })
+      jobs.clearUser(user.id)
+      json(res, 200, { ok: true })
     },
 
     /* Whose account this profile is about to spend. Its own route because both the Coach screen
        and the admin card must state it, and neither should be inferring it from settings. */
     'GET /api/coach/account': async (req, res) => {
-      const user = readSession(req);
-      if (!user) return json(res, 401, { error: 'not signed in' });
-      json(res, 200, cfgStore.accountFor(user.id));
-    }
-  };
+      const user = readSession(req)
+      if (!user) return json(res, 401, { error: 'not signed in' })
+      json(res, 200, cfgStore.accountFor(user.id))
+    },
+  }
 }

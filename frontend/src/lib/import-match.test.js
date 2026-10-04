@@ -32,7 +32,7 @@ describe('foreign exercise names resolve to the catalogue', () => {
   for (const [name, id] of Object.entries(MAPS)) {
     it(`maps "${name}" to ${id}`, () => {
       expect(matchExercise(name)).toBe(id)
-      expect(EXIDX[id]).toBeTruthy()   // an alias pointing at a dropped id is worse than no alias
+      expect(EXIDX[id]).toBeTruthy() // an alias pointing at a dropped id is worse than no alias
     })
   }
 
@@ -81,7 +81,8 @@ describe('foreign exercise names resolve to the catalogue', () => {
 // and a third of an imported history was attributed to the legs in the muscle map. With no
 // category to read, the body part comes off the name instead.
 describe('invented exercises get a body part from their name', () => {
-  const HEAD = 'title,start_time,end_time,description,exercise_title,superset_id,exercise_notes,set_index,set_type,weight_kg,reps,distance_km,duration_seconds,rpe'
+  const HEAD =
+    'title,start_time,end_time,description,exercise_title,superset_id,exercise_notes,set_index,set_type,weight_kg,reps,distance_km,duration_seconds,rpe'
   const row = name => `W,"09 Oct 2025, 19:22","09 Oct 2025, 20:22",,"${name}",,,0,normal,40,10,,,`
   const bpOf = name => {
     const r = parseWorkoutCSV([HEAD, row(name)].join('\n'), { unit: 'kg' })

@@ -23,8 +23,10 @@ let _detector = null
 function nativeDetector() {
   if (_detector !== null) return _detector
   try {
-    _detector = (typeof BarcodeDetector === 'function') ? new BarcodeDetector({ formats: ['qr_code'] }) : false
-  } catch (e) { _detector = false }
+    _detector = typeof BarcodeDetector === 'function' ? new BarcodeDetector({ formats: ['qr_code'] }) : false
+  } catch (e) {
+    _detector = false
+  }
   return _detector
 }
 
@@ -47,9 +49,11 @@ export async function decodeSource(source) {
   const sh = source.videoHeight || source.naturalHeight || source.height || 0
   if (!sw || !sh) return null
   const k = Math.min(1, MAX / Math.max(sw, sh))
-  const w = Math.max(1, Math.round(sw * k)), h = Math.max(1, Math.round(sh * k))
+  const w = Math.max(1, Math.round(sw * k)),
+    h = Math.max(1, Math.round(sh * k))
   if (!_canvas) _canvas = document.createElement('canvas')
-  _canvas.width = w; _canvas.height = h
+  _canvas.width = w
+  _canvas.height = h
   const ctx = _canvas.getContext('2d', { willReadFrequently: true })
   ctx.drawImage(source, 0, 0, w, h)
 
@@ -59,7 +63,9 @@ export async function decodeSource(source) {
       const found = await det.detect(_canvas)
       const b = found && found.find(x => x.rawValue)
       if (b) return { value: b.rawValue, fmt: normalizeFmt(b.format) || 'qrcode' }
-    } catch (e) { /* fall through to jsQR */ }
+    } catch (e) {
+      /* fall through to jsQR */
+    }
   }
   return decodeImageData(ctx.getImageData(0, 0, w, h))
 }
@@ -79,5 +85,9 @@ export async function importCodeFromImageWeb(file) {
       img.src = URL.createObjectURL(file)
     })
   }
-  try { return await decodeSource(bmp) } finally { if (bmp.close) bmp.close() }
+  try {
+    return await decodeSource(bmp)
+  } finally {
+    if (bmp.close) bmp.close()
+  }
 }

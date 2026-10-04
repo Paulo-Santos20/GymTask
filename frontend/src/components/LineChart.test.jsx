@@ -24,7 +24,7 @@ afterEach(() => {
 const point = (year, month, day, y) => ({
   d: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
   t: new Date(year, month - 1, day, 12).getTime(),
-  y
+  y,
 })
 
 const firstPoints = [
@@ -74,7 +74,10 @@ describe('LineChart hover date', () => {
   it('uses timestamp-only points when deciding whether to show the year', () => {
     const first = point(2025, 12, 31, 70)
     const last = point(2026, 1, 1, 71)
-    const timestampOnly = [{ t: first.t, y: first.y }, { t: last.t, y: last.y }]
+    const timestampOnly = [
+      { t: first.t, y: first.y },
+      { t: last.t, y: last.y },
+    ]
     renderChart(timestampOnly)
 
     const lastIso = isoOf(new Date(last.t))

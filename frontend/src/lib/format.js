@@ -10,7 +10,20 @@ export const isoOf = d =>
 export const DAYN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 export const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-export const MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+export const MONTHS_LONG = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
 
 export function fmtDate(iso, long, withYear = false) {
   const d = new Date(iso + 'T12:00:00')
@@ -39,7 +52,9 @@ export const capWords = s => String(s || '').replace(/(^|[\s(\-\/])(\p{Ll})/gu, 
  * 62.5 is 62.5 either way. Nothing rounds differently in storage — this is display only.
  */
 let decimals = 1
-export const setWeightDecimals = n => { decimals = n === 2 ? 2 : 1 }
+export const setWeightDecimals = n => {
+  decimals = n === 2 ? 2 : 1
+}
 export const weightDecimals = () => decimals
 export const fmtNum = n => {
   const p = decimals === 2 ? 100 : 10
@@ -88,7 +103,22 @@ export function startOfWeek(iso, ws = MONDAY) {
  */
 export const weekKey = (iso, ws = MONDAY) => isoOf(startOfWeek(iso, ws))
 
-export const localTZ = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' } catch { return 'UTC' } }
+export const localTZ = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  } catch {
+    return 'UTC'
+  }
+}
 
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
-export const ACCENTS = { lime: '#30d158', sky: '#0a84ff', orange: '#ff9f0a', violet: '#bf5af2', pink: '#ff375f', red: '#ff453a', teal: '#40c8e0', gold: '#ffd60a' }
+export const ACCENTS = {
+  lime: '#30d158',
+  sky: '#0a84ff',
+  orange: '#ff9f0a',
+  violet: '#bf5af2',
+  pink: '#ff375f',
+  red: '#ff453a',
+  teal: '#40c8e0',
+  gold: '#ffd60a',
+}

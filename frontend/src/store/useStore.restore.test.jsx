@@ -90,7 +90,12 @@ describe('saved workout state sync and restore', () => {
     const put = JSON.parse(api.mock.calls[1][1].body)
     expect(put.baseRev).toBe(3)
     expect(put.state.routines.map(r => r.id).sort()).toEqual(['local', 'remote'])
-    expect(useStore.getState().S.routines.map(r => r.id).sort()).toEqual(['local', 'remote'])
+    expect(
+      useStore
+        .getState()
+        .S.routines.map(r => r.id)
+        .sort(),
+    ).toEqual(['local', 'remote'])
     expect(localStorage.getItem('gym_dirty')).toBeNull()
     expect(JSON.parse(localStorage.getItem('gym_sync'))).toEqual({ rev: 4, ts: useStore.getState().S._ts })
   })
@@ -153,11 +158,13 @@ describe('saved workout state sync and restore', () => {
     await useStore.getState().pullState()
     expect(useStore.getState().S.workouts.map(w => w.id)).toEqual(['w1'])
 
-    api.mockResolvedValueOnce({ state: { ...clone(DEF), _ts: 1010000, workouts: [workout('w1'), workout('w2-from-B')] } })
+    api.mockResolvedValueOnce({
+      state: { ...clone(DEF), _ts: 1010000, workouts: [workout('w1'), workout('w2-from-B')] },
+    })
     await useStore.getState().pullState()
 
     expect(api).toHaveBeenCalledTimes(2)
-    expect(api.mock.calls.every(([, opts]) => !opts)).toBe(true)   // two GETs, no PUT
+    expect(api.mock.calls.every(([, opts]) => !opts)).toBe(true) // two GETs, no PUT
     expect(useStore.getState().S.workouts.map(w => w.id)).toEqual(['w1', 'w2-from-B'])
     expect(useStore.getState().S._ts).toBe(1010000)
   })
@@ -169,7 +176,13 @@ describe('signing in as a different profile', () => {
   const active = { id: 'A-active', d: '2026-09-01', routineId: 'A', name: 'A', entries: [] }
   const signInAsAThenExpire = () => {
     useStore.getState().setUser({ id: 'A', name: 'A' })
-    useStore.getState().replaceState({ ...clone(DEF), _ts: 20, routines: [routine('A-routine')], bodyweight: [{ d: '2026-09-01', kg: 80 }], active })
+    useStore.getState().replaceState({
+      ...clone(DEF),
+      _ts: 20,
+      routines: [routine('A-routine')],
+      bodyweight: [{ d: '2026-09-01', kg: 80 }],
+      active,
+    })
     useStore.getState().setUser(null)
     expect(hasData(useStore.getState().S)).toBe(true)
   }
@@ -181,7 +194,7 @@ describe('signing in as a different profile', () => {
     useStore.getState().setUser({ id: 'B', name: 'B' })
     await useStore.getState().pullState()
 
-    expect(api).toHaveBeenCalledTimes(1)   // the GET only — nothing was pushed under B
+    expect(api).toHaveBeenCalledTimes(1) // the GET only — nothing was pushed under B
     expect(useStore.getState().S.routines).toEqual([])
     expect(useStore.getState().S.bodyweight).toEqual([])
     expect(useStore.getState().S.active).toBeNull()
@@ -191,7 +204,7 @@ describe('signing in as a different profile', () => {
 
   it('adopts the new profile own state even when it is older or a push failed after expiry', async () => {
     signInAsAThenExpire()
-    localStorage.setItem('gym_dirty', '1')   // a debounced push that hit the 401
+    localStorage.setItem('gym_dirty', '1') // a debounced push that hit the 401
     const remoteB = { ...clone(DEF), _ts: 10, routines: [routine('B-routine')], active: null }
     api.mockResolvedValue({ state: remoteB })
 
@@ -200,13 +213,15 @@ describe('signing in as a different profile', () => {
 
     expect(api).toHaveBeenCalledTimes(1)
     expect(useStore.getState().S.routines.map(r => r.id)).toEqual(['B-routine'])
-    expect(useStore.getState().S.active).toBeNull()   // A's in-progress workout is not carried over
+    expect(useStore.getState().S.active).toBeNull() // A's in-progress workout is not carried over
     expect(localStorage.getItem('gym_dirty')).toBeNull()
   })
 
   it('the same profile signing in again keeps and pushes its newer local copy', async () => {
     signInAsAThenExpire()
-    api.mockResolvedValueOnce({ state: { ...clone(DEF), _ts: 10, routines: [routine('remote')] } }).mockResolvedValueOnce({})
+    api
+      .mockResolvedValueOnce({ state: { ...clone(DEF), _ts: 10, routines: [routine('remote')] } })
+      .mockResolvedValueOnce({})
 
     useStore.getState().setUser({ id: 'A', name: 'A' })
     await useStore.getState().pullState()
@@ -222,7 +237,7 @@ describe('signing in as a different profile', () => {
     vi.useFakeTimers()
     try {
       useStore.getState().setUser({ id: 'A', name: 'A' })
-      useStore.getState().replaceState({ ...clone(DEF), _ts: 20, routines: [routine('A-routine')], active }, true)   // arms a push
+      useStore.getState().replaceState({ ...clone(DEF), _ts: 20, routines: [routine('A-routine')], active }, true) // arms a push
       api.mockResolvedValue({})
 
       // B's setUser in the other tab: it wiped the copy, wrote defaults, then recorded the owner.
@@ -235,24 +250,34 @@ describe('signing in as a different profile', () => {
       expect(hasData(useStore.getState().S)).toBe(false)
       expect(useStore.getState().S.active).toBeNull()
 
-      vi.advanceTimersByTime(3000)   // the push armed under A must not fire under B's cookie
-      useStore.getState().update(s => { s.routines.push(routine('typed-after')) })
+      vi.advanceTimersByTime(3000) // the push armed under A must not fire under B's cookie
+      useStore.getState().update(s => {
+        s.routines.push(routine('typed-after'))
+      })
       vi.advanceTimersByTime(3000)
       await useStore.getState().pushState()
 
       expect(api).not.toHaveBeenCalled()
       expect(JSON.parse(localStorage.getItem('gym_state_v1')).routines.map(r => r.id)).toEqual(['typed-after'])
-    } finally { vi.useRealTimers() }
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   // A sign-out elsewhere removes the owner. Storage events arrive per key, so this tab may see
   // the owner go while gym_state_v1 still holds A's copy — it must not keep that copy either way.
   it('a tab still holding the previous profile drops its data when that profile signs out elsewhere', async () => {
     useStore.getState().setUser({ id: 'A', name: 'A' })
-    useStore.getState().replaceState({ ...clone(DEF), _ts: 20, routines: [routine('A-routine')], bodyweight: [{ d: '2026-09-01', kg: 80 }], active })
+    useStore.getState().replaceState({
+      ...clone(DEF),
+      _ts: 20,
+      routines: [routine('A-routine')],
+      bodyweight: [{ d: '2026-09-01', kg: 80 }],
+      active,
+    })
     api.mockResolvedValue({ state: null })
 
-    localStorage.removeItem('gym_owner')   // gym_state_v1 still holds A's copy at this instant
+    localStorage.removeItem('gym_owner') // gym_state_v1 still holds A's copy at this instant
     window.dispatchEvent(new StorageEvent('storage', { key: 'gym_owner', oldValue: 'A', newValue: null }))
 
     expect(useStore.getState().user).toBeNull()
@@ -262,7 +287,7 @@ describe('signing in as a different profile', () => {
     useStore.getState().setUser({ id: 'C', name: 'C' })
     await useStore.getState().pullState()
 
-    expect(api).toHaveBeenCalledTimes(1)   // the GET only — nothing of A's was pushed under C
+    expect(api).toHaveBeenCalledTimes(1) // the GET only — nothing of A's was pushed under C
     expect(api.mock.calls[0][1]).toBeUndefined()
     expect(hasData(useStore.getState().S)).toBe(false)
   })
@@ -280,13 +305,20 @@ describe('signing in as a different profile', () => {
     const recording = new Proxy(real, {
       get(target, prop) {
         const v = Reflect.get(target, prop)
-        if (prop === 'setItem' || prop === 'removeItem') return (...args) => { writes.push(prop + ' ' + args[0]); return v.apply(target, args) }
+        if (prop === 'setItem' || prop === 'removeItem')
+          return (...args) => {
+            writes.push(prop + ' ' + args[0])
+            return v.apply(target, args)
+          }
         return typeof v === 'function' ? v.bind(target) : v
       },
     })
     Object.defineProperty(globalThis, 'localStorage', { value: recording, configurable: true })
-    try { await useStore.getState().signOut() }
-    finally { Object.defineProperty(globalThis, 'localStorage', desc) }
+    try {
+      await useStore.getState().signOut()
+    } finally {
+      Object.defineProperty(globalThis, 'localStorage', desc)
+    }
 
     expect(globalThis.localStorage).toBe(real)
     expect(writes).toContain('removeItem gym_owner')
@@ -314,10 +346,12 @@ describe('signing in as a different profile', () => {
     expect(localStorage.getItem('gym_owner')).toBeNull()
     expect(hasData(useStore.getState().S)).toBe(false)
 
-    useStore.getState().update(s => { s.routines.push(routine('guest')) }, false)
+    useStore.getState().update(s => {
+      s.routines.push(routine('guest'))
+    }, false)
     api.mockClear()
     useStore.getState().setUser({ id: 'B', name: 'B' })
-    expect(hasData(useStore.getState().S)).toBe(true)   // what the register sheet checks before pushing
+    expect(hasData(useStore.getState().S)).toBe(true) // what the register sheet checks before pushing
     await useStore.getState().pushState()
 
     expect(api).toHaveBeenCalledTimes(1)

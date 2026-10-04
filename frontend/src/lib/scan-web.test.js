@@ -12,11 +12,15 @@ function rasterize(code, scale = 4, quiet = 4) {
   const data = new Uint8ClampedArray(w * w * 4)
   for (let y = 0; y < w; y++) {
     for (let x = 0; x < w; x++) {
-      const mx = Math.floor(x / scale) - quiet, my = Math.floor(y / scale) - quiet
+      const mx = Math.floor(x / scale) - quiet,
+        my = Math.floor(y / scale) - quiet
       const dark = mx >= 0 && my >= 0 && mx < code.size && my < code.size && code.get(mx, my)
       const v = dark ? 0 : 255
       const i = (y * w + x) * 4
-      data[i] = v; data[i + 1] = v; data[i + 2] = v; data[i + 3] = 255
+      data[i] = v
+      data[i + 1] = v
+      data[i + 2] = v
+      data[i + 3] = 255
     }
   }
   return { data, width: w, height: w }

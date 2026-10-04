@@ -9,7 +9,16 @@ import { todayISO } from '../lib/format.js'
 // The chat is where a plan is imported. These pin that the Import button applies the pending
 // plan through the store, writes the decision into the thread, and leaves today startable.
 const mocks = vi.hoisted(() => {
-  const state = { S: null, pending: null, job: null, community: false, nav: vi.fn(), toast: vi.fn(), openSheet: vi.fn(), refresh: vi.fn() }
+  const state = {
+    S: null,
+    pending: null,
+    job: null,
+    community: false,
+    nav: vi.fn(),
+    toast: vi.fn(),
+    openSheet: vi.fn(),
+    refresh: vi.fn(),
+  }
   state.storeSnapshot = () => ({
     S: state.S,
     user: { id: 'u1' },
@@ -28,13 +37,21 @@ vi.mock('../store/useStore.js', () => {
   return { useStore }
 })
 vi.mock('../store/useUI.js', () => {
-  const useUI = selector => selector ? selector(mocks.uiSnapshot()) : mocks.uiSnapshot()
+  const useUI = selector => (selector ? selector(mocks.uiSnapshot()) : mocks.uiSnapshot())
   useUI.getState = mocks.uiSnapshot
   return { useUI }
 })
 vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.nav }))
 vi.mock('../lib/coach-api.js', () => ({
-  useCoachStatus: () => ({ pending: mocks.pending, job: mocks.job, cap: null, loading: false, lastError: null, last: null, refresh: mocks.refresh }),
+  useCoachStatus: () => ({
+    pending: mocks.pending,
+    job: mocks.job,
+    cap: null,
+    loading: false,
+    lastError: null,
+    last: null,
+    refresh: mocks.refresh,
+  }),
   resolvePending: vi.fn(() => Promise.resolve({})),
   refinePlan: vi.fn(() => Promise.resolve({})),
   requestReview: vi.fn(() => Promise.resolve({})),
@@ -46,7 +63,9 @@ vi.mock('../lib/coach-api.js', () => ({
 vi.mock('../sheets.jsx', () => ({ startFlow: vi.fn(), confirmSheet: vi.fn() }))
 vi.mock('../lib/api.js', () => ({
   api: vi.fn(() => Promise.resolve({})),
-  IS_APPLE: false, IS_ANDROID: false, BIO: 'biometrics',
+  IS_APPLE: false,
+  IS_ANDROID: false,
+  BIO: 'biometrics',
 }))
 vi.mock('../coach.css', () => ({}))
 
@@ -54,23 +73,48 @@ let dom, root, container
 const TODAY_WD = new Date(todayISO() + 'T12:00:00').getDay()
 
 const bundle = week => ({
-  opengym_plan: 1, name: 'Coach plan', summary: 'a plan',
+  opengym_plan: 1,
+  name: 'Coach plan',
+  summary: 'a plan',
   week,
   routines: [
-    { id: 'x1', name: 'Full body A', emoji: '💪', why: 'first', ex: [{ id: '0001', sets: 3, reps: 10, mode: 'reps', why: 'because' }] },
-    { id: 'x2', name: 'Full body B', emoji: '🏋️', ex: [{ id: '0002', sets: 3, reps: 8, mode: 'reps' }] }
+    {
+      id: 'x1',
+      name: 'Full body A',
+      emoji: '💪',
+      why: 'first',
+      ex: [{ id: '0001', sets: 3, reps: 10, mode: 'reps', why: 'because' }],
+    },
+    { id: 'x2', name: 'Full body B', emoji: '🏋️', ex: [{ id: '0002', sets: 3, reps: 8, mode: 'reps' }] },
   ],
   customEx: [],
 })
 const everyDay = Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(d => [d, 'x1']))
 
 const state = () => ({
-  unit: 'kg', lang: 'en', customEx: [], workouts: [], bodyweight: [], exWeights: {},
-  dayPlan: {}, routines: [], week: {},
+  unit: 'kg',
+  lang: 'en',
+  customEx: [],
+  workouts: [],
+  bodyweight: [],
+  exWeights: {},
+  dayPlan: {},
+  routines: [],
+  week: {},
   coach: {
     consent: { agreedAt: '2026-07-01T00:00:00Z', version: 1 },
-    profile: { goal: 'muscle', experience: 'new', daysPerWeek: 3, sessionMin: 60, preferredDays: [1, 3, 5], equipment: [] },
-    log: [], snapshots: [], chat: [{ id: 'c1', role: 'user', kind: 'intake', at: 1 }], timings: []
+    profile: {
+      goal: 'muscle',
+      experience: 'new',
+      daysPerWeek: 3,
+      sessionMin: 60,
+      preferredDays: [1, 3, 5],
+      equipment: [],
+    },
+    log: [],
+    snapshots: [],
+    chat: [{ id: 'c1', role: 'user', kind: 'intake', at: 1 }],
+    timings: [],
   },
 })
 
@@ -92,19 +136,31 @@ async function mount(pending, job = null, { community = false, S = state() } = {
   mocks.job = job
   mocks.community = community
   installDom()
-  await act(async () => { root.render(React.createElement(CoachChat)) })
+  await act(async () => {
+    root.render(React.createElement(CoachChat))
+  })
 }
 
 const byText = re => [...container.querySelectorAll('button')].find(b => re.test(b.textContent || ''))
 async function click(el) {
   expect(el).toBeTruthy()
-  await act(async () => { el.dispatchEvent(new dom.Event('click', { bubbles: true })) })
+  await act(async () => {
+    el.dispatchEvent(new dom.Event('click', { bubbles: true }))
+  })
 }
 
-beforeEach(() => { vi.clearAllMocks() })
+beforeEach(() => {
+  vi.clearAllMocks()
+})
 afterEach(async () => {
-  if (root) { await act(async () => { root.unmount() }); root = null }
-  container = null; dom = null
+  if (root) {
+    await act(async () => {
+      root.unmount()
+    })
+    root = null
+  }
+  container = null
+  dom = null
 })
 
 describe('the Coach chat', () => {
@@ -150,12 +206,24 @@ describe('the Coach chat', () => {
 
   it('applies the accepted subset of a review and logs it', async () => {
     mocks.S = state()
-    await mount({ id: 'r1', kind: 'review', summary: 's', changes: [
-      { id: 'a', type: 'week', target: { weekday: 1 }, before: null, after: null, why: 'rest' },
-      { id: 'b', type: 'add-routine', target: {}, before: null, after: { name: 'Legs', ex: [{ id: '0001', sets: 3, reps: 10 }] }, why: 'legs' }
-    ] })
+    await mount({
+      id: 'r1',
+      kind: 'review',
+      summary: 's',
+      changes: [
+        { id: 'a', type: 'week', target: { weekday: 1 }, before: null, after: null, why: 'rest' },
+        {
+          id: 'b',
+          type: 'add-routine',
+          target: {},
+          before: null,
+          after: { name: 'Legs', ex: [{ id: '0001', sets: 3, reps: 10 }] },
+          why: 'legs',
+        },
+      ],
+    })
     expect(container.querySelectorAll('[role="checkbox"]').length).toBe(2)
-    await click([...container.querySelectorAll('[role="checkbox"]')][0])   // drop the week change
+    await click([...container.querySelectorAll('[role="checkbox"]')][0]) // drop the week change
     await click(byText(/Apply 1 change/))
     expect(mocks.S.routines.map(r => r.name)).toEqual(['Legs'])
     expect(mocks.S.coach.chat.at(-1).kind).toBe('applied')
@@ -163,15 +231,29 @@ describe('the Coach chat', () => {
   })
 
   it('keeps an applied review in the thread as a card that opens the whole proposal', async () => {
-    await mount({ id: 'r1', kind: 'review', summary: 'a reading', changes: [
-      { id: 'a', type: 'week', target: { weekday: 1 }, before: null, after: null, why: 'rest' },
-      { id: 'b', type: 'add-routine', target: {}, before: null, after: { name: 'Legs', ex: [{ id: '0001', sets: 3, reps: 10 }] }, why: 'legs' }
-    ] })
+    await mount({
+      id: 'r1',
+      kind: 'review',
+      summary: 'a reading',
+      changes: [
+        { id: 'a', type: 'week', target: { weekday: 1 }, before: null, after: null, why: 'rest' },
+        {
+          id: 'b',
+          type: 'add-routine',
+          target: {},
+          before: null,
+          after: { name: 'Legs', ex: [{ id: '0001', sets: 3, reps: 10 }] },
+          why: 'legs',
+        },
+      ],
+    })
     await click([...container.querySelectorAll('[role="checkbox"]')][0])
     await click(byText(/Apply 1 change/))
     // The decision is in the store; re-render with the proposal gone, as the poll would.
     mocks.pending = null
-    await act(async () => { root.render(React.createElement(CoachChat)) })
+    await act(async () => {
+      root.render(React.createElement(CoachChat))
+    })
     const recap = container.querySelector('.recap')
     expect(recap).toBeTruthy()
     expect(recap.textContent).toContain('1 accepted · 1 declined')
@@ -183,7 +265,16 @@ describe('the Coach chat', () => {
   })
 
   it('shows a debrief with its score ring and files it on "Got it"', async () => {
-    await mount({ id: 'd1', kind: 'debrief', workout: { id: 'w1', name: 'Push', d: '2026-08-29' }, summary: 'ok', score: 8, highlights: ['a'], watch: [], nextTime: ['b'] })
+    await mount({
+      id: 'd1',
+      kind: 'debrief',
+      workout: { id: 'w1', name: 'Push', d: '2026-08-29' },
+      summary: 'ok',
+      score: 8,
+      highlights: ['a'],
+      watch: [],
+      nextTime: ['b'],
+    })
     expect(container.querySelector('.deb-ring')).toBeTruthy()
     expect(container.textContent).toContain('Good session')
     expect(container.textContent).toContain('What went well')
@@ -198,7 +289,7 @@ describe('the Coach chat', () => {
   it('offers the quick actions only when nothing is running', async () => {
     await mount(null)
     expect(byText(/Review my training/)).toBeTruthy()
-    expect(byText(/Last workout/)).toBeFalsy()          // no workout logged yet
+    expect(byText(/Last workout/)).toBeFalsy() // no workout logged yet
     await mount(null, { id: 'j1', kind: 'review', state: 'running', startedAt: Date.now() })
     expect(byText(/Review my training/)).toBeFalsy()
   })
