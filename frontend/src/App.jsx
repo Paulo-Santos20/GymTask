@@ -60,28 +60,41 @@ function Shell() {
   const navigate = useNavigate()
   const loc = useLocation()
   const navType = useNavigationType()
-  const { S, user, ready } = useStore()
+  // Narrow slices, not the whole store: update() replaces S with a fresh clone on every
+  // change (store/useStore.js), so a bare whole-store subscription re-rendered this shell —
+  // and every route under it — on any change anywhere. One selector per field read here:
+  // the shell re-renders only when a slice it actually uses moves.
+  const soundOnSilent = useStore(s => s.S.soundOnSilent)
+  const theme = useStore(s => s.S.theme)
+  const accent = useStore(s => s.S.accent)
+  const lang = useStore(s => s.S.lang)
+  const wdec = useStore(s => s.S.wdec)
+  const active = useStore(s => s.S.active)
+  const keepAwake = useStore(s => s.S.keepAwake)
+  const checkIn = useStore(s => s.S.checkIn)
+  const user = useStore(s => s.user)
+  const ready = useStore(s => s.ready)
   // iOS: whether timer sounds get past the ring/silent switch (Settings → Sounds). Page-level,
   // so it is applied here on load and on change rather than at each beep.
-  useEffect(() => { setPlayOnSilent(!!S.soundOnSilent) }, [S.soundOnSilent])
+  useEffect(() => { setPlayOnSilent(!!soundOnSilent) }, [soundOnSilent])
   const isGuest = useStore(s => s.isGuest())
   const langV = useLang()   // re-renders the whole shell when the language (pack) changes
   useEffect(() => { setNav(navigate) }, [navigate])
-  useEffect(() => { applyPrefs(S.theme, S.accent) }, [S.theme, S.accent])
+  useEffect(() => { applyPrefs(theme, accent) }, [theme, accent])
   // 'system' needs to react live if the OS theme flips while the app is open, not just on
   // the next mount — a fixed 'dark'/'light' choice never re-fires this since matchMedia
   // isn't consulted for those.
   useEffect(() => {
-    if (S.theme !== 'system' || !window.matchMedia) return
+    if (theme !== 'system' || !window.matchMedia) return
     const mql = window.matchMedia('(prefers-color-scheme: dark)')
-    const onChange = () => applyPrefs(S.theme, S.accent)
+    const onChange = () => applyPrefs(theme, accent)
     mql.addEventListener('change', onChange)
     return () => mql.removeEventListener('change', onChange)
-  }, [S.theme, S.accent])
-  useEffect(() => { setLang(S.lang || 'pt-BR') }, [S.lang])
+  }, [theme, accent])
+  useEffect(() => { setLang(lang || 'pt-BR') }, [lang])
   // Same shape as the language: a module-level display setting, pushed when it changes (#139).
-  useEffect(() => { setWeightDecimals(S.wdec) }, [S.wdec])
-  useEffect(() => { document.documentElement.lang = getLang() }, [langV, S.lang])
+  useEffect(() => { setWeightDecimals(wdec) }, [wdec])
+  useEffect(() => { document.documentElement.lang = getLang() }, [langV, lang])
   // Forward navigation starts at the top; going back lands where you left off.
   // The position is recorded from scroll events rather than read at route
   // change, because by then a shorter page may already have clamped it.
@@ -124,7 +137,7 @@ function Shell() {
     return () => window.cancelAnimationFrame(frame)
   }, [loc.pathname, navType])
   // bound to the workout, not to the route — checking Stats mid-session keeps the screen on
-  useWakeLock(!!S.active && S.keepAwake !== false)
+  useWakeLock(!!active && keepAwake !== false)
 
   const authed = user || isGuest
   if (!ready && !authed) return (
@@ -152,7 +165,7 @@ function Shell() {
               <Route path="/home" element={<Home />} />
               {/* Gym check-in — switched off in Settings, the route falls through to the
                   catch-all redirect below. */}
-              {S.checkIn !== false && <Route path="/checkin" element={<CheckIn />} />}
+              {checkIn !== false && <Route path="/checkin" element={<CheckIn />} />}
               <Route path="/plan" element={<Plan />} />
               <Route path="/plan/r/:id" element={<RoutineEdit />} />
               <Route path="/workout" element={<Workout />} />
