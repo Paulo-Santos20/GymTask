@@ -1658,4 +1658,5 @@ export default {
   Minimum: 'Mínimo',
   Maximum: 'Máximo',
   'Reset to defaults': 'Redefinir para os padrões',
+  Adherence: 'Aderência',
 }

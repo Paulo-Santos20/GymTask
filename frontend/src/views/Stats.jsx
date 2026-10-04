@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { EXIDX, matchExercise, betterWeight } from '../lib/exercises.js'
 import { lastBW, streakWeeks, setLabel, modeOf, effortOf, metricModeForEntry, metricRowsForEntry, bestWeightForEntry } from '../lib/history.js'
+import { weeklyAdherence } from '../lib/adherence.js'
 import { fmtNum, fmtDate, fmtVol, todayISO, weekStartOf } from '../lib/format.js'
 import { t, exerciseNameFor, getLang } from '../lib/i18n.js'
 import { bwSheet, goalSheet, calendarSheet, workoutDetailSheet, exerciseHistorySheet, WorkoutRow, bwDeltaColor } from '../sheets.jsx'
@@ -325,6 +326,9 @@ export default function Stats() {
   const bwDelta30 = bw30.length > 1 ? bw30[bw30.length - 1].w - bw30[0].w : null
   const workouts = S.workouts
   const monthW = workouts.filter(w => String(w.d || '').slice(0, 7) === todayISO().slice(0, 7)).length
+  // This week's sessions over the days the effective plan has — the same number Home's
+  // "x / y this week" line reads, through the one helper both screens share.
+  const adherence = weeklyAdherence(S, todayISO())
 
   const entryOf = id => workouts.flatMap(w => w.entries).find(e => e.id === id)
   const listOf = value => Array.isArray(value) ? value : value == null || value === '' ? [] : [value]
@@ -479,6 +483,13 @@ export default function Stats() {
       <div className="tile"><div className="l"><Icon name="dumbbell" />{t('Workouts')}</div><div className="v">{workouts.length}</div></div>
       <div className="tile"><div className="l"><Icon name="calendar" />{t('This month')}</div><div className="v">{monthW}</div></div>
       <div className="tile"><div className="l"><Icon name="flame" />{t('Week streak')}</div><div className="v">{streakWeeks(S)}</div></div>
+      {/* Only once the profile plans something: a rest week has no denominator to show, and
+        pct is null there. The pair underneath is the same x / y Home prints on its streak card. */}
+      {adherence.planned > 0 && <div className="tile">
+        <div className="l"><Icon name="target" />{t('Adherence')}</div>
+        <div className="v">{adherence.pct}%</div>
+        <div className="dim small" style={{ marginTop: 2 }}>{adherence.done} / {adherence.planned} {t('this week')}</div>
+      </div>}
       <div className="tile"><div className="l"><Icon name="scale" />{t('Weight 30d')}</div><div className="v" style={{ fontSize: 22, color: bwDelta30 === null ? 'inherit' : bwDeltaColor(bwDelta30, (lastBW(S) || {}).w || 0) }}>{bwDelta30 === null ? '—' : (bwDelta30 > 0 ? '+' : '') + fmtNum(bwDelta30) + ' ' + S.unit}</div></div>
 
     </div>

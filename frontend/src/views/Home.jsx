@@ -9,7 +9,8 @@ import {
   lastBW,
   setsDoneActive,
 } from '../lib/history.js'
-import { fmtNum, fmtDate, todayISO, isoOf, weekKey, weekStartOf, weekDayOffset, DAYS, DAYN } from '../lib/format.js'
+import { fmtNum, fmtDate, todayISO, isoOf, weekStartOf, weekDayOffset, DAYS, DAYN } from '../lib/format.js'
+import { weeklyAdherence } from '../lib/adherence.js'
 import { t, dateLocale } from '../lib/i18n.js'
 import {
   bwSheet,
@@ -79,9 +80,11 @@ export default function Home() {
       ? t('This week')
       : `${wkStart.getDate()} ${wkStart.toLocaleDateString(dateLocale(), { month: 'short' })} – ${wkEnd.getDate()} ${wkEnd.toLocaleDateString(dateLocale(), { month: 'short' })}`
 
-  const wThisWeek = S.workouts.filter(w => weekKey(w.d, ws) === weekKey(todayISO(), ws)).length
-  // Days scheduled, not routines — a combined day counts as 1, matching wThisWeek (one w).
-  const plannedPerWeek = Object.values(S.week).filter(ids => ids?.length).length
+  // Sessions this week over the days the effective plan actually has — dayPlan included, so a
+  // day moved or marked rest changes the denominator (the old count read the S.week template
+  // alone and kept the day that was no longer planned). One helper feeds this line and the
+  // Stats tile, so the two screens can never show different weeks.
+  const { done: wThisWeek, planned: plannedPerWeek } = weeklyAdherence(S, todayISO())
   const bwPoints = S.bodyweight.slice(-30).map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.w, d: b.d }))
 
   // today's session shown right under the week strip
