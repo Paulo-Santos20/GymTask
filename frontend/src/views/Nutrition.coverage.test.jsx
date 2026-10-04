@@ -124,4 +124,38 @@ describe('Nutrition diary', () => {
     expect(host.querySelector('.nut-undo')).toBeNull()
     expect(host.querySelector('.nut-kcal b').textContent).toBe('300')
   })
+
+  it('shows a per-meal protein bar in every meal section against 0.3 g per kg', () => {
+    const date = todayISO()
+    act(() =>
+      useNutritionStore.setState({
+        log: {
+          [date]: [
+            breakfast({ protein: 12 }),
+            { id: 'e2', meal: 'almoco', name: 'Rice and beans', grams: 250, kcal: 450, protein: 20, carbs: 80, fat: 5 },
+          ],
+        },
+      }),
+    )
+    const host = render()
+
+    const blocks = [...host.querySelectorAll('.nut-meal-pro')]
+    expect(blocks).toHaveLength(4) // one per meal section — cafe, almoco, lanche, jantar
+    const goal = Math.round(0.3 * DEFAULT_PROFILE.peso) // 0.3 g per kg, default profile 75 kg
+
+    expect(blocks[0].querySelector('.nut-bar-h').textContent).toContain('Protein')
+    expect(blocks[0].querySelector('.nut-bar-h').textContent).toContain(`12 / ${goal} g`)
+    expect(blocks[1].querySelector('.nut-bar-h').textContent).toContain(`20 / ${goal} g`)
+    // the meals with nothing logged still show their bar at zero rather than no bar at all
+    expect(blocks[2].querySelector('.nut-bar-h').textContent).toContain(`0 / ${goal} g`)
+    expect(blocks[3].querySelector('.nut-bar-h').textContent).toContain(`0 / ${goal} g`)
+    // …and the goal text says where the number comes from
+    expect(blocks[0].textContent).toContain(`Per-meal protein goal: ${goal} g (0.3 g per kg)`)
+    expect(blocks[0].querySelector('.nut-bar-t i').style.width).toBe(`${Math.round((12 / goal) * 100)}%`)
+
+    // the block lives inside a meal Section, above that meal's rows
+    const sections = [...host.querySelectorAll('.sect')].filter(s => s.querySelector('.nut-meal-pro'))
+    expect(sections).toHaveLength(4)
+    expect(sections[0].querySelector('.sect-t').textContent).toBe('Breakfast')
+  })
 })

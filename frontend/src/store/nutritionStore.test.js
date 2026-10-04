@@ -98,6 +98,49 @@ describe('nutritionStore totals and profile', () => {
     expect(useNutritionStore.getState().totalsFor('2026-01-01')).toEqual({ kcal: 0, protein: 0, carbs: 0, fat: 0 })
   })
 
+  it('mealTotalsFor sums one meal of one day and leaves the other meals out', () => {
+    add(
+      '2026-10-03',
+      entry('a', { meal: 'cafe', kcal: 300.6, protein: 12.4, carbs: 40, fat: 6 }),
+      entry('b', { meal: 'almoco', kcal: 450, protein: 20, carbs: 80, fat: 5 }),
+      entry('c', { meal: 'cafe', kcal: 99.4, protein: 7.6, carbs: 10, fat: 2 }),
+    )
+    // Same rounding contract as totalsFor — only the meal filter is new.
+    expect(useNutritionStore.getState().mealTotalsFor('2026-10-03', 'cafe')).toEqual({
+      kcal: 400,
+      protein: 20,
+      carbs: 50,
+      fat: 8,
+    })
+    expect(useNutritionStore.getState().mealTotalsFor('2026-10-03', 'almoco')).toEqual({
+      kcal: 450,
+      protein: 20,
+      carbs: 80,
+      fat: 5,
+    })
+    // A meal nothing was logged for, and a day nothing was logged on, are zeros — not null,
+    // not undefined — so the bar can render at 0 without a branch.
+    expect(useNutritionStore.getState().mealTotalsFor('2026-10-03', 'jantar')).toEqual({
+      kcal: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+    })
+    expect(useNutritionStore.getState().mealTotalsFor('2026-01-01', 'cafe')).toEqual({
+      kcal: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+    })
+    // The day-level reader is untouched by the per-meal one.
+    expect(useNutritionStore.getState().totalsFor('2026-10-03')).toEqual({
+      kcal: 850,
+      protein: 40,
+      carbs: 130,
+      fat: 13,
+    })
+  })
+
   it('setProfile recomputes the targets from the patched profile', () => {
     const before = useNutritionStore.getState().targets
     useNutritionStore.getState().setProfile({ peso: 90 })

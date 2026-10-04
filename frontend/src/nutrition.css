@@ -89,6 +89,15 @@
   transition: width var(--med) var(--ease);
 }
 
+/* Per-meal protein bar: the day-summary bar markup reused at the top of every meal
+   section, with the goal it is measured against spelled out underneath. */
+.nut-meal-pro {
+  margin-bottom: 14px;
+}
+.nut-meal-pro .nut-sum-l {
+  margin-top: 6px;
+}
+
 /* ---------- undo strip after a delete ---------- */
 .nut-undo {
   display: flex;
