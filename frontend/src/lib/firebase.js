@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
-import { initializeFirestore, persistentLocalCache } from 'firebase/firestore'
+import { doc, initializeFirestore, onSnapshot, persistentLocalCache } from 'firebase/firestore'
 
 const cfg = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -27,3 +27,18 @@ if (firebaseConfigured) {
 export const app = _app
 export const auth = _auth
 export const db = _db
+
+/**
+ * Live sync (RF3): one listener on this account's document — the same `users/{uid}/state/app`
+ * that GET/PUT /api/data reads and writes (lib/api.js) — so a change made on another device
+ * reaches this one the moment it lands instead of on the next rev poll. The callback gets the
+ * document's own fields (null before the first write); the store settles each snapshot through
+ * the same rules as a pull (useStore settleSnapshot → lib/sync-merge.js).
+ *
+ * Returns Firestore's unsubscribe function — a no-op one when nothing is configured, so callers
+ * need no branch of their own.
+ */
+export function observeUserState(uid, onData) {
+  if (!firebaseConfigured || !uid) return () => {}
+  return onSnapshot(doc(_db, 'users', uid, 'state', 'app'), snap => onData(snap.exists() ? snap.data() : null))
+}
