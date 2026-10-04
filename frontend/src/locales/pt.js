@@ -1448,6 +1448,9 @@ export default {
   'Gym check-in': 'Check-in no ginásio',
   'Show a card on Home with your membership QR codes.': 'Mostra no Início um cartão com os teus códigos QR de sócio.',
   'Point the camera at the QR code': 'Aponta a câmara para o código QR',
+  'Point the camera at the barcode': 'Aponta a câmara para o código de barras',
+  'Scan barcode': 'Ler código de barras',
+  'No barcode found in that image': 'Nenhum código de barras encontrado nessa imagem',
   'Camera is not available here — import a photo or type the code instead.':
     'A câmara não está disponível aqui — importa uma foto ou escreve o código.',
   'Camera access was denied — allow it in your browser and try again.':

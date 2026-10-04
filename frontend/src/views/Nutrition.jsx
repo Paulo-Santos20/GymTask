@@ -1,13 +1,15 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { t } from '../lib/i18n.js'
 import { useNutritionStore, MEALS } from '../store/nutritionStore.js'
 import { useStore } from '../store/useStore.js'
 import { adaptiveTDEE, MIN_PAIRED_DAYS } from '../lib/tdee-adaptive.js'
 import { searchFoods } from '../lib/foods.js'
 import { searchExternal } from '../lib/foodApis.js'
+import { importCodeFromImage } from '../lib/scan.js'
 import { todayISO, isoOf, fmtDate, fmtNum, uid } from '../lib/format.js'
 import { Section, Row, Button, Stepper, Segmented, SearchField } from '../components/ui.jsx'
 import { useUI } from '../store/useUI.js'
+import CameraScan from '../components/CameraScan.jsx'
 import Icon from '../components/Icon.jsx'
 import '../nutrition.css'
 
@@ -25,6 +27,10 @@ const GOALS = [
   { v: 'ganhar', k: 'Gain weight' },
 ]
 const RESULT_SRC = { usda: 'USDA', off: 'Open Food Facts', nutritionix: 'Nutritionix' }
+// What the food scanner may decode: retail 1D barcodes plus QR (some packages carry one).
+// The jsQR fallback where BarcodeDetector is missing reads QR only — a platform limit, not a
+// wiring gap (lib/scan-web.js).
+const FOOD_FORMATS = ['qr_code', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39']
 // Per-meal protein floor: 0.3 g per kg of body weight — the lower bound of the 0.3–0.4 g/kg
 // per-meal band, against profile.peso (kg, the same basis targets.protein uses). Displayed in
 // the bar's goal text so the number on screen is never a mystery.
@@ -38,6 +44,7 @@ export default function Nutrition() {
   const [grams, setGrams] = useState(100)
   const [online, setOnline] = useState([])
   const [onlineState, setOnlineState] = useState('idle') // idle | loading | done | error
+  const fileRef = useRef(null)
   const toast = useUI(s => s.toast)
 
   const profile = useNutritionStore(s => s.profile)
@@ -128,6 +135,51 @@ export default function Nutrition() {
   const pick = f => {
     setPicked(f)
     setGrams(100)
+  }
+  // A decoded barcode goes through the SAME external search the query box uses (searchExternal
+  // → Open Food Facts/USDA, lib/foodApis.js). A hit prefills the entry for a one-tap confirm;
+  // a miss drops the code into the search field so the panel settles into its own existing
+  // "No matches for {0}" / error state — the flow a typed query already lands in.
+  const lookupCode = async value => {
+    const code = String(value || '').trim()
+    if (!code) return
+    try {
+      const found = await searchExternal(code)
+      if (found.length) pick(found[0])
+      else setQuery(code)
+    } catch {
+      setQuery(code)
+    }
+  }
+  // Camera scan: same sheet-over-sheet shape as the check-in add card (views/CheckIn.jsx:243).
+  // CameraScan shows its own denial message in place; the photo button below is the fallback.
+  const doScan = () => {
+    useUI.getState().openSheet(closeCam => (
+      <CameraScan
+        formats={FOOD_FORMATS}
+        hint={t('Point the camera at the barcode')}
+        onCancel={closeCam}
+        onFound={code => {
+          closeCam()
+          lookupCode(code && code.value)
+        }}
+      />
+    ))
+  }
+  const onScanFile = async ev => {
+    const file = ev.target.files && ev.target.files[0]
+    ev.target.value = ''
+    if (!file) return
+    try {
+      const code = await importCodeFromImage(file, FOOD_FORMATS)
+      if (!code) {
+        toast(t('No barcode found in that image'))
+        return
+      }
+      await lookupCode(code.value)
+    } catch {
+      toast(t('Could not read that image'))
+    }
   }
   const confirmAdd = () => {
     const scale = grams / 100
@@ -313,6 +365,22 @@ export default function Nutrition() {
                       onClear={() => setQuery('')}
                       placeholder={t('Search foods')}
                       aria-label={t('Search foods')}
+                    />
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                      <Button variant="tinted" icon="camera" onClick={doScan}>
+                        {t('Scan barcode')}
+                      </Button>
+                      <Button variant="tinted" icon="image" onClick={() => fileRef.current?.click()}>
+                        {t('Import photo')}
+                      </Button>
+                    </div>
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      aria-label={t('Import photo')}
+                      onChange={onScanFile}
                     />
                     {!!q && local.length > 0 && <Section title={t('Local foods')}>{local.map(resultRow)}</Section>}
                     {q.length >= 2 && (onlineState === 'loading' || onlineState === 'error' || online.length > 0) && (
