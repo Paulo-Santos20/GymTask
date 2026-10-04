@@ -62,6 +62,12 @@ jobs:
       # Property probe over ~108k comparisons; too slow for the unit suite, cheap here.
       - run: npm run test:fatigue-probe
         working-directory: frontend
+      # Biome gate: the dep and biome.json live at the repo ROOT, so one check covers api/,
+      # functions/, mcp/, frontend/ and scripts/ — running it from frontend/ would miss them.
+      # One step (npm ci && lint) keeps it cheap; the root lock only carries biome + js-yaml.
+      # TODO(2026-10-04): baseline — burn down (18 rules at warn + isolated format-baseline
+      # commit; full inventory in .omo/evidence/task-20-audit-fixes.md).
+      - run: npm ci && npm run lint
 
 
   mcp:
