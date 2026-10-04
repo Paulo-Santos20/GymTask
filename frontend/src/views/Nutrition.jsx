@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { t } from '../lib/i18n.js'
 import { useNutritionStore, MEALS } from '../store/nutritionStore.js'
+import { useStore } from '../store/useStore.js'
+import { adaptiveTDEE, MIN_PAIRED_DAYS } from '../lib/tdee-adaptive.js'
 import { searchFoods } from '../lib/foods.js'
 import { searchExternal } from '../lib/foodApis.js'
 import { todayISO, isoOf, fmtDate, fmtNum, uid } from '../lib/format.js'
@@ -48,6 +50,10 @@ export default function Nutrition() {
   const day = useMemo(() => log[date] || [], [log, date])
   const totals = useMemo(() => totalsFor(date), [totalsFor, log, date])
   const local = useMemo(() => (query.trim() ? searchFoods(query, 12) : []), [query])
+  // Adaptive maintenance from paired weigh-in + food days — informational only; the
+  // value is adopted strictly by the tap below (never auto-applied), through setProfile.
+  const S = useStore(s => s.S)
+  const adaptive = useMemo(() => adaptiveTDEE(S, log), [S, log])
   const q = query.trim()
   const today = todayISO()
   const over = totals.kcal > targets.kcal
@@ -136,6 +142,11 @@ export default function Nutrition() {
   const onRemove = e => {
     removeEntry(date, e.id)
     toast(t('Entry removed'))
+  }
+  const applyAdaptive = () => {
+    if (!adaptive.ok) return
+    setProfile({ kcalTarget: adaptive.kcal })
+    toast(t('Calorie target updated'))
   }
 
   const bars = [
@@ -397,6 +408,30 @@ export default function Nutrition() {
               </button>
             ))}
           </div>
+          <div className="nut-lbl">{t('Adaptive maintenance')}</div>
+          {adaptive.ok ? (
+            <div
+              className="nut-adaptive"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
+            >
+              <div>
+                <div className="nut-kcal" style={{ marginTop: 0 }}>
+                  <b>{fmtNum(adaptive.kcal)}</b>
+                  <span>kcal</span>
+                </div>
+                <div className="nut-sum-l">
+                  {fmtDate(adaptive.window.from)} – {fmtDate(adaptive.window.to)}
+                </div>
+              </div>
+              <Button size="sm" variant="tinted" onClick={applyAdaptive}>
+                {t('Apply')}
+              </Button>
+            </div>
+          ) : (
+            <div className="nut-note">
+              {t('Adaptive estimate appears after {0} days with weigh-ins and food logged.', MIN_PAIRED_DAYS)}
+            </div>
+          )}
           <div className="nut-note">{t('Estimates for guidance — not medical advice.')}</div>
         </div>
       </Section>
