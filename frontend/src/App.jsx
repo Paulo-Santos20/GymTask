@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, lazy, Suspense } from 'react'
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation, useNavigationType } from 'react-router-dom'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
@@ -26,15 +26,17 @@ import CheckIn from './views/CheckIn.jsx'
 import Plan from './views/Plan.jsx'
 import RoutineEdit from './views/RoutineEdit.jsx'
 import Workout from './views/Workout.jsx'
-import Stats from './views/Stats.jsx'
-import History from './views/History.jsx'
 import Library from './views/Library.jsx'
-import Muscles from './views/Muscles.jsx'
-import Settings from './views/Settings.jsx'
-import CoachChat from './views/CoachChat.jsx'
 import CoachIntake from './views/CoachIntake.jsx'
 import CoachSetup from './views/CoachSetup.jsx'
-import Nutrition from './views/Nutrition.jsx'
+// Heavy secondary views split per route (task 16); Home/Login stay eager — a
+// spinner on first paint would be a visible regression.
+const Stats = lazy(() => import('./views/Stats.jsx'))
+const History = lazy(() => import('./views/History.jsx'))
+const Muscles = lazy(() => import('./views/Muscles.jsx'))
+const Settings = lazy(() => import('./views/Settings.jsx'))
+const CoachChat = lazy(() => import('./views/CoachChat.jsx'))
+const Nutrition = lazy(() => import('./views/Nutrition.jsx'))
 
 // last known scrollY per route, so back-navigation can put the page where it was
 const scrollPositions = new Map()
@@ -141,7 +143,12 @@ function Shell() {
         <ErrorBoundary>
           {authed && <SyncBanner />}
           {!authed ? <Login /> : (
-            <Routes>
+            <Suspense fallback={(
+              <div style={{ paddingTop: '44vh', display: 'flex', justifyContent: 'center', fontSize: 34, color: 'var(--label-3)' }}>
+                <Icon name="dumbbell" />
+              </div>
+            )}>
+              <Routes>
               <Route path="/home" element={<Home />} />
               {/* Gym check-in — switched off in Settings, the route falls through to the
                   catch-all redirect below. */}
@@ -165,7 +172,8 @@ function Shell() {
                   with the user's own API key. */}
               <Route path="/coach/setup" element={<CoachSetup />} />
               <Route path="*" element={<Navigate to="/home" replace />} />
-            </Routes>
+              </Routes>
+            </Suspense>
           )}
         </ErrorBoundary>
       </div>
