@@ -101,6 +101,14 @@ export const DEF = {
   // the session straight away; weight can still be logged from Home/Stats. Defaults on; an
   // older profile without the key reads as on (`!== false`).
   weighIn: true,
+  // Per-muscle weekly set landmarks the user has edited: `{ [slug]: { mev, mav } }`, or null
+  // (the default, and what every profile written before this key exists loads as through the
+  // DEF overlay in loadState) meaning "show the built-in presets" — lib/muscles.js
+  // SET_LANDMARKS via landmarksFor(slug, S.muscleTargets). null rather than {} so "never
+  // touched" and "reset to defaults" are the same value: a full reset writes null back and
+  // the presets follow any future change to the table. Personal programming preference, so it
+  // syncs with the profile like barWeights/exNotes do.
+  muscleTargets: null,
 }
 const clone = o => JSON.parse(JSON.stringify(o))
 

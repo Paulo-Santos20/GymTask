@@ -9,7 +9,8 @@
 
 import { isWarmupRow } from './workout-model.js'
 import { EXIDX, smOf } from './exercises.js'
-import { todayISO, weekKey, MONDAY } from './format.js'
+import { todayISO, weekKey, weekStartOf, startOfWeek, isoOf, MONDAY } from './format.js'
+import { effectiveRoutines } from './history.js'
 
 // The muscles a map can shade, in head-to-toe order — also the order of any list
 // built from them, so "what am I neglecting" reads top-down like a body.
@@ -382,6 +383,52 @@ export const loadOfActive = active =>
   )
 
 /**
+ * Working sets per muscle, per calendar week: what each week actually delivered (`done` —
+ * finished workouts, warm-ups excluded) and what the routine schedules for it (`planned` —
+ * the seven days' effective routines, `dayPlan` overrides included). The two sides stay
+ * separate: a week can be planned and untouched, or improvised far past its plan.
+ *
+ * Buckets are `weekKey`s, so a week that crosses a month — or the profile's first weekday —
+ * groups exactly like every other week calculation in the app (effortWeeks, the Stats week
+ * window). Oldest week first; `weeks` counts back from the week `today` falls in (1 = this
+ * week only). `today` is injected because this takes the clock as an argument, never reads it.
+ *
+ * The volume-landmark rows (Stats "12/18 sets", Settings editing) read this: `done` against
+ * the muscle's MAV/MEV tells the user whether the week under- or over-shot its target.
+ */
+export function weeklyMuscleSeries(S, { weeks = 1, today = todayISO() } = {}) {
+  const ws = weekStartOf(S)
+  const plan = { routines: S?.routines || [], week: S?.week || {}, dayPlan: S?.dayPlan || {} }
+  const buckets = []
+  const byKey = new Map()
+  const last = startOfWeek(today, ws)
+  for (let i = Math.max(1, weeks) - 1; i >= 0; i--) {
+    const start = new Date(last)
+    start.setDate(start.getDate() - i * 7)
+    const bucket = { k: isoOf(start), t: start.getTime(), done: {}, planned: {} }
+    buckets.push(bucket)
+    byKey.set(bucket.k, bucket)
+  }
+  ;(S?.workouts || []).forEach(w => {
+    const bucket = byKey.get(weekKey(w.d, ws))
+    if (!bucket) return
+    const load = loadOfWorkouts([w])
+    for (const slug in load) bucket.done[slug] = (bucket.done[slug] || 0) + load[slug]
+  })
+  buckets.forEach(bucket => {
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(bucket.t) // noon local (format.js startOfWeek), so DST cannot skip a date
+      day.setDate(day.getDate() + i)
+      effectiveRoutines(plan, isoOf(day)).forEach(routine => {
+        const load = loadOfRoutine(routine)
+        for (const slug in load) bucket.planned[slug] = (bucket.planned[slug] || 0) + load[slug]
+      })
+    }
+  })
+  return buckets
+}
+
+/**
  * Shade buckets 0–4 per muscle.
  *
  * With no `thresholds`, levels remain relative to the hardest-worked muscle in the same
@@ -423,4 +470,74 @@ export function rankOf(load) {
   )
   const missed = MUSCLES.filter(m => !(load[m] > 0))
   return { worked, missed }
+}
+
+// ----------------------------------------------------------------- volume landmarks --
+//
+// Weekly working-set ranges per muscle: MEV (the least that still maintains/grows the muscle)
+// and MAV (the most before recovery starts losing). The numbers below are the plan's starting
+// preset — deliberately editable per profile (Settings writes DEF.muscleTargets in useStore.js,
+// and `landmarksFor(slug, overrides)` layers that map over these), not a verdict about anyone's
+// programming. Rows are named the way the plan names them, which is not the way the app's slugs
+// are named, so LANDMARK_ROW documents every rename: trapezius is the "traps" row, deltoids the
+// "shoulders" row, quadriceps "quads", hamstring "hamstrings", gluteal "glutes", forearm
+// "forearms". Slugs with no row of their own take the closest one — upper- and lower-back share
+// "back", obliques and hip-flexors share "abs" (the core row), tibialis shares "calves", adductors
+// are trained on the posterior-chain days that hit "hamstrings", serratus rides the "shoulders"
+// row it works with on every press. Anything else (a future slug, a typo, the cardiovascular
+// pseudo-muscle the dataset can produce) resolves through the fallback rather than to nothing.
+export const SET_LANDMARKS = {
+  chest: { mev: 10, mav: 20 },
+  back: { mev: 10, mav: 22 },
+  shoulders: { mev: 8, mav: 16 },
+  quads: { mev: 8, mav: 18 },
+  hamstrings: { mev: 6, mav: 16 },
+  glutes: { mev: 8, mav: 16 },
+  biceps: { mev: 6, mav: 14 },
+  triceps: { mev: 6, mav: 14 },
+  calves: { mev: 8, mav: 16 },
+  abs: { mev: 6, mav: 12 },
+  traps: { mev: 6, mav: 14 },
+  forearms: { mev: 4, mav: 10 },
+}
+/** What a muscle with no row of its own is held to — the plan's "unmapped slug" rule. */
+export const LANDMARK_FALLBACK = { mev: 8, mav: 16 }
+/** Muscle slug → SET_LANDMARKS row. Every drawable slug (MUSCLES) has an entry. */
+export const LANDMARK_ROW = {
+  trapezius: 'traps',
+  deltoids: 'shoulders',
+  chest: 'chest',
+  'upper-back': 'back',
+  'lower-back': 'back',
+  serratus: 'shoulders',
+  biceps: 'biceps',
+  triceps: 'triceps',
+  forearm: 'forearms',
+  abs: 'abs',
+  obliques: 'abs',
+  gluteal: 'glutes',
+  quadriceps: 'quads',
+  hamstring: 'hamstrings',
+  adductors: 'hamstrings',
+  'hip-flexors': 'abs',
+  calves: 'calves',
+  tibialis: 'calves',
+}
+
+// A stored override may carry a value JSON round-tripped as text, or a cleared one as null;
+// neither may replace a real bound with `null`/NaN — an unreadable landmark is worse than the
+// preset it was meant to change.
+const landmarkNum = (value, fallback) =>
+  value != null && value !== '' && Number.isFinite(Number(value)) ? Number(value) : fallback
+
+/**
+ * Weekly working-set landmarks for one muscle: the preset row it maps to, with the profile's
+ * own edits (DEF.muscleTargets, `null` until the user edits one) layered over it per bound —
+ * an override of only MEV keeps the preset MAV, and vice versa.
+ */
+export function landmarksFor(slug, overrides = null) {
+  const row = SET_LANDMARKS[LANDMARK_ROW[slug]] || LANDMARK_FALLBACK
+  const own = overrides?.[slug]
+  if (!own) return { mev: row.mev, mav: row.mav }
+  return { mev: landmarkNum(own.mev, row.mev), mav: landmarkNum(own.mav, row.mav) }
 }
