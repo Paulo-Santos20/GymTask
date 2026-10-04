@@ -1,9 +1,17 @@
-import { describe, it, expect } from 'vitest'
+// @vitest-environment happy-dom
+// The volume-landmark tests below import the store's DEF (its backward-compat overlay is
+// part of what they pin), and useStore registers document/window listeners at import time.
+import { describe, it, expect, vi } from 'vitest'
 import { EXIDX, EXDB, smOf } from './exercises.js'
 import {
+  LANDMARK_FALLBACK,
+  LANDMARK_ROW,
   MUSCLE_NAME,
+  MUSCLES,
+  SET_LANDMARKS,
   exerciseMuscleSnapshot,
   hasExplicitMuscleMetadata,
+  landmarksFor,
   levelsOf,
   loadOf,
   loadOfWorkouts,
@@ -12,7 +20,9 @@ import {
   muscleGroupsOf,
   musclesOf,
   rankOf,
+  weeklyMuscleSeries,
 } from './muscles.js'
+import { DEF } from '../store/useStore.js'
 
 describe('multi-muscle exercise metadata', () => {
   it('normalizes legacy primary/secondary fields and removes duplicate groups', () => {
@@ -268,5 +278,149 @@ describe('MUSCLE_NAME as i18n keys', () => {
       const missing = Object.values(MUSCLE_NAME).filter(name => !(name in mod.default))
       expect(missing, file).toEqual([])
     }
+  })
+})
+
+// T1 volume landmarks (plan TC3): what each calendar week delivered and what the routine
+// planned for it, per muscle. Both sides key off weekKey, so a week that crosses a month —
+// or the profile's first weekday — buckets exactly like every other week grouping here.
+describe('weekly muscle set series', () => {
+  const bench = sets => ({
+    id: '0025',
+    sets: Array.from({ length: sets }, () => ({ done: true, w: 60, r: 8 })),
+  })
+  const session = (d, sets) => ({ d, entries: [bench(sets)] })
+  const push = { id: 'push', name: 'Push', ex: [{ id: '0025', sets: 4 }] }
+  const state = over => ({ workouts: [], routines: [], week: {}, dayPlan: {}, weekStart: 1, ...over })
+
+  it('buckets completed sets by the week they fall in, oldest week first', () => {
+    const S = state({
+      workouts: [session('2026-08-24', 3), session('2026-08-30', 5), session('2026-08-31', 7)],
+    })
+    const series = weeklyMuscleSeries(S, { weeks: 2, today: '2026-09-02' })
+    expect(series.map(w => w.k)).toEqual(['2026-08-24', '2026-08-31'])
+    // Sunday 8/30 belongs to the week that started Monday 8/24: 3 + 5.
+    expect(series.map(w => w.done.chest)).toEqual([8, 7])
+    expect(series[0].done.deltoids).toBeCloseTo(0.4 * 8)
+  })
+
+  it('moves the Sunday session when the profile starts its week on Sunday', () => {
+    const S = state({
+      weekStart: 0,
+      workouts: [session('2026-08-24', 3), session('2026-08-30', 5), session('2026-08-31', 7)],
+    })
+    const series = weeklyMuscleSeries(S, { weeks: 2, today: '2026-09-02' })
+    expect(series.map(w => w.k)).toEqual(['2026-08-23', '2026-08-30'])
+    expect(series.map(w => w.done.chest)).toEqual([3, 12])
+  })
+
+  it('counts what the routine plans for each week, honoring a rested day override', () => {
+    const S = state({
+      routines: [push],
+      week: { 1: ['push'], 3: ['push'] },
+      dayPlan: { '2026-08-31': 'rest' },
+    })
+    const series = weeklyMuscleSeries(S, { weeks: 2, today: '2026-09-02' })
+    expect(series.map(w => w.planned.chest)).toEqual([8, 4])
+    expect(series[0].done).toEqual({})
+  })
+
+  it('keeps the done and planned sides separate for the same week', () => {
+    const S = state({ workouts: [session('2026-08-31', 6)], routines: [push], week: { 1: ['push'] } })
+    const series = weeklyMuscleSeries(S, { today: '2026-09-02' })
+    expect(series).toHaveLength(1)
+    expect(series[0].k).toBe('2026-08-31')
+    expect(series[0].done.chest).toBe(6)
+    expect(series[0].planned.chest).toBe(4)
+  })
+})
+
+// The presets behind every profile that has not edited a landmark, and the mapping from the
+// app's muscle slugs onto the preset rows the plan names (traps ≠ trapezius, quads ≠
+// quadriceps, …). The fallback keeps any slug — drawn or not — resolvable to a usable range.
+describe('weekly set landmarks presets', () => {
+  it('maps every muscle the body map can draw to a named preset row', () => {
+    for (const slug of MUSCLES) {
+      expect(LANDMARK_ROW[slug], slug).toBeTruthy()
+      expect(SET_LANDMARKS[LANDMARK_ROW[slug]], slug).toEqual(landmarksFor(slug))
+    }
+  })
+
+  it('resolves every slug the exercise dataset can produce', () => {
+    const producible = new Set(MUSCLES)
+    for (const ex of EXDB) for (const slug of Object.keys(musclesOf(ex))) producible.add(slug)
+    expect(producible.has('cardiovascular system')).toBe(true) // the cardio pseudo-muscle
+    for (const slug of producible) {
+      const target = landmarksFor(slug)
+      expect(Number.isFinite(target.mev) && target.mev > 0, slug).toBe(true)
+      expect(target.mav, slug).toBeGreaterThanOrEqual(target.mev)
+    }
+  })
+
+  it('pins the plan preset numbers', () => {
+    expect(landmarksFor('chest')).toEqual({ mev: 10, mav: 20 })
+    expect(landmarksFor('upper-back')).toEqual({ mev: 10, mav: 22 })
+    expect(landmarksFor('lower-back')).toEqual({ mev: 10, mav: 22 })
+    expect(landmarksFor('deltoids')).toEqual({ mev: 8, mav: 16 })
+    expect(landmarksFor('quadriceps')).toEqual({ mev: 8, mav: 18 })
+    expect(landmarksFor('hamstring')).toEqual({ mev: 6, mav: 16 })
+    expect(landmarksFor('adductors')).toEqual({ mev: 6, mav: 16 })
+    expect(landmarksFor('gluteal')).toEqual({ mev: 8, mav: 16 })
+    expect(landmarksFor('biceps')).toEqual({ mev: 6, mav: 14 })
+    expect(landmarksFor('triceps')).toEqual({ mev: 6, mav: 14 })
+    expect(landmarksFor('calves')).toEqual({ mev: 8, mav: 16 })
+    expect(landmarksFor('tibialis')).toEqual({ mev: 8, mav: 16 })
+    expect(landmarksFor('abs')).toEqual({ mev: 6, mav: 12 })
+    expect(landmarksFor('obliques')).toEqual({ mev: 6, mav: 12 })
+    expect(landmarksFor('hip-flexors')).toEqual({ mev: 6, mav: 12 })
+    expect(landmarksFor('trapezius')).toEqual({ mev: 6, mav: 14 })
+    expect(landmarksFor('forearm')).toEqual({ mev: 4, mav: 10 })
+    expect(landmarksFor('serratus')).toEqual({ mev: 8, mav: 16 })
+  })
+
+  it('falls back to 8/16 for a slug it has no row for', () => {
+    expect(LANDMARK_FALLBACK).toEqual({ mev: 8, mav: 16 })
+    expect(landmarksFor('not-a-muscle')).toEqual({ mev: 8, mav: 16 })
+    expect(landmarksFor('cardiovascular system')).toEqual({ mev: 8, mav: 16 })
+    expect(landmarksFor()).toEqual({ mev: 8, mav: 16 })
+  })
+
+  it('layers a profile override over the preset without dropping the other bound', () => {
+    expect(landmarksFor('chest', { chest: { mev: 14 } })).toEqual({ mev: 14, mav: 20 })
+    expect(landmarksFor('chest', { chest: { mav: 30 } })).toEqual({ mev: 10, mav: 30 })
+    expect(landmarksFor('biceps', { chest: { mev: 14 } })).toEqual({ mev: 6, mav: 14 })
+    expect(landmarksFor('chest', null)).toEqual({ mev: 10, mav: 20 })
+    expect(landmarksFor('chest', { chest: { mev: 'bad' } })).toEqual({ mev: 10, mav: 20 })
+  })
+})
+
+// The store key behind the editable half: null means "show the presets", and a profile
+// written before the key existed has to load as null rather than as undefined (which a
+// Settings editor reading `??` would read as "never been set" all the same — the point is
+// that every read path through the DEF overlay sees one value).
+describe('DEF.muscleTargets', () => {
+  it('defaults to null so unedited profiles show the presets', () => {
+    expect(DEF.muscleTargets).toBeNull()
+  })
+
+  it('overlays null onto a profile saved before the key existed', async () => {
+    localStorage.setItem('gym_state_v1', JSON.stringify({ unit: 'lb', restSec: 120, _ts: 5, workouts: [] }))
+    vi.resetModules()
+    const fresh = await import('../store/useStore.js')
+    const S = fresh.useStore.getState().S
+    expect(S.muscleTargets).toBeNull()
+    expect(S.restSec).toBe(120)
+    expect(S.unit).toBe('lb')
+    localStorage.removeItem('gym_state_v1')
+    vi.resetModules()
+  })
+
+  it('keeps an override map a profile already carries', async () => {
+    localStorage.setItem('gym_state_v1', JSON.stringify({ muscleTargets: { chest: { mev: 14, mav: 22 } }, _ts: 9 }))
+    vi.resetModules()
+    const fresh = await import('../store/useStore.js')
+    expect(fresh.useStore.getState().S.muscleTargets).toEqual({ chest: { mev: 14, mav: 22 } })
+    localStorage.removeItem('gym_state_v1')
+    vi.resetModules()
   })
 })
