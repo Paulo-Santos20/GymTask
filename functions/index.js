@@ -269,16 +269,62 @@ const XAI_URL = 'https://api.x.ai/v1/chat/completions'
 const DEFAULT_XAI_MODEL = 'grok-3-mini'
 const COACH_FETCH_TIMEOUT_MS = 60000
 
-async function callGrok({ key, model, messages, temperature, timeoutMs = COACH_FETCH_TIMEOUT_MS }) {
+async function callGrok({ key, model, messages, temperature, timeoutMs = COACH_FETCH_TIMEOUT_MS, stream, onDelta }) {
   const ctl = new AbortController()
   const timer = setTimeout(() => ctl.abort(), timeoutMs)
   try {
     const res = await fetch(XAI_URL, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key },
-      body: JSON.stringify({ model, messages, temperature }),
+      body: JSON.stringify({ model, messages, temperature, ...(stream ? { stream: true } : {}) }),
       signal: ctl.signal,
     })
+    const ct =
+      (res.headers && typeof res.headers.get === 'function' && String(res.headers.get('content-type') || '')) || ''
+    if (stream && res.ok && /text\/event-stream/.test(ct)) {
+      // The tokens as they arrive. The pieces join to the same bytes the buffered path would
+      // have parsed — the stream is transport, never a different answer.
+      let text = ''
+      try {
+        const reader = res.body.getReader()
+        const dec = new TextDecoder()
+        let buf = ''
+        for (;;) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buf += dec.decode(value, { stream: true })
+          let i
+          while ((i = buf.indexOf('\n\n')) >= 0) {
+            const frame = buf.slice(0, i)
+            buf = buf.slice(i + 2)
+            for (const line of frame.split('\n')) {
+              if (line.slice(0, 5) !== 'data:') continue
+              const payload = line.slice(5).trim()
+              if (!payload || payload === '[DONE]') continue
+              let d
+              try {
+                d = JSON.parse(payload)
+              } catch {
+                continue
+              }
+              const choice = d && Array.isArray(d.choices) ? d.choices[0] : null
+              const piece = choice && choice.delta && choice.delta.content
+              if (typeof piece === 'string' && piece) {
+                text += piece
+                if (onDelta) onDelta(piece)
+              }
+            }
+          }
+        }
+      } catch (e) {
+        if (e && e.name === 'AbortError') return { timeout: true }
+        return { error: 'the stream broke: ' + String((e && e.message) || e).slice(0, 200), status: 502 }
+      }
+      if (!text) return { error: 'the model returned no text' }
+      return { text }
+    }
+    // Not SSE (a JSON client, an error, or a provider that ignored the flag): the buffered
+    // path exactly as it ran before the stream existed.
     let data = null
     try {
       data = JSON.parse(await res.text())
@@ -336,6 +382,39 @@ exports.coach = onRequest({ region: REGION, timeoutSeconds: 300 }, async (req, r
   const model =
     (typeof body.model === 'string' && body.model.trim().slice(0, 80)) || process.env.XAI_MODEL || DEFAULT_XAI_MODEL
   const temperature = Number.isFinite(+body.temperature) ? Math.min(2, Math.max(0, +body.temperature)) : 0
+
+  // Every guard above this line answers JSON whether or not the client asked for a stream —
+  // headers are open only once nothing can still refuse the request. The handshake itself is
+  // written before the upstream call leaves, so a client sees 200 while the model is thinking.
+  const accept = req && req.headers ? req.headers.accept : undefined
+  if (typeof accept === 'string' && /text\/event-stream/.test(accept)) {
+    res.writeHead(200, {
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-cache',
+      ...corsHeaders(req),
+    })
+    const frame = (type, data) => {
+      try {
+        res.write('event: ' + type + '\ndata: ' + JSON.stringify(data) + '\n\n')
+      } catch {
+        /* client gone; res.end below still runs */
+      }
+    }
+    const out = await callGrok({
+      key,
+      model,
+      messages: built.messages,
+      temperature,
+      stream: true,
+      onDelta: t => frame('delta', { text: t }),
+    })
+    if (out.timeout) frame('error', { ok: false, error: 'the model did not answer within 60s', status: 504 })
+    else if (out.unreachable)
+      frame('error', { ok: false, error: 'could not reach api.x.ai: ' + out.unreachable, status: 502 })
+    else if (out.error) frame('error', { ok: false, error: out.error, status: out.status || 502 })
+    else frame('end', { ok: true, model, text: out.text, answer: extractJson(out.text) })
+    return res.end()
+  }
 
   const out = await callGrok({ key, model, messages: built.messages, temperature })
   if (out.timeout) return send(req, res, 504, { ok: false, error: 'the model did not answer within 60s' })

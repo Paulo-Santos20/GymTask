@@ -39,6 +39,13 @@ export const anthropicSpec = {
       .join('')
     return { text, truncated: data.stop_reason === 'max_tokens' }
   },
+  // Streaming frames: `content_block_delta` carries the text, `message_delta` the stop reason
+  // (end_turn / max_tokens / refusal) — the same two facts readText folds into one answer.
+  readDelta: data => {
+    if (data.type === 'content_block_delta') return { text: (data.delta && data.delta.text) || '', finishReason: null }
+    if (data.type === 'message_delta') return { text: '', finishReason: (data.delta && data.delta.stop_reason) || null }
+    return null
+  },
   readModels: data => (data.data || []).map(m => m.id),
 }
 

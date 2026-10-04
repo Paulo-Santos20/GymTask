@@ -75,7 +75,7 @@ export function canDropPrivileges() {
  * Never rejects on a non-zero exit: the caller classifies failures, and a CLI that prints a
  * useful error and exits 1 is more informative than a thrown Error with none of it.
  */
-export function run(cmd, argv, { stdin = '', env = {}, cwd, timeoutMs = 300000, asCoach = true } = {}) {
+export function run(cmd, argv, { stdin = '', env = {}, cwd, timeoutMs = 300000, asCoach = true, onStdout } = {}) {
   return new Promise(resolve => {
     const ids = asCoach ? unprivilegedIds() : null
     let child
@@ -97,6 +97,16 @@ export function run(cmd, argv, { stdin = '', env = {}, cwd, timeoutMs = 300000, 
     }, timeoutMs)
     child.stdout.on('data', d => {
       if (stdout.length < CAP) stdout += d
+      // The stream side-channel's tap: raw chunks, as written, before the run resolves. The
+      // final `text` still comes from the accumulated buffer below — this never feeds the
+      // pipeline, only the SSE tape.
+      if (onStdout) {
+        try {
+          onStdout(String(d))
+        } catch {
+          /* a watcher must not be able to fail the job */
+        }
+      }
     })
     child.stderr.on('data', d => {
       if (stderr.length < CAP) stderr += d

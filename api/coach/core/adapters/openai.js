@@ -48,6 +48,15 @@ export function chatCompletionsSpec(id, { maxTokensField = 'max_completion_token
         typeof content === 'string' ? content : Array.isArray(content) ? content.map(p => p.text || '').join('') : ''
       return { text, truncated: choice.finish_reason === 'length' }
     },
+    // One streamed frame → the piece of text it carries, if any, and the finish reason when
+    // the frame names one. The accumulator in http.js joins the pieces in arrival order —
+    // the same bytes readText would have returned from the buffered response.
+    readDelta: data => {
+      const choice = (data.choices || [])[0]
+      if (!choice) return null
+      const piece = choice.delta && choice.delta.content
+      return { text: typeof piece === 'string' ? piece : '', finishReason: choice.finish_reason || null }
+    },
     readModels: data => {
       const ids = (data.data || data.models || [])
         .map(m => (typeof m === 'string' ? m : m.id || m.name))

@@ -77,6 +77,69 @@ async function readJson(res) {
   }
 }
 
+// `finish_reason`/`stop_reason` values that mean "answered, complete". Anything else that
+// arrives with a truthy value is the model stopping for its own reasons — refusal, safety —
+// and is surfaced with the same wording readText uses on the buffered path.
+const STOP_OK = new Set(['stop', 'STOP', 'end_turn', 'stop_sequence'])
+const CUT_OFF = 'the answer was cut off at the output limit — try a smaller plan or a bigger model'
+
+/**
+ * Consume a text/event-stream body, calling `readDelta` on each `data:` payload and
+ * forwarding its text to `onDelta` as it lands. Frames are buffered across chunk boundaries —
+ * SSE splits wherever it likes. Returns what the final classification needs, never throws for
+ * a malformed frame (one bad line is not a failed job).
+ */
+async function readSSE(res, readDelta, onDelta) {
+  let text = '',
+    finishReason = null
+  try {
+    const reader = res.body.getReader()
+    const dec = new TextDecoder()
+    let buf = ''
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buf += dec.decode(value, { stream: true })
+      let i
+      while ((i = buf.indexOf('\n\n')) >= 0) {
+        const frame = buf.slice(0, i)
+        buf = buf.slice(i + 2)
+        for (const line of frame.split('\n')) {
+          if (line.slice(0, 5) !== 'data:') continue
+          const payload = line.slice(5).trim()
+          if (!payload || payload === '[DONE]') continue
+          let d
+          try {
+            d = readDelta(JSON.parse(payload))
+          } catch {
+            continue
+          }
+          if (!d) continue
+          if (d.text) {
+            text += d.text
+            if (onDelta) onDelta(d.text)
+          }
+          if (d.finishReason) finishReason = d.finishReason
+        }
+      }
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return { aborted: true }
+    return { error: trim(e && e.message, 200) || 'the stream broke' }
+  }
+  return { text, finishReason }
+}
+
+/** The classification of a finished stream, in the buffered path's own vocabulary. */
+function finishOf({ text, finishReason }) {
+  if (finishReason === 'refusal') return { code: 1, text: '', stderr: 'the model declined this request' }
+  if (finishReason === 'length' || finishReason === 'max_tokens' || finishReason === 'MAX_TOKENS')
+    return { code: 1, text: '', stderr: CUT_OFF }
+  if (finishReason && !STOP_OK.has(finishReason))
+    return { code: 1, text: '', stderr: `the model stopped early: ${finishReason}` }
+  return { code: 0, text: String(text || '').trim(), stderr: '' }
+}
+
 export function httpAdapter(spec) {
   const id = spec.id
   const meta = HTTP_PROVIDERS[id]
@@ -177,17 +240,24 @@ export function httpAdapter(spec) {
         maxTokens: MAX_OUTPUT_TOKENS,
       })
       let retriedWithoutJsonMode = false
+      let retriedWithoutStream = false
       let transientRetries = 0
       for (;;) {
+        // Streaming only when the caller handed an `onDelta` down (the server's job runner
+        // always does — the tape exists whether or not anyone is watching) and this provider
+        // has a delta reader. Everything else — the phone's BYOK path, `models`, `check` —
+        // never passes one and takes the buffered path unchanged.
+        const wantsStream = !!opts.onDelta && !!spec.readDelta && !retriedWithoutStream
+        const path = wantsStream && spec.streamPath ? spec.streamPath(chosen) : spec.path(chosen)
         let res
         try {
           res = await call(
             fetchImpl,
-            base + spec.path(chosen),
+            base + path,
             {
               method: 'POST',
               headers: { 'content-type': 'application/json', ...spec.headers(key) },
-              body: JSON.stringify(body),
+              body: JSON.stringify(wantsStream ? { ...body, stream: true } : body),
             },
             timeoutMs,
             signal,
@@ -196,6 +266,24 @@ export function httpAdapter(spec) {
           if (e.name === 'AbortError') return { code: -1, text: '', stderr: 'timed out', timedOut: true }
           return { code: 1, text: '', stderr: `could not reach ${hostOf(base)}: ${trim(e.message, 200)}` }
         }
+
+        const ct =
+          String((res.headers && typeof res.headers.get === 'function' && res.headers.get('content-type')) || '') || ''
+        if (wantsStream && res.ok && /text\/event-stream/.test(ct)) {
+          const out = await readSSE(res, spec.readDelta, opts.onDelta)
+          if (out.aborted) return { code: -1, text: '', stderr: 'timed out', timedOut: true }
+          if (out.error) return { code: 1, text: '', stderr: out.error }
+          if (!String(out.text || '').trim() && !retriedWithoutStream) {
+            // It said SSE and streamed nothing worth parsing. Ask once more without the flag —
+            // one retry, guarded, so a broken stream cannot become a loop of them.
+            retriedWithoutStream = true
+            continue
+          }
+          return finishOf(out)
+        }
+        // Not SSE (an old deploy, or a provider that ignored the flag): the buffered path,
+        // byte-for-byte as it ran before the stream existed.
+
         const { data, text } = await readJson(res)
         if (!res.ok) {
           const msg = spec.errorMessage(data) || trim(text, 200)

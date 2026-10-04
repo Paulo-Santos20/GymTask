@@ -69,7 +69,7 @@ export default function CoachChat() {
   const storeReady = useStore(s => s.ready)
   const toast = useUI(s => s.toast)
   const openSheet = useUI(s => s.openSheet)
-  const { job, pending, cap, loading, lastError, last, refresh } = useCoachStatus(true)
+  const { job, pending, cap, loading, lastError, last, streamText, refresh } = useCoachStatus(true)
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const endRef = useRef(null)
@@ -117,7 +117,7 @@ export default function CoachChat() {
 
   useEffect(() => {
     if (typeof endRef.current?.scrollIntoView === 'function') endRef.current.scrollIntoView({ block: 'end' })
-  }, [S.coach?.chat?.length, !!job, !!pending])
+  }, [S.coach?.chat?.length, !!job, !!pending, streamText])
 
   if (!ready) return null
   const coach = S.coach || emptyCoach()
@@ -380,7 +380,7 @@ export default function CoachChat() {
           <Message key={m.id} m={m} S={S} profile={coach.profile} openSheet={openSheet} />
         ))}
 
-        {job && <Typing S={S} kind={job.kind} coachLocal={coachLocal} config={config} />}
+        {job && <Typing S={S} kind={job.kind} coachLocal={coachLocal} config={config} text={streamText || ''} />}
 
         {pending &&
           !job &&
@@ -502,7 +502,7 @@ const stamp = at => {
   return d.toDateString() === today.toDateString() ? time : fmtDate(d.toISOString().slice(0, 10)) + ' · ' + time
 }
 
-function Typing({ S, kind, coachLocal, config }) {
+function Typing({ S, kind, coachLocal, config, text }) {
   const ms = estimateMs(S)
   // "Local" on either side: the phone's own OpenAI-compatible endpoint, or the server's —
   // /api/config names the provider, and a model on the owner's box is nothing like a cloud API.
@@ -525,11 +525,15 @@ function Typing({ S, kind, coachLocal, config }) {
         : t('Reading your training…')
   return (
     <div className="msg coach">
-      <div className="bub typing">
-        <i />
-        <i />
-        <i />
-      </div>
+      {/* Streamed tokens land here as they arrive; before the first one (or when the stream
+          falls back to polling) the dots stand in. */}
+      {text ? <div className="bub stream">{text}</div> : (
+        <div className="bub typing">
+          <i />
+          <i />
+          <i />
+        </div>
+      )}
       <div className="typing-eta">
         {doing} {eta}
         {local ? ' ' + t('A local model can take longer.') : ''}

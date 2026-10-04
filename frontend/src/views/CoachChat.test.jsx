@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => {
     S: null,
     pending: null,
     job: null,
+    streamText: null,
     community: false,
     nav: vi.fn(),
     toast: vi.fn(),
@@ -50,6 +51,7 @@ vi.mock('../lib/coach-api.js', () => ({
     loading: false,
     lastError: null,
     last: null,
+    streamText: mocks.streamText,
     refresh: mocks.refresh,
   }),
   resolvePending: vi.fn(() => Promise.resolve({})),
@@ -151,6 +153,7 @@ async function click(el) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mocks.streamText = null
 })
 afterEach(async () => {
   if (root) {
@@ -202,6 +205,16 @@ describe('the Coach chat', () => {
     expect(container.querySelector('.typing')).toBeTruthy()
     expect(container.textContent).toContain('usually takes')
     expect(container.querySelector('.composer textarea').disabled).toBe(true)
+  })
+
+  it('renders the streamed answer in place of the dots while the stream delivers it', async () => {
+    mocks.streamText = '{"summary": "Reading your week'
+    await mount(null, { id: 'j1', kind: 'review', state: 'running', startedAt: Date.now() })
+    const stream = container.querySelector('.bub.stream')
+    expect(stream).toBeTruthy()
+    expect(stream.textContent).toContain('Reading your week')
+    expect(container.querySelector('.bub.typing')).toBeNull()
+    expect(container.querySelector('.typing-eta')).toBeTruthy()
   })
 
   it('applies the accepted subset of a review and logs it', async () => {
