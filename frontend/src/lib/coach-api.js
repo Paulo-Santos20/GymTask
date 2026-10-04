@@ -6,7 +6,7 @@
 // for a feature nobody is using.
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { api } from './api.js'
+import { api, appBase } from './api.js'
 import { DEMO } from './demo.js'
 import { t } from './i18n.js'
 import { useStore } from '../store/useStore.js'
@@ -14,6 +14,173 @@ import { useUI } from '../store/useUI.js'
 
 const POLL_MS = 3000 // a job is running: often enough to feel live
 export const IDLE_MS = 15 * 60000 // a Coach screen is open but nothing is running — the audit's 15-min cadence window
+export const STREAM_POLL_MS = 10000 // a healthy stream is attached: the poll is a backstop, not the heartbeat
+const STREAM_FLUSH_MS = 32 // batch token renders — one paint per token is not a feature, it's a jank generator
+
+/* The SSE side-channel's client half.
+ *
+ * Two jobs, deliberately separate: (1) a bus any surface can watch — the Coach chat renders
+ * the accumulating text in place of the typing dots; (2) a job stream reader that follows
+ * /api/coach/stream while a job runs. The 3 s status poll is the floor under all of it: a
+ * dropped stream falls back to polling (the QA failure scenario), never to silence. The
+ * stream is transport — the proposal the poll reports is the same one it always was. */
+
+const streamSubs = new Set()
+/** Subscribe to { type: 'text' | 'end' | 'drop', text? }. Returns the unsubscribe fn. */
+export function onCoachStream(fn) {
+  streamSubs.add(fn)
+  return () => streamSubs.delete(fn)
+}
+const emitStream = ev => {
+  for (const fn of [...streamSubs]) {
+    try {
+      fn(ev)
+    } catch {
+      /* one bad subscriber must not stop the others */
+    }
+  }
+}
+
+// Accumulated since the last reset: every flush reports the whole text so far, so a late
+// subscriber (or a mid-stream flush that already fired) never sees a partial remainder.
+let streamBuf = ''
+let streamTotal = ''
+let streamFlush = null
+const beginFeed = () => {
+  streamBuf = ''
+  streamTotal = ''
+  if (streamFlush) {
+    clearTimeout(streamFlush)
+    streamFlush = null
+  }
+  emitStream({ type: 'text', text: '' })
+}
+const feed = text => {
+  streamBuf += text
+  streamTotal += text
+  if (streamFlush) return
+  streamFlush = setTimeout(() => {
+    streamFlush = null
+    emitStream({ type: 'text', text: streamTotal })
+  }, STREAM_FLUSH_MS)
+}
+/** The terminal flush: everything arrived lands at once, before the end event. */
+const endFeed = () => {
+  if (streamFlush) {
+    clearTimeout(streamFlush)
+    streamFlush = null
+  }
+  emitStream({ type: 'text', text: streamTotal })
+}
+const resetFeed = () => {
+  streamBuf = ''
+  streamTotal = ''
+  if (streamFlush) {
+    clearTimeout(streamFlush)
+    streamFlush = null
+  }
+}
+
+/** Parse an SSE body into (type, data) callbacks, buffering across chunk boundaries. */
+async function readFrames(res, onEvent) {
+  const reader = res.body.getReader()
+  const dec = new TextDecoder()
+  let buf = ''
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) return
+    buf += dec.decode(value, { stream: true })
+    let i
+    while ((i = buf.indexOf('\n\n')) >= 0) {
+      const frame = buf.slice(0, i)
+      buf = buf.slice(i + 2)
+      const type = /^event: (\S+)$/m.exec(frame)
+      const data = /^data: (.*)$/m.exec(frame)
+      if (!type || !data) continue
+      let parsed
+      try {
+        parsed = JSON.parse(data[1])
+      } catch {
+        continue
+      }
+      onEvent(type[1], parsed)
+    }
+  }
+}
+
+let streamGen = 0 // bumped by every stop/end/drop — a reader from an older generation goes quiet
+let streamFor = null // the job id currently being followed
+const dropped = new Set() // jobs whose stream died — no reconnect loop for the same job
+
+/** True while a job stream is meant to be live — the poll's backstop pacing reads this. */
+export const coachStreamActive = () => streamFor != null
+
+const stopStream = () => {
+  streamGen++
+  streamFor = null
+  dropped.clear()
+  resetFeed()
+}
+
+const dropStream = (jobId, gen) => {
+  if (gen !== streamGen) return // a newer stop/end already happened
+  streamGen++
+  streamFor = null
+  dropped.add(jobId)
+  emitStream({ type: 'drop' })
+}
+
+const finishStream = gen => {
+  if (gen !== streamGen) return
+  streamGen++
+  streamFor = null
+  endFeed()
+  emitStream({ type: 'end' })
+}
+
+/**
+ * Follow the current job's token stream. Returns true when a reader is (or already was)
+ * running for this job. Never in the demo build or on a phone with its own key — those
+ * answer locally and have no server side-channel to follow. A job whose stream already
+ * dropped is not re-opened: the poll below is its floor, and a reader that keeps dying must
+ * not become a reconnect loop.
+ */
+export function openJobStream(jobId) {
+  if (DEMO || LOCAL()) return false
+  if (jobId == null) {
+    stopStream()
+    return false
+  }
+  if (streamFor === jobId) return true
+  if (dropped.has(jobId)) return false
+  stopStream()
+  streamFor = jobId
+  beginFeed()
+  const gen = ++streamGen
+  const url = appBase().replace(/\/$/, '') + '/api/coach/stream?job=' + encodeURIComponent(jobId)
+  ;(async () => {
+    try {
+      const res = await fetch(url, { headers: { Accept: 'text/event-stream' } })
+      if (gen !== streamGen || streamFor !== jobId) return
+      const ct = String((res.headers && res.headers.get && res.headers.get('content-type')) || '')
+      if (!res.ok || !/text\/event-stream/.test(ct)) return dropStream(jobId, gen)
+      let ended = false
+      await readFrames(res, (type, data) => {
+        if (gen !== streamGen || streamFor !== jobId) return
+        if (type === 'delta') feed(String((data && data.text) || ''))
+        else if (type === 'end') {
+          ended = true
+          finishStream(gen)
+        }
+      })
+      // Closed without an end event: the connection died mid-job. Fall back to the poll.
+      if (!ended && gen === streamGen && streamFor === jobId) dropStream(jobId, gen)
+    } catch {
+      if (gen === streamGen && streamFor === jobId) dropStream(jobId, gen)
+    }
+  })()
+  return true
+}
 
 // The demo build has no backend, so it answers these locally with a canned proposal built
 // from its own seeded profile (lib/coach-demo.js). Everything downstream — validation,
@@ -60,8 +227,37 @@ const FN = () => {
 const server = async (path, opts) => {
   const base = FN()
   if (!base) return api(path, opts)
+  const sse = !!(opts && opts.sse)
   const headers = Object.assign({ 'Content-Type': 'application/json' }, opts && opts.headers)
+  if (sse) headers.Accept = 'text/event-stream'
   const r = await fetch(base + path, Object.assign({}, opts, { headers }))
+  const ct = String((r.headers && r.headers.get && r.headers.get('content-type')) || '')
+  if (sse && r.ok && /text\/event-stream/.test(ct)) {
+    // A streaming Cloud Function: deltas feed the bus as they land; the end frame carries the
+    // whole answer, byte-identical to what the JSON path returns. An old deploy answering
+    // plain JSON falls through to the exact code below, unchanged.
+    beginFeed()
+    let answer = null
+    let failure = null
+    await readFrames(r, (type, data) => {
+      if (type === 'delta') feed(String((data && data.text) || ''))
+      else if (type === 'end') answer = data
+      else if (type === 'error') failure = data
+    })
+    endFeed()
+    emitStream({ type: 'end' })
+    if (failure) {
+      const e = new Error(failure.error || 'stream failed')
+      e.status = failure.status || 502
+      e.data = failure
+      throw e
+    }
+    if (answer) return answer
+    const e = new Error('the stream ended without an answer')
+    e.status = 0
+    e.data = null
+    throw e
+  }
   const data = await r.json().catch(() => ({}))
   if (!r.ok) {
     const e = new Error(data.error || 'HTTP ' + r.status)
@@ -79,25 +275,25 @@ export const requestReview = async note =>
     ? (await demo()).demoReview(S())
     : LOCAL()
       ? (await local()).localReview(S(), note)
-      : server('/api/coach/review', { method: 'POST', body: JSON.stringify({ note: note || '' }) })
+      : server('/api/coach/review', { method: 'POST', body: JSON.stringify({ note: note || '' }), sse: true })
 export const requestPlan = async intake =>
   DEMO
     ? (await demo()).demoPlan(S(), intake)
     : LOCAL()
       ? (await local()).localPlan(S(), intake)
-      : server('/api/coach/plan', { method: 'POST', body: JSON.stringify({ intake }) })
+      : server('/api/coach/plan', { method: 'POST', body: JSON.stringify({ intake }), sse: true })
 export const refinePlan = async text =>
   DEMO
     ? (await demo()).demoRefine(S())
     : LOCAL()
       ? (await local()).localRefine(S(), text)
-      : server('/api/coach/plan', { method: 'POST', body: JSON.stringify({ refine: text }) })
+      : server('/api/coach/plan', { method: 'POST', body: JSON.stringify({ refine: text }), sse: true })
 export const requestDebrief = async workoutId =>
   DEMO
     ? (await demo()).demoDebrief(S(), workoutId)
     : LOCAL()
       ? (await local()).localDebrief(S(), workoutId)
-      : server('/api/coach/debrief', { method: 'POST', body: JSON.stringify({ workoutId: workoutId || null }) })
+      : server('/api/coach/debrief', { method: 'POST', body: JSON.stringify({ workoutId: workoutId || null }), sse: true })
 // The room: anonymous medians across the profiles on this instance that opted in. Only a
 // server has a room; a phone with its own key and the demo both answer locally.
 export const cohortStats = async () =>
@@ -156,45 +352,69 @@ export const coachAccount = async () =>
  * failing while you are mid-workout is not something to interrupt anyone about.
  */
 export function useCoachStatus(active = true) {
-  const [state, setState] = useState({ job: null, pending: null, cap: null, loading: true })
+  const [state, setState] = useState({ job: null, pending: null, cap: null, loading: true, streamText: '' })
   const timer = useRef(null)
   const loop = useRef(null) // the running poll loop's `tick`, so a manual refresh can re-pace it
+
+  // How often the status poll should run given what we just learned: idle when nothing is
+  // running, backstop (never the primary transport) while a healthy stream is attached,
+  // the usual 3 s cadence otherwise — the floor under every failure mode.
+  const paceFor = useCallback(
+    s => (!s?.job ? IDLE_MS : coachStreamActive() ? STREAM_POLL_MS : POLL_MS),
+    [],
+  )
 
   const refresh = useCallback(async () => {
     try {
       const s = await coachStatus()
-      setState({ ...s, loading: false })
+      setState(prev => ({ ...prev, ...s, loading: false }))
+      // Follow (or release) the job's token stream alongside the status itself.
+      if (s?.job) openJobStream(s.job.id)
+      else openJobStream(null)
       // A refresh that finds a job in flight — the one the caller just started — must not leave
       // the loop asleep on its idle cadence: without this the card shows up to fifteen minutes
       // after the job ended, sitting on "thinking…" the whole time.
       if (s?.job && loop.current) {
         clearTimeout(timer.current)
-        timer.current = setTimeout(loop.current, POLL_MS)
+        timer.current = setTimeout(loop.current, paceFor(s))
       }
       return s
     } catch {
       setState(s => ({ ...s, loading: false }))
       return null
     }
-  }, [])
+  }, [paceFor])
 
   useEffect(() => {
     if (!active) return
     let stopped = false
+    const repace = ms => {
+      if (stopped) return
+      clearTimeout(timer.current)
+      timer.current = setTimeout(loop.current, ms)
+    }
+    // The stream's lifecycle drives the poll: text lands in state as it arrives, the end
+    // event means "look for the proposal right now", a drop falls back to the 3 s floor.
+    const un = onCoachStream(ev => {
+      if (ev.type === 'text') setState(prev => ({ ...prev, streamText: ev.text }))
+      else if (ev.type === 'end') repace(0)
+      else if (ev.type === 'drop') repace(POLL_MS)
+    })
     const tick = async () => {
       const s = await refresh()
       if (stopped) return
       clearTimeout(timer.current)
-      timer.current = setTimeout(tick, s?.job ? POLL_MS : IDLE_MS)
+      timer.current = setTimeout(tick, paceFor(s))
     }
     loop.current = tick
     tick()
     return () => {
       stopped = true
       loop.current = null
+      un()
       clearTimeout(timer.current)
     }
-  }, [active, refresh])
+  }, [active, refresh, paceFor])
 
   return { ...state, refresh }
 }

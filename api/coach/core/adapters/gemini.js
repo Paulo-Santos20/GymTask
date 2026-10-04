@@ -6,6 +6,9 @@ import { SYSTEM_PROMPT } from '../system-prompt.js'
 export const geminiSpec = {
   id: 'gemini',
   path: model => `/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+  // Streaming is a different verb on this API, not a body flag: `:streamGenerateContent`
+  // with alt=sse. http.js picks streamPath over path only when a stream was asked for.
+  streamPath: model => `/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,
   modelsPath: '/v1beta/models?pageSize=200',
   headers: key => ({ 'x-goog-api-key': key }),
   // No responseSchema on purpose: Gemini's OpenAPI subset rejects the type unions our schemas
@@ -27,6 +30,13 @@ export const geminiSpec = {
       return { error: `the model stopped early: ${cand.finishReason}` }
     const text = ((cand.content && cand.content.parts) || []).map(p => p.text || '').join('')
     return { text, truncated: false }
+  },
+  // One streamed frame: its text parts and the finish reason when the frame names one.
+  readDelta: data => {
+    const cand = (data.candidates || [])[0]
+    if (!cand) return null
+    const text = ((cand.content && cand.content.parts) || []).map(p => p.text || '').join('')
+    return { text, finishReason: cand.finishReason || null }
   },
   readModels: data =>
     (data.models || [])

@@ -67,6 +67,47 @@ export function coachRoutes({ json, readBody, readSession }) {
       json(res, 200, jobs.status(user.id))
     },
 
+    /* The model's answer as it is written — an SSE side-channel beside the status poll.
+       Opt-in at the Accept header, never a new default: a client that asks for JSON gets the
+       exact status answer it gets without this route existing. The handshake opens before any
+       work is waited on (attach replays, it doesn't block), and the stream ends `end` — after
+       the proposal is written — so a refresh on end finds it. `?job=` pins the stream to one
+       job; without it the profile's current job is followed. */
+    'GET /api/coach/stream': async (req, res) => {
+      const user = guard(req, res)
+      if (!user) return
+      const accept = String((req.headers && req.headers.accept) || '')
+      if (!/text\/event-stream/.test(accept)) return json(res, 200, jobs.status(user.id))
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no', // nginx must not buffer the tail into one delivery
+      })
+      const jobId = new URL(req.url, 'http://x').searchParams.get('job')
+      let detach = null
+      const send = ev => {
+        try {
+          res.write('event: ' + ev.type + '\ndata: ' + JSON.stringify(ev) + '\n\n')
+        } catch {
+          /* response already gone; detach below drops it from the tape */
+        }
+        if (ev.type === 'end') {
+          try {
+            res.end()
+          } catch {
+            /* already closed */
+          }
+          if (detach) detach()
+        }
+      }
+      detach = jobs.attachTape(user.id, jobId, send)
+      // A client that navigates away stops costing anything: the tape forgets the subscriber,
+      // it does not keep a closed response in its set until the job ends.
+      if (typeof req.on === 'function') req.on('close', () => detach && detach())
+      return
+    },
+
     'POST /api/coach/plan': async (req, res) => {
       const user = guard(req, res)
       if (!user) return

@@ -89,6 +89,8 @@ export function clearUser(uid) {
     inflight.delete(uid)
   }
   aborts.get(uid)?.abort()
+  const tape = tapes.get(uid)
+  if (tape) endTape(uid, tape.job.id, 'forgotten')
   forgetSeq.set(uid, (forgetSeq.get(uid) || 0) + 1)
   invalidateCohort()
 }
@@ -208,6 +210,73 @@ const inflight = new Set() // uids with a job queued or running (FR-07 single-fl
 const forgetSeq = new Map() // uid → bumped by every clearUser; a job carries the value it saw at enqueue
 const aborts = new Map() // uid → AbortController of the provider call in flight, for clearUser to pull
 
+/* ---------- the stream tape ----------
+   The SSE side-channel's server half: per profile, the job that is running and the tokens it
+   has emitted so far. Like the queue it lives in-process — a restart loses the tape and the
+   client falls back to the poll, which is the path that has always worked. The tape exists
+   from enqueue (not from first subscriber), so every adapter gets an `onDelta` for every run
+   and a watcher-less run takes the exact same transport as a watched one: the proposal is
+   never a function of who was watching.
+
+   One tape per uid (single-flight), replaced by the next enqueue, deleted when the job ends —
+   `endTape` keyed on job id so a job that lost its profile to a forget can never end the tape
+   of the job that replaced it. */
+const tapes = new Map() // uid → { job, deltas, size, subs }
+const TAPE_CAP = 512 * 1024 // replay buffer ceiling; past it, live sends continue and replay stops growing
+
+function broadcast(tape, ev) {
+  for (const send of [...tape.subs]) {
+    try {
+      send(ev)
+    } catch {
+      tape.subs.delete(send) // a dead response stops receiving, like any closed pipe
+    }
+  }
+}
+
+function emitDelta(uid, jobId, text) {
+  const tape = tapes.get(uid)
+  if (!tape || tape.job.id !== jobId || tape.closed) return
+  const s = String(text)
+  if (tape.size < TAPE_CAP) {
+    tape.deltas.push(s)
+    tape.size += s.length
+  }
+  broadcast(tape, { type: 'delta', jobId, text: s })
+}
+
+/** The job is written and logged: tell every watcher, then drop the tape. Idempotent. */
+function endTape(uid, jobId, outcome, errorClass) {
+  const tape = tapes.get(uid)
+  if (!tape || tape.job.id !== jobId || tape.closed) return
+  tape.closed = true
+  broadcast(tape, { type: 'end', jobId, outcome, errorClass: errorClass || null })
+  tapes.delete(uid)
+}
+
+/** A subscriber attaches: replay what has happened so far, then keep sending until detach. */
+export function attachTape(uid, jobId, send) {
+  const tape = tapes.get(uid)
+  if (!tape || (jobId && jobId !== tape.job.id)) {
+    // No tape: the job is over (or was never this profile's). One event, then close — a
+    // client that arrives late must not wait on a job nobody is running any more.
+    try {
+      send({ type: 'end', jobId: jobId || null, outcome: null, errorClass: null })
+    } catch {
+      /* already gone */
+    }
+    return () => {}
+  }
+  try {
+    send({ type: 'job', jobId: tape.job.id, kind: tape.job.kind })
+    for (const text of tape.deltas) send({ type: 'delta', jobId: tape.job.id, text })
+  } catch {
+    /* response died during replay */
+  }
+  tape.subs.add(send)
+  return () => tape.subs.delete(send)
+}
+
 class CoachError extends Error {
   constructor(code, message) {
     super(message)
@@ -278,6 +347,9 @@ export function enqueue(uid, opts) {
   }
   inflight.add(uid)
   patchUser(uid, { current: { id: job.id, kind: job.kind, state: 'queued', startedAt: job.startedAt } })
+  // The tape exists from here on: a subscriber attaching between enqueue and first token
+  // gets the `job` event, and execute() knows deltas have somewhere to go from the start.
+  tapes.set(uid, { job, deltas: [], size: 0, subs: new Set(), closed: false })
   queue.push(job)
   pump()
   return { id: job.id }
@@ -313,7 +385,10 @@ function finish(job, result) {
   })
   // Forgotten while it ran: the record is gone and stays gone, and nobody is notified. The
   // job still ran and still spent, which is why the instance log above keeps its line.
-  if ((forgetSeq.get(job.uid) || 0) !== job.forgetSeq) return
+  if ((forgetSeq.get(job.uid) || 0) !== job.forgetSeq) {
+    endTape(job.uid, job.id, 'forgotten')
+    return
+  }
   const rec = readUser(job.uid)
   const history = [
     ...(rec.history || []),
@@ -337,6 +412,9 @@ function finish(job, result) {
     pending: result.pending !== undefined ? result.pending : rec.pending,
     history,
   })
+  // After writeUser, never before: a watcher that refreshes the status poll the moment `end`
+  // lands has to find the proposal there.
+  endTape(job.uid, job.id, result.outcome, result.errorClass)
   if (result.outcome === 'ready' && onProposal) {
     try {
       onProposal(job.uid, result.pending, job)
@@ -404,8 +482,15 @@ async function execute(job) {
       model: cfgStore.modelFor(cfg),
       timeoutMs: TIMEOUT_MS,
       // The HTTP adapters take the fetch and the abort signal they are given; the runtime
-      // adapters ignore both.
-      invokeOpts: { jobDir, env, fetch: fetchFor(TIMEOUT_MS), signal: ctl.signal },
+      // adapters ignore both. `onDelta` is what makes the run streamable — the tape exists
+      // for the whole job, watcher or not, so watched and watcher-less runs are the same run.
+      invokeOpts: {
+        jobDir,
+        env,
+        fetch: fetchFor(TIMEOUT_MS),
+        signal: ctl.signal,
+        onDelta: text => emitDelta(job.uid, job.id, text),
+      },
     })
     if (!attempt.ok) {
       // Cancelled by a forget, not failed by the provider: the log must not blame the job budget.

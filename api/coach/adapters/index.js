@@ -37,7 +37,7 @@ const fixture = {
   async check() {
     return { ok: true, version: 'fixture' }
   },
-  async invoke({ prompt, jobDir, env, timeoutMs }) {
+  async invoke({ prompt, jobDir, env, timeoutMs, onDelta }) {
     const r = await run(process.execPath, [FIXTURE], {
       stdin: prompt,
       cwd: jobDir,
@@ -45,6 +45,7 @@ const fixture = {
       // The fixture needs its mode knob, which the sanitised job env deliberately drops.
       env: { ...env, FIXTURE_MODE: process.env.FIXTURE_MODE || '' },
       asCoach: false, // a temp dir owned by root in tests; the fixture reads only stdin anyway
+      onStdout: onDelta, // one write before exit: the tape sees the whole answer as a delta
     })
     return { ...r, text: (r.stdout || '').trim() }
   },

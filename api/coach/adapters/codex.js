@@ -41,7 +41,7 @@ export default {
     return { ok: true, version: (r.stdout || '').trim() }
   },
 
-  async invoke({ prompt, jobDir, env, model, timeoutMs }) {
+  async invoke({ prompt, jobDir, env, model, timeoutMs, onDelta }) {
     const argv = argvFor(model)
     // $CODEX_HOME itself is still set (config.jobEnv), because that is where the CLI keeps its
     // refreshable login cache and a job whose HOME is a temp dir would otherwise find no login
@@ -50,7 +50,7 @@ export default {
     // Sandbox mode is left at the CLI's default (read-only). The job only needs the model
     // to write an answer to stdout, and this process is already an unprivileged user in a
     // container -- widening it here would trade that away for nothing.
-    const r = await run(CLI, argv, { stdin: prompt, cwd: jobDir, env, timeoutMs })
+    const r = await run(CLI, argv, { stdin: prompt, cwd: jobDir, env, timeoutMs, onStdout: onDelta })
     return { ...r, text: (r.stdout || '').trim() }
   },
 }
