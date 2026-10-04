@@ -1,4 +1,4 @@
-/* JSON schemas for the three answer shapes, handed to providers that can enforce a schema
+/* JSON schemas for the four answer shapes, handed to providers that can enforce a schema
  * while decoding (Ollama/llama.cpp grammar sampling, LM Studio, vLLM, OpenAI json_schema).
  *
  * Deliberately flat: no $ref, no anyOf/oneOf, no additionalProperties tricks — llama.cpp's
@@ -125,4 +125,50 @@ export const DEBRIEF_SCHEMA = {
   required: ['coach_contract', 'summary', 'score'],
 }
 
-export const SCHEMAS = { review: REVIEW_SCHEMA, create: CREATE_SCHEMA, refine: CREATE_SCHEMA, debrief: DEBRIEF_SCHEMA }
+const FOOD_SCHEMA = {
+  type: 'object',
+  properties: {
+    name: STR,
+    grams: { type: 'number' },
+    kcal: { type: 'number' },
+    protein: { type: 'number' },
+    carbs: { type: 'number' },
+    fat: { type: 'number' },
+  },
+  required: ['name', 'kcal', 'protein', 'carbs', 'fat'],
+}
+
+// `slot` and the four macro numbers are required: without the slot the diary has no section
+// to write into, and without the macros the item is not food — it is a name. Same reasoning
+// as CREATE_SCHEMA's required week: a schema that lets them float only guarantees the
+// validator rejects the answer after a repair round it did not need.
+export const MEALPLAN_SCHEMA = {
+  type: 'object',
+  properties: {
+    coach_contract: { type: 'integer' },
+    nochange: { type: 'boolean' },
+    summary: STR,
+    totals: {
+      type: 'object',
+      properties: { kcal: { type: 'number' }, protein: { type: 'number' }, carbs: { type: 'number' }, fat: { type: 'number' } },
+    },
+    meals: {
+      type: 'array',
+      maxItems: 4,
+      items: {
+        type: 'object',
+        properties: { slot: STR, items: { type: 'array', maxItems: 12, items: FOOD_SCHEMA } },
+        required: ['slot', 'items'],
+      },
+    },
+  },
+  required: ['coach_contract', 'summary', 'meals'],
+}
+
+export const SCHEMAS = {
+  review: REVIEW_SCHEMA,
+  create: CREATE_SCHEMA,
+  refine: CREATE_SCHEMA,
+  debrief: DEBRIEF_SCHEMA,
+  mealplan: MEALPLAN_SCHEMA,
+}

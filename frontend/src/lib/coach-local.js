@@ -113,6 +113,7 @@ export const localRefine = async (S, text) => {
   })
 }
 export const localDebrief = (S, workoutId) => start(S, 'debrief', { workoutId: workoutId || null })
+export const localMealPlan = (S, nutrition) => start(S, 'mealplan', { nutrition: nutrition || null })
 export async function localResolve() {
   await saveCoachDevice({ pending: null })
   return { ok: true }
@@ -199,6 +200,7 @@ async function run(S, kind, opts, d, adapter) {
     refine: opts.refine,
     previous: opts.previous,
     workoutId: opts.workoutId,
+    nutrition: opts.nutrition,
   })
   const attempt = await runPipeline({
     adapter,
@@ -235,6 +237,7 @@ async function run(S, kind, opts, d, adapter) {
     planHash: planHash(S),
     iteration: opts.iteration || 1,
     ...(kind === 'debrief' ? { workout: workoutMetaOf(S, opts.workoutId) } : {}),
+    ...(kind === 'mealplan' && payload.nutrition ? { target: payload.nutrition.targets } : {}),
     ...attempt.result,
   }
   await saveCoachDevice({ pending })

@@ -21,7 +21,11 @@ import {
   workoutMeta as srvWorkoutMeta,
 } from '../../../api/coach/core/payload.js'
 import { exOr } from './exercises.js'
-import { buildPlan as demoBuildPlan, buildDebrief as demoBuildDebrief } from './coach-demo.js'
+import {
+  buildPlan as demoBuildPlan,
+  buildDebrief as demoBuildDebrief,
+  buildMealPlan as demoBuildMealPlan,
+} from './coach-demo.js'
 
 // Real ids from the catalogue, so `eq`/`bp` are whatever the dataset actually says rather than
 // whatever this test assumed. 0001 is a bodyweight sit-up; the others are looked up the same way.
@@ -258,5 +262,47 @@ describe('the demo payload mirrors the server recent block and PR detail', () =>
     expect(demoBuildDebrief(S, 'a').workout.prDetail ?? null).toEqual(srvWorkoutMeta(S, 'a').prDetail ?? null)
     expect(demoBuildDebrief(S, 'b').workout.prDetail ?? null).toEqual(srvWorkoutMeta(S, 'b').prDetail ?? null)
     expect(demoBuildDebrief(S, 'a').workout.prDetail).toEqual([{ id: '0001', name: '3/4 sit-up', load: 20 }])
+  })
+})
+
+/* RF6: the demo meal plan is the offline twin of the server's — and it has to satisfy the
+   SERVER's validator, not merely look like a meal plan. A demo proposal that only the demo
+   would accept is exactly the drift this file exists to catch. */
+const { validateMealPlan } = await import('../../../api/coach/core/validate.js')
+
+const MEAL_NUTRITION = {
+  targets: { tdee: 2450, kcal: 2450, protein: 165, carbs: 250, fat: 75 },
+  recent: [{ d: '2026-10-03', kcal: 2310, protein: 152, carbs: 241, fat: 68 }],
+}
+
+describe('the demo meal plan mirrors the server meal plan', () => {
+  it('proposes what the SERVER validator accepts, one meal per diary section', () => {
+    const pending = demoBuildMealPlan({ workouts: [] }, MEAL_NUTRITION)
+    expect(pending.kind).toBe('mealplan')
+    expect(pending.meals.map(m => m.slot)).toEqual(['cafe', 'almoco', 'lanche', 'jantar'])
+    expect(pending.meals.every(m => m.items.length)).toBe(true)
+    const r = validateMealPlan({ coach_contract: 1, ...pending })
+    expect(r.ok).toBe(true, JSON.stringify(r.errors))
+  })
+
+  it('totals the items the way the server totals them — the same sum, not the model’s claim', () => {
+    const pending = demoBuildMealPlan({ workouts: [] }, MEAL_NUTRITION)
+    const r = validateMealPlan({
+      coach_contract: 1,
+      ...pending,
+      totals: { kcal: 99999, protein: 0, carbs: 0, fat: 0 },
+    })
+    expect(r.ok).toBe(true)
+    expect(r.proposal.totals).toEqual(pending.totals)
+    const items = pending.meals.flatMap(m => m.items)
+    expect(pending.totals.kcal).toBe(items.reduce((n, i) => n + i.kcal, 0))
+  })
+
+  it('shows the same recorded targets the server payload carries', () => {
+    const S = { workouts: [] }
+    const demo = demoBuildMealPlan(S, MEAL_NUTRITION)
+    const server = srvBuild(S, { handle: 'parity-handle-00', kind: 'mealplan', nutrition: MEAL_NUTRITION })
+    expect(demo.target).toEqual(MEAL_NUTRITION.targets)
+    expect(demo.target).toEqual(server.nutrition.targets)
   })
 })

@@ -546,3 +546,94 @@ test('a debrief score outside 1-10 is clamped, not refused', () => {
   assert.equal(validateDebrief({ summary: 'ok', score: 14, nextTime: ['x'] }).proposal.score, 10)
   assert.equal(validateDebrief({ summary: 'ok', score: -2, nextTime: ['x'] }).proposal.score, 1)
 })
+
+/* ---------- meal plans ---------- */
+const { validateMealPlan } = await import('../coach/core/validate.js')
+
+const ITEM = (name, kcal, protein, carbs, fat) => ({ name, grams: 100, kcal, protein, carbs, fat })
+const mealplan = over => ({
+  coach_contract: 1,
+  summary: 'Your 2 450 kcal spread across four meals.',
+  // The totals the model claims: the validator must recompute them from the items, because
+  // arithmetic is exactly where a language model lies while looking perfectly confident.
+  totals: { kcal: 99999, protein: 0, carbs: 0, fat: 0 },
+  meals: [
+    { slot: 'cafe', items: [ITEM('Oats with whey', 420, 32, 55, 9)] },
+    {
+      slot: 'almoco',
+      items: [ITEM('Chicken, rice, salad', 700, 55, 80, 15), ITEM('Olive oil', 120, 0, 0, 14)],
+    },
+    { slot: 'lanche', items: [ITEM('Greek yoghurt and banana', 280, 22, 35, 5)] },
+    { slot: 'jantar', items: [ITEM('Salmon, potatoes, greens', 780, 50, 70, 30)] },
+  ],
+  ...over,
+})
+
+test('a well-formed meal plan is accepted, with its totals recomputed from the items', () => {
+  const r = validateMealPlan(mealplan())
+  assert.equal(r.ok, true)
+  assert.equal(r.proposal.summary, 'Your 2 450 kcal spread across four meals.')
+  assert.deepEqual(
+    r.proposal.meals.map(m => m.slot),
+    ['cafe', 'almoco', 'lanche', 'jantar'],
+    'the four diary sections, in order',
+  )
+  assert.equal(r.proposal.meals[1].items.length, 2)
+  assert.deepEqual(
+    r.proposal.totals,
+    { kcal: 2300, protein: 159, carbs: 240, fat: 73 },
+    'the claimed 99999 kcal is replaced by what the items actually add up to',
+  )
+  assert.equal('changes' in r.proposal, false)
+  assert.equal('bundle' in r.proposal, false)
+})
+
+test('the meal slot list is closed, and each section appears at most once', () => {
+  const unknown = mealplan({ meals: [{ slot: 'brunch', items: [ITEM('Toast', 200, 8, 30, 6)] }] })
+  const r = validateMealPlan(unknown)
+  assert.equal(r.ok, false, 'a slot the diary does not have would write into nowhere')
+  assert.ok(r.errors.some(e => e.includes('brunch')))
+
+  const duplicate = mealplan({
+    meals: [
+      { slot: 'cafe', items: [ITEM('Oats', 420, 32, 55, 9)] },
+      { slot: 'cafe', items: [ITEM('Eggs', 300, 20, 5, 20)] },
+    ],
+  })
+  assert.equal(validateMealPlan(duplicate).ok, false, 'two breakfasts would silently merge')
+})
+
+test('a meal plan with no meals, an empty meal, or an item without a name is refused', () => {
+  assert.equal(validateMealPlan(mealplan({ meals: [] })).ok, false)
+  assert.equal(validateMealPlan(mealplan({ meals: [{ slot: 'cafe', items: [] }] })).ok, false)
+  const nameless = mealplan({ meals: [{ slot: 'cafe', items: [{ kcal: 420, protein: 32, carbs: 55, fat: 9 }] }] })
+  assert.equal(validateMealPlan(nameless).ok, false)
+  assert.equal(validateMealPlan({ coach_contract: 1, summary: 's' }).ok, false, 'meals are required')
+})
+
+test('a macro that is not a non-negative number is refused, not coerced', () => {
+  for (const bad of ['lots', null, -1, Number.NaN]) {
+    const r = validateMealPlan(
+      mealplan({ meals: [{ slot: 'cafe', items: [{ name: 'Oats', grams: 100, kcal: bad, protein: 1, carbs: 1, fat: 1 }] }] }),
+    )
+    assert.equal(r.ok, false, `kcal ${String(bad)} must not reach the diary`)
+  }
+})
+
+test('"nochange" is not a meal-plan answer — it is refused, like the other kinds refuse it', () => {
+  assert.equal(validateMealPlan({ coach_contract: 1, nochange: true, reading: 'keep going' }).ok, false)
+})
+
+test('more than four meals, or more than twelve items in one, is refused', () => {
+  const five = mealplan({
+    meals: ['cafe', 'almoco', 'lanche', 'jantar', 'ceia'].map(slot => ({
+      slot,
+      items: [ITEM('Anything', 100, 5, 10, 3)],
+    })),
+  })
+  assert.equal(validateMealPlan(five).ok, false)
+  const stuffed = mealplan({
+    meals: [{ slot: 'cafe', items: Array.from({ length: 13 }, (_, i) => ITEM('Item ' + i, 100, 5, 10, 3)) }],
+  })
+  assert.equal(validateMealPlan(stuffed).ok, false)
+})

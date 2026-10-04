@@ -786,3 +786,89 @@ export function validateDebrief(data) {
   if (errors.length) return fail(errors)
   return { ok: true, proposal: { summary: clampStr(data.summary.trim(), 600), score, ...lists } }
 }
+
+/* =============================== meal plans =============================== */
+
+// The diary has four sections and the model gets no fifth. The closed list works here the
+// same way the change types do: a slot outside it writes into nowhere, so it is refused
+// rather than dropped.
+export const MEAL_SLOTS = ['cafe', 'almoco', 'lanche', 'jantar']
+const MAX_MEALS = 4
+const MAX_ITEMS = 12
+const MACROS = ['kcal', 'protein', 'carbs', 'fat']
+
+/**
+ * Validate a meal plan into the pending proposal the card renders.
+ * Returns { ok, proposal:{ summary, meals, totals } } | { ok:false, errors }.
+ *
+ * `totals` is recomputed from the items rather than taken from the answer: arithmetic is
+ * exactly where a language model lies while looking confident, and these numbers are what
+ * lands in someone's food diary.
+ */
+export function validateMealPlan(data) {
+  if (!data || typeof data !== 'object') return fail(['the answer was not an object'])
+  if (data.nochange)
+    return fail(['a meal plan was requested — "nochange" is not an answer here; build the day from the targets you were given'])
+  const errors = []
+  if (!isStr(data.summary)) errors.push('summary is required — two or three sentences on how the day is put together')
+  const list = Array.isArray(data.meals) ? data.meals : null
+  if (!list || !list.length) return fail([...errors, 'meals must be a non-empty array of diary sections'])
+  if (list.length > MAX_MEALS)
+    errors.push(`the answer lists ${list.length} meals — the day has ${MAX_MEALS} sections`)
+
+  const seen = new Set()
+  const meals = []
+  list.slice(0, MAX_MEALS).forEach((m, i) => {
+    const where = `meals[${i}]`
+    if (!m || typeof m !== 'object') {
+      errors.push(`${where} is not an object`)
+      return
+    }
+    if (!MEAL_SLOTS.includes(m.slot)) {
+      errors.push(`${where}.slot "${m.slot}" is not one of ${MEAL_SLOTS.join(', ')} — those are the only sections the diary has`)
+      return
+    }
+    if (seen.has(m.slot)) {
+      errors.push(`${where}.slot "${m.slot}" appears twice — two sections with the same name would silently merge`)
+      return
+    }
+    seen.add(m.slot)
+    const items = Array.isArray(m.items) ? m.items : null
+    if (!items || !items.length) {
+      errors.push(`${where} has no items — every meal needs at least one food`)
+      return
+    }
+    if (items.length > MAX_ITEMS) {
+      errors.push(`${where} lists ${items.length} items — at most ${MAX_ITEMS} fit in one meal`)
+      return
+    }
+    const clean = []
+    items.forEach((it, j) => {
+      const at = `${where}.items[${j}]`
+      if (!it || typeof it !== 'object' || !isStr(it.name)) {
+        errors.push(`${at} needs a name — food enters the diary as the lifter would log it`)
+        return
+      }
+      const nums = {}
+      for (const k of MACROS) {
+        if (!isNum(it[k]) || it[k] < 0) {
+          errors.push(`${at}.${k} must be a non-negative number, not "${String(it[k])}"`)
+          return
+        }
+        nums[k] = it[k]
+      }
+      clean.push({
+        name: clampStr(it.name.trim(), 80),
+        grams: isNum(it.grams) && it.grams >= 0 ? it.grams : 100,
+        ...nums,
+      })
+    })
+    meals.push({ slot: m.slot, items: clean })
+  })
+  if (errors.length) return fail(errors)
+
+  const totals = { kcal: 0, protein: 0, carbs: 0, fat: 0 }
+  meals.forEach(m => m.items.forEach(it => MACROS.forEach(k => (totals[k] += it[k]))))
+  MACROS.forEach(k => (totals[k] = Math.round(totals[k])))
+  return { ok: true, proposal: { summary: clampStr(data.summary.trim(), 600), meals, totals } }
+}
