@@ -251,6 +251,62 @@ export const useStore = create((set, get) => {
     writeSync(rev, next._ts)
   }
 
+  /* Live sync (RF3): one Firestore listener on this account's document (lib/firebase.js
+   * observeUserState), so a write on another device lands here without waiting for the 30 s
+   * rev poll. Each snapshot is settled by the same rules as a pull — mergeStates decides the
+   * conflict, the marker records the document's revision — but through the ordinary 1.5 s
+   * debounce (persist) instead of a round trip. Two guards keep a write from looping back:
+   * a snapshot carrying the revision we already hold is our own echo, and a snapshot whose
+   * document this device already holds verbatim (Firestore's local latency compensation fires
+   * the echo before the write promise resolves, so the marker still has the old revision)
+   * merges to itself and is dropped before anything is armed.
+   *
+   * The listener lives from setUser to setUser: sign-in subscribes, sign-out and a profile
+   * switch tear it down, and without VITE_FIREBASE_* nothing is ever loaded — the pull/push
+   * cycle above runs exactly as it always did (the HTTP /api/data fallback is untouched). */
+  let watchUid = null // the profile a listener is (or is being) attached to — also the claim
+  let watchOff = null // its unsubscribe, once attached
+  const unwatch = () => {
+    if (watchOff) watchOff()
+    watchOff = null
+    watchUid = null
+  }
+  const settleSnapshot = state => {
+    if (!get().user || !get().ready || !state) return
+    const sync = readSync()
+    if (!sync) return // before the first pull the marker does not exist — that pull settles it
+    const rev = Number(state._rev) || 0
+    if (rev === sync.rev) return // the echo of what this device last wrote
+    const S = get().S
+    const remote = Object.assign(clone(DEF), state, { active: S.active || null })
+    const merged = Object.assign(clone(DEF), mergeStates(S, remote))
+    merged.active = S.active || null
+    if (JSON.stringify(merged) === JSON.stringify(S)) return // our own write, seen before its ack
+    persist(merged, true) // merged copy is this device's now; the write rides the 1.5 s debounce
+    writeSync(rev, sync.ts || 0) // the push that follows is conditional on exactly the merged doc
+  }
+  const watchUser = async () => {
+    const uid = get().user ? get().user.id : null
+    if (watchUid === uid) return // already settled for this profile (watching one, or none)
+    unwatch()
+    if (!uid) return
+    // Same env gate as lib/api.js stateBackend: an instance with no VITE_FIREBASE_* never pays
+    // for the firebase chunk. firebase.js re-checks the keys authoritatively.
+    if (!import.meta.env?.VITE_FIREBASE_API_KEY || !import.meta.env?.VITE_FIREBASE_PROJECT_ID) return
+    watchUid = uid
+    try {
+      const fb = await import('../lib/firebase.js')
+      if (watchUid !== uid || get().user?.id !== uid) return // signed out or switched while loading
+      if (!fb.firebaseConfigured) {
+        watchUid = null
+        return
+      }
+      watchOff = fb.observeUserState(uid, settleSnapshot) || null
+    } catch {
+      watchUid = null
+    }
+  }
+
   const doPush = async (attempt = 0) => {
     const S = get().S
     const sync = readSync()
@@ -342,6 +398,7 @@ export const useStore = create((set, get) => {
     if (!user || e.newValue === user.id) return
     clearTimeout(pushTm)
     pushTm = null
+    unwatch() // this tab just lost the profile the listener was on
     set({ user: null, S: e.newValue ? loadState() : clone(DEF) })
   })
 
@@ -444,6 +501,7 @@ export const useStore = create((set, get) => {
         localStorage.removeItem('gym_guest')
       } else localStorage.removeItem('gym_user')
       set({ user: u })
+      return watchUser() // live sync: subscribe on sign-in, tear down on sign-out/switch
     },
 
     // One PUT at a time: a push asked for while one is in flight runs after it (once, however
