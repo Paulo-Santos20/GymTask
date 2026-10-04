@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:fatigue-probe": "node scripts/fatigue-monotonic-probe.mjs"
+    "test:fatigue-probe": "node scripts/fatigue-monotonic-probe.mjs",
+    "coverage": "vitest run --coverage"
   },
   "license": "AGPL-3.0-or-later",
   "dependencies": {
