@@ -15,8 +15,12 @@ const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'coach
 test('core/prompts.js matches api/coach/prompts/*.md byte for byte', () => {
   const files = fs.readdirSync(dir).filter(f => f.endsWith('.md')).sort();
   assert.deepEqual(Object.keys(PROMPTS).sort(), files.map(f => f.replace(/\.md$/, '')));
+  // Newline-agnostic: the module's template literals normalise CRLF to LF when V8 evaluates
+  // them, while the .md bytes on disk keep whatever the checkout gave them. Compare content,
+  // not line endings — the generation check above is what actually catches a stale prompt.
+  const lf = s => s.replace(/\r\n/g, '\n');
   for (const f of files) {
-    assert.equal(PROMPTS[f.replace(/\.md$/, '')], fs.readFileSync(path.join(dir, f), 'utf8'), `${f} is stale — run node scripts/build-coach-assets.mjs`);
+    assert.equal(lf(PROMPTS[f.replace(/\.md$/, '')]), lf(fs.readFileSync(path.join(dir, f), 'utf8')), `${f} is stale — run node scripts/build-coach-assets.mjs`);
   }
 });
 
