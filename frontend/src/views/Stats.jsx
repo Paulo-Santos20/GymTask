@@ -237,13 +237,17 @@ function EffortCard({ S }) {
   const [win, setWin] = useState(90)
   const kind = displayScale(S)
   const hd = scaleName(kind)
-  const sum = effortSummary(S, win)
-  const weeks = effortWeeks(S, win)
-  const hist = effortHistogram(S, win)
+  const lang = getLang()
+  // Three full-history scans per render — memoised on S (a fresh identity on every update)
+  // and the window. pts rides weeks' identity so the chart hover survives unrelated renders;
+  // lang because its tooltip counts are translated.
+  const sum = useMemo(() => effortSummary(S, win), [S, win])
+  const weeks = useMemo(() => effortWeeks(S, win), [S, win])
+  const hist = useMemo(() => effortHistogram(S, win), [S, win])
   const maxBin = Math.max(1, ...hist.map(b => b.n))
   // The week's set count rides along in the tooltip, because the pair is the reading:
   // volume up with effort up is fatigue piling up, volume up with effort flat is adaptation.
-  const pts = weeks.map(w => ({ t: w.t, y: toScale(kind, w.rir), note: t('{0} sets', w.sets) }))
+  const pts = useMemo(() => weeks.map(w => ({ t: w.t, y: toScale(kind, w.rir), note: t('{0} sets', w.sets) })), [weeks, kind, lang])
   // Bins run hardest-first in both scales: RIR 0 and RPE 10 are the same set.
   const binLabel = b => kind === 'rpe' ? (b.tail ? '≤ 6' : String(10 - b.rir)) : (b.tail ? b.rir + '+' : String(b.rir))
 
@@ -291,6 +295,8 @@ export default function Stats() {
   const [exId, setExId] = useState(null)
   const [exMetric, setExMetric] = useState('top')
   const now = Date.now()
+  // Read fresh each render and used as a memo dep: history-derived labels change with the pack.
+  const lang = getLang()
   const kind = displayScale(S)
   const hd = scaleName(kind)
 
@@ -350,13 +356,20 @@ export default function Stats() {
     }
     return { mx: 0, unit: S.unit }
   }
-  const exHist = [...new Set(workouts.flatMap(w => w.entries.map(e => e.id)))].filter(id => EXIDX[id] || nameOf(id) !== id)
-  const exCurrent = Object.fromEntries(exHist.map(id => [id, currentOf(id)]))
-  exHist.sort((a, b) => exCurrent[b].mx - exCurrent[a].mx || nameOf(a).localeCompare(nameOf(b)))
+  // The picker list walks the whole history per distinct entry id (currentOf scans backwards)
+  // — the heaviest scan on this screen. Memoised on the history itself (a fresh array per
+  // update) plus the two facts its labels are read in.
+  const { exHist, exCurrent } = useMemo(() => {
+    const list = [...new Set(workouts.flatMap(w => w.entries.map(e => e.id)))].filter(id => EXIDX[id] || nameOf(id) !== id)
+    const cur = Object.fromEntries(list.map(id => [id, currentOf(id)]))
+    list.sort((a, b) => cur[b].mx - cur[a].mx || nameOf(a).localeCompare(nameOf(b)))
+    return { exHist: list, exCurrent: cur }
+  }, [workouts, S.unit, lang])
   const curEx = exId && exHist.includes(exId) ? exId : exHist[0] || null
   // A completed reps work row is authoritative for strength metrics, even when the parent
   // target also contains timed/cardio work. Entries without reps rows use their selected mode.
-  const curMode = curEx ? (() => {
+  const curMode = useMemo(() => {
+    if (!curEx) return 'reps'
     for (let i = workouts.length - 1; i >= 0; i--) {
       const en = workouts[i].entries.find(e => e.id === curEx)
       if (en) {
@@ -365,7 +378,7 @@ export default function Stats() {
       }
     }
     return modeOf({ id: curEx })
-  })() : 'reps'
+  }, [workouts, curEx])
   const curCardio = curMode === 'cardio'
   const curTimed = curMode === 'time'
   // A pull-up or a push-up carries no weight, so its "best weight" is 0 — and dropping every
@@ -373,35 +386,38 @@ export default function Stats() {
   // them (issue #5). When nothing in an exercise's history was ever loaded, the progress IS
   // the rep count, so plot that. Add a weighted set later and it switches back to weight on
   // its own, which is also the honest reading: that is when load became the thing improving.
-  const repsOnly = curEx && curMode === 'reps' && !workouts.some(w => {
+  const repsOnly = useMemo(() => curEx && curMode === 'reps' && !workouts.some(w => {
     const en = w.entries.find(e => e.id === curEx)
     return en && bestWeightForEntry(en) > 0
-  })
+  }), [workouts, curEx, curMode])
   const bestRepsOf = en => Math.max(0, ...metricRowsForEntry(en, 'reps').map(s => Number(s.r) || 0))
   const metric = s => curCardio ? (s.speed || 0) : curTimed ? (s.sec || 0) : (s.w || 0)
   const exUnit = curCardio ? 'km/h' : curTimed ? 's' : repsOnly ? t('reps') : S.unit
-  let exPts = [], exList = [], exBest = 0
-  if (curEx) {
-    workouts.forEach(w => {
-      const en = w.entries.find(e => e.id === curEx)
-      if (en) {
-        const loggedMode = metricModeForEntry(en)
-        if (loggedMode !== curMode) return
-        const doneSets = metricRowsForEntry(en, curMode)
-        const mx = curMode === 'reps'
-          ? (repsOnly ? bestRepsOf(en) : bestWeightForEntry(en))
-          : Math.max(0, ...doneSets.map(metric))
-        if (mx > 0) {
-          exPts.push({ t: w.start, y: mx, d: w.d, sets: doneSets, target: en.target })
-          // Weighted work on an assistance machine reads the other way: the smallest load is the
-          // best (issue #232). Reps, duration and speed are always "more is better".
-          const better = curMode === 'reps' && !repsOnly ? betterWeight(curEx, exBest || mx, mx) : Math.max(exBest, mx)
-          exBest = exBest > 0 ? better : mx
+  const { exPts, exList, exBest } = useMemo(() => {
+    const pts = []
+    let best = 0
+    if (curEx) {
+      workouts.forEach(w => {
+        const en = w.entries.find(e => e.id === curEx)
+        if (en) {
+          const loggedMode = metricModeForEntry(en)
+          if (loggedMode !== curMode) return
+          const doneSets = metricRowsForEntry(en, curMode)
+          const mx = curMode === 'reps'
+            ? (repsOnly ? bestRepsOf(en) : bestWeightForEntry(en))
+            : Math.max(0, ...doneSets.map(metric))
+          if (mx > 0) {
+            pts.push({ t: w.start, y: mx, d: w.d, sets: doneSets, target: en.target })
+            // Weighted work on an assistance machine reads the other way: the smallest load is the
+            // best (issue #232). Reps, duration and speed are always "more is better".
+            const better = curMode === 'reps' && !repsOnly ? betterWeight(curEx, best || mx, mx) : Math.max(best, mx)
+            best = best > 0 ? better : mx
+          }
         }
-      }
-    })
-    exList = exPts.slice(-5).reverse()
-  }
+      })
+    }
+    return { exPts: pts, exList: pts.slice(-5).reverse(), exBest: best }
+  }, [workouts, curEx, curMode, repsOnly])
   // Estimated 1RM (issue #18) — only reps-mode training produces one, so cardio and timed
   // work simply have no points and the toggle stays hidden.
   // Both memoised on the same inputs, and it has to start at e1rmSeries: LineChart clears its
@@ -413,22 +429,25 @@ export default function Stats() {
     [S, curEx, curMode],
   )
   const e1ChartPts = useMemo(() => e1Pts.map(p => ({ t: p.t, y: p.y, d: p.d })), [e1Pts])
-  const e1Best = curEx && curMode === 'reps' ? best1RM(S, curEx) : null
+  const e1Best = useMemo(() => (curEx && curMode === 'reps' ? best1RM(S, curEx) : null), [S, curEx, curMode])
   const showE1 = e1Pts.length > 0
   // Effort on this exercise, per session. It rides on the top-set curve as well as having a
   // curve of its own, because the two only mean something together: the same weight moved
   // with more left in the tank is progress a weight-only chart draws as a flat line.
-  const exRir = exPts.map(p => avgRir(p.sets))
+  const exRir = useMemo(() => exPts.map(p => avgRir(p.sets)), [exPts])
   const showEff = exRir.filter(v => v != null).length >= 3
-  const effPts = exPts.map((p, i) => (exRir[i] == null ? null : { t: p.t, y: toScale(kind, exRir[i]), d: p.d })).filter(Boolean)
+  const effPts = useMemo(() => exPts.map((p, i) => (exRir[i] == null ? null : { t: p.t, y: toScale(kind, exRir[i]), d: p.d })).filter(Boolean), [exPts, exRir, kind])
   const onE1 = showE1 && exMetric === 'e1rm'
   const onEff = showEff && exMetric === 'effort'
-  const topPts = exPts.map((p, i) => ({
+  // Kept identity-stable like the e1rm arrays above: LineChart clears its hover whenever
+  // `points` changes identity, so rebuilding these each render dropped the tooltip under
+  // the finger on any unrelated state change.
+  const topPts = useMemo(() => exPts.map((p, i) => ({
     t: p.t, y: p.y, d: p.d,
     // 0 RIR (nothing left) is a full dot, 4+ a faint one; unrated sessions keep the plain line.
     m: exRir[i] == null ? null : 1 - Math.min(4, Math.max(0, exRir[i])) / 4,
     note: exRir[i] == null ? undefined : hd + ' ' + fmtNum(toScale(kind, exRir[i]))
-  }))
+  })), [exPts, exRir, kind, hd])
   const exOpts = [{ value: 'top', label: t('Top set') }]
   if (showE1) exOpts.push({ value: 'e1rm', label: t('Est. 1RM') })
   if (showEff) exOpts.push({ value: 'effort', label: t('Effort') })

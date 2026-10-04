@@ -43,7 +43,9 @@ const fail = (e, fallback) => {
 }
 
 export default function Login() {
-  const { setUser, adoptProfile, setGuest } = useStore()
+  const setUser = useStore(s => s.setUser)
+  const adoptProfile = useStore(s => s.adoptProfile)
+  const setGuest = useStore(s => s.setGuest)
   const config = useStore(s => s.config)
   const canGuest = guestAllowed(config)
   const [mode, setMode] = useState('signin')   // 'signin' | 'signup'
