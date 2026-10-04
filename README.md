@@ -75,8 +75,9 @@ O caminho oficial de publicação é **frontend estático na Vercel + Auth/Fires
 3. Adicione o domínio da Vercel em **Authentication → Authorized domains** no Firebase.
 4. (Opcional, para Coach e busca de alimentos) `firebase deploy --only functions` com `XAI_API_KEY` e as chaves Nutritionix — ver `functions/.env.example`.
 
-> Credenciais Firebase deste fork configuradas (projeto `gymtask-ce4b6`); faltam as chaves
-> xAI/Nutritionix para o Coach via function e a URL de produção ainda não está no ar.
+> Credenciais Firebase deste fork configuradas (projeto `gymtask-ce4b6`) e o frontend já
+> publicado em produção (`gymtask-jtu8.vercel.app`); faltam as chaves xAI/Nutritionix para o
+> Coach via function, o deploy das functions e o domínio da Vercel em Authorized domains.
 
 ## Desenvolvimento local
 

@@ -90,7 +90,7 @@ nunca chamam `initializeApp` diretamente.
 - `store/nutritionStore.js` — log de refeições por data, persistência `gym_nutrition_v1`
 - UI: `views/Nutrition.jsx` (278 linhas) + `nutrition.css` — navegação de data, resumo calorias/macros,
   undo, add-food (busca local + externa), seletor de porção, formulário TDEE; rota `/nutrition` wired no `App.jsx`
-- i18n: 42 keys em `pt.js` + `PT_BR_OVERRIDES` (censo **735** overrides, inherited 641, fingerprint intacto)
+- i18n: 42 keys em `pt.js` + `PT_BR_OVERRIDES` (censo **752** overrides, inherited 641, fingerprint intacto)
 
 ## 3. Configuração / variáveis de ambiente
 
@@ -131,7 +131,7 @@ NUTRITIONIX_APP_KEY=...
 | — | Grok/Groq BYOK no frontend | ✅ concluído | `grok`+`groq` em `ADAPTERS` (`lib/coach-local.js`, `api/coach/adapters/index.js`); row `groq` (`providers.js`), `adapters/groq.js`, teste wire `adapters-http.test.js`; **tela BYOK restaurada**: `views/CoachSetup.jsx`+`CoachSetup.test.jsx`, rota `/coach/setup` (`App.jsx`), row "AI Coach" (`Settings.jsx`), gating `coachAvailable(byok→true)` (`lib/coach.js` + CoachChat/CoachIntake/Plan) |
 | — | Card Nutrition no Home | ✅ concluído | link `/nutrition` em `views/Home.jsx`; rota existia desde o módulo |
 | — | Rebrand do prompt do Coach + URLs upstream no `openapi` | ✅ concluído | `system-prompt.js`, `prompts/common.md` (+ `prompts.js` regenerado), `functions/index.js` → "GymTask Coach"; assertion `jobs.test.js:458` ajustada; comentários `config.js:19`/`node-fetch.js:10`; `openapi.yaml` (browse/contact/derived → fork) + `website/api.html` regenerado (16 endpoints); `build-coach-assets.mjs` normaliza CRLF (o `--check` do CI é byte-compare, agora estável entre plataformas); `scripts/` (hevy-id-map comments, tempdir `gytask-pt-br-`). Verificado: jobs 1/1, adapters-http 19/19, `--check` verde, greps `openGym Coach`/`inside openGym` = 0. Mantidos por contrato: `opengym_plan: 1`, salt HKDF `opengym-coach-v1`, UA `opengym-coach/` |
-| — | Build + testes centrais | ✅ **verde** (contagens pós-ci/i18n 2026-10-01) | `npm run build` exit 0; `npm test` **1747/1747** (126 arquivos); census locale **735/641** (`pt-br-locale.test.js` 4/4, fingerprint `4f9c1cf2.aea84f3` inalterado; `check-locales` **1376/1376**); `check-source-strings --strict` **0** pendências; `mcp` **63/63**; `api` **160 pass / 18 fail** via `npm test` (`node --test` recursivo: 163/18, inclui `push-messages.test.js`) (mesmas 18 falhas CRLF pré-existentes: `prompts.test.js` + `routes.test.js:70` - não corrigir) |
+| — | Build + testes centrais | ✅ **verde** (contagens 2026-10-03) | `npm run build` exit 0; `npm test` **1827/1827** (142 arquivos); census locale **752/641** (`pt-br-locale.test.js` 4/4, fingerprint `4f9c1cf2.aea84f3` inalterado; `check-locales` **1393/1393**); `check-source-strings --strict` **0** pendências; `mcp` **88/88**; `api` **185 pass / 0 fail** via `npm test` (falhas CRLF resolvidas em `8b4fe12`: asserções newline-agnostic + `.gitattributes` `eol=lf`) |
 | — | Deploy Vercel/PWA | 🟡 configs no ar | Projeto `gymtask-jtu8` linkado (`.vercel/` gitignored); **envs 8 production + 6 preview** (6 `VITE_FIREBASE_*` em ambas + `VITE_IMG_BASE`/`VITE_GIF_BASE` em production) via CLI/API (2026-09-28/29); `rootDirectory=frontend` + build settings (`npm ci`/`npm run build`/`dist`) corrigidos via API PATCH; `vercel.json` **duplicado idêntico** (raiz + `frontend/`) com comandos relativos. Dois erros de build resolvidos: `cd: frontend: No such file or directory` (cwd já era o Root Directory) e limite de **12 Serverless Functions do Hobby** (Root Directory vazia via `api/` ~240 `.js`; agora `api/` fica fora do projeto Vercel — functions ficam no Firebase). Build verde ✅ (`1601e6c` READY 2026-09-28 21:18, headers PWA verificados ao vivo); falta `VITE_NUTRITION_PROXY_URL` |
 | — | Firebase deploy config | ✅ em produção | `firebase.json` (nodejs22), `.firebaserc` → **`gymtask-ce4b6`** (placeholder trocado 2026-09-28), `firestore.rules` **deployed** (`firebase deploy --only firestore:rules` exit 0, rules released) |
 | — | FCM push | ✅ código pronto | `pushDailyReminder` FCM topic `gytask-daily` + `functions/README.md` |
@@ -213,7 +213,7 @@ NUTRITIONIX_APP_KEY=...
   síncrono do servidor — aceito, documentado no código.
 - A função `coach` em `functions/` é autocontida (duplica 3 linhas de prompt): Firebase empacota
   só `functions/` no deploy e `api/` é ESM — débito sinalizado no código.
-- `pt-br-locale.test.js` faz censo de chaves (**735** overrides / **641** herdados) — qualquer
+- `pt-br-locale.test.js` faz censo de chaves (**752** overrides / **641** herdados) — qualquer
   agente que adicione/remova chaves deve recomputar; fingerprint
   `frontend/scripts/pt-br-inheritance-fingerprint.mjs` é o guardião (hash novo
   `4f9c1cf24a394a45ac8e14d412a97f0462e9ef4c6a9ae348a27203511aea84f3` após o strip das 20 chaves
@@ -284,7 +284,17 @@ cd functions && npm install
 
 ---
 
-*Última atualização: 2026-10-01 - **checkpoint**. → Nesta rodada: **CI destravada** (dois
+*Última atualização: 2026-10-03 - **stale-docs pass** (audit-fixes todo 30). → Docs corrigidos
+contra a realidade do HEAD `8b4fe12`: README (frontend já no ar em produção
+`gymtask-jtu8.vercel.app`), ROADMAP (projeto Vercel já importado com Root Directory
+`frontend/`), `functions/README.md` (firebase-functions v7 / firebase-admin v14 + envs
+`ALLOWED_ORIGINS`/`RATE_LIMIT_*`), GYMTASK (contagens §2/§4/§6). **Verdes em 2026-10-03**:
+frontend vitest **1827/1827 (142 arq)**, `npm run build` exit 0, `check-locales`
+**1393/1393**, `check-source-strings --strict` 0, `mcp` **88/88**, `api` **185 pass / 0
+fail** (falhas CRLF resolvidas em `8b4fe12`), census **752/641**, fingerprint
+`4f9c1cf2.aea84f3` inalterado.*
+
+- Checkpoint (2026-10-01): **CI destravada** (dois
 bugs desde `1645e9e`): `api/package-lock.json` regenerado com npm 10 (o npm 11 tinha gerado
 lock sem a árvore opcional do claude-agent-sdk e o `npm ci` do CI falhava com
 `Missing: isexe@2.0.0`) + `api/Dockerfile` deixou de copiar `verify-error.js` (arquivo
@@ -300,7 +310,7 @@ locale. **Docs**: GYMTASK, ROADMAP, README (Grok/Groq + envs de mídia), AI_COAC
 "phone app" → PWA). **Verdes**: frontend vitest **1747/1747 (126 arq)**, `npm run build`
 exit 0, `check-locales` **1376/1376**, `mcp` **63/63**, `api` **160 pass/18 fail**
 (baseline CRLF inalterado), `node --check server.js` exit 0. Env Vercel: **8 production +
-6 preview**.*
+6 preview**.
 - Checkpoint anterior (2026-09-29): ✅ Nesta rodada: **tela BYOK do Coach restaurada**
 (`views/CoachSetup.jsx` + `CoachSetup.test.jsx` de volta na forma web — rota `/coach/setup`, row
 "AI Coach" em `Settings.jsx`, mode picker server/BYOK/off, default `groq`) + **provider Groq**

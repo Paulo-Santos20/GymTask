@@ -13,7 +13,7 @@ Sem datas inventadas: cada item anda quando tiver credencial, tempo e teste verd
   - xAI: chave `XAI_API_KEY` (**paga** — ~US$2/1M tokens de entrada, ~US$6/1M de saída; vale considerar um provider gratuito compatível)
   - Nutritionix: `NUTRITIONIX_APP_ID` + `NUTRITIONIX_APP_KEY` (plano gratuito)
   - VAPID: `VITE_FIREBASE_VAPID_KEY` (push diário, opcional)
-- **Deploy Vercel** — importar o repo com **Root Directory = `frontend/`** (obrigatório: sem isso a Vercel tenta registrar os ~240 `.js` de `api/` como Serverless Functions e o plano Hobby estoura no limite de 12; as functions de verdade rodam no Firebase). Env `VITE_FIREBASE_*` já no ar (8 production - 6 `VITE_FIREBASE_*` + `VITE_IMG_BASE`/`VITE_GIF_BASE` - e 6 preview, adicionadas via CLI/API em 2026-09-28/29); falta `VITE_NUTRITION_PROXY_URL` (depende do deploy das functions — ver [docs/DEPLOY_VERCEL.md](docs/DEPLOY_VERCEL.md)); depois adicionar o domínio em Authentication → Authorized domains.
+- **Deploy Vercel** — ✅ projeto já importado com **Root Directory = `frontend/`** (obrigatório: sem isso a Vercel tenta registrar os ~240 `.js` de `api/` como Serverless Functions e o plano Hobby estoura no limite de 12; as functions de verdade rodam no Firebase) e build verde no ar desde 2026-09-28. Env `VITE_FIREBASE_*` já no ar (8 production - 6 `VITE_FIREBASE_*` + `VITE_IMG_BASE`/`VITE_GIF_BASE` - e 6 preview, adicionadas via CLI/API em 2026-09-28/29); **falta**: `VITE_NUTRITION_PROXY_URL` (depende do deploy das functions — ver [docs/DEPLOY_VERCEL.md](docs/DEPLOY_VERCEL.md)) e adicionar o domínio em Authentication → Authorized domains.
 - **Deploy Firebase** — rules ✅ no ar; falta `firebase deploy --only functions` (espera `XAI_API_KEY`/`NUTRITIONIX_*` em `functions/.env`).
 
 ## Ideias futuras
