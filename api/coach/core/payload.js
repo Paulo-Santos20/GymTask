@@ -17,6 +17,10 @@ export const CONTRACT = 1
 // makes the payload bigger and the reading vaguer, not better.
 export const MAX_WEEKS = 12
 export const MAX_SESSIONS = 60
+// How many sessions the create payload remembers (C1). Five is "the last week or two" — the
+// span a plan is actually built around — and small enough that the block cannot crowd the
+// context it rides in (budget asserted in payload.test.js: 4 000 chars).
+export const RECENT_SESSIONS = 5
 
 /* ---------- the data categories the consent screen names (FR-09/10) ----------
    Kept here, next to the code that acts on it, and rendered by the consent UI from the same
@@ -285,13 +289,64 @@ const fmtSet = s => {
   return (s.w != null ? s.w + 'x' : '') + (s.r != null ? s.r : '?') + eff
 }
 
+/* ---------- a PR badge, read back as detail (C1) ----------
+   `w.prs` has always been a list of exercise ids and travels as a count — a number the Coach
+   can see but not act on ("1 PR" says nothing about what went up). Each badge now also rides
+   as {id, name, load}: the name from the catalogue (EXIDX's counterpart here, LIB_BY_ID) and
+   the load from the very fold that awarded the badge (doFinishWorkout, sheets.jsx) — the
+   completed non-warm-up rows of that exercise in that session, positive loads only, folded
+   the way betterWeight folds them (exercises.js): less help on an assistance machine
+   (issue #232), more weight anywhere else, 0 when there is no load to report rather than a
+   guess. The demo's canned proposal folds the same way (coach-demo.js), pinned against this
+   by frontend/src/lib/coach-parity.test.js. */
+const ASSISTED_EQ = 'leverage machine'
+const isSideRow = s => !!(s && s.sides && s.sides.L && s.sides.R)
+/** The fold from exercises.js: less assistance, or more weight. The catalogue decides, by
+ *  exercise id — the way doFinishWorkout decides it when it awards the badge. */
+function betterLoad(id, a, b) {
+  const ex = LIB_BY_ID.get(id)
+  const assisted =
+    !!ex &&
+    (typeof ex.assisted === 'boolean'
+      ? ex.assisted
+      : ex.eq === ASSISTED_EQ && /\bassist(ed)?\b/i.test(String(ex.n || '')))
+  return assisted ? Math.min(a, b) : Math.max(a, b)
+}
+/** The load behind one PR badge: the rows that won it. */
+function prLoadOf(id, en) {
+  const loads = ((en && en.sets) || [])
+    .filter(s => s && s.done && !isWarmupSet(s))
+    .map(s => s.w)
+    .filter(w => w > 0)
+  return loads.length ? loads.reduce((a, b) => betterLoad(id, a, b)) : 0
+}
+/** One session's PR badges as detail; null when it set none, so the count alone travels. */
+function prDetailOf(w) {
+  const prs = (w && w.prs) || []
+  if (!prs.length) return null
+  return prs.map(id => {
+    const en = (w.entries || []).find(e => e && e.id === id) || null
+    return { id, name: libraryName(id), load: prLoadOf(id, en) }
+  })
+}
+/** Working sets of one entry, counted the way history.js counts them — each side of a
+ *  unilateral row on its own (doneUnits), warm-ups excluded. */
+const workingSetsOf = en =>
+  ((en && en.sets) || []).reduce(
+    (n, s) =>
+      n + (isWarmupSet(s) ? 0 : isSideRow(s) ? (s.sides.L?.done ? 1 : 0) + (s.sides.R?.done ? 1 : 0) : s?.done ? 1 : 0),
+    0,
+  )
+
 /** One older workout as a summary: what was done, the top set, whether targets were hit. */
 function compactWorkout(w) {
+  const prDetail = prDetailOf(w)
   return {
     d: w.d,
     name: w.name || null,
     minutes: w.end && w.start ? Math.round((w.end - w.start) / 60000) : null,
     prs: (w.prs || []).length,
+    ...(prDetail ? { prDetail } : {}),
     compact: true,
     entries: (w.entries || []).map(en => {
       const sets = (en.sets || []).filter(s => !isWarmupSet(s))
@@ -313,6 +368,7 @@ function compactWorkout(w) {
 
 /** One workout, reduced to what a coach reads. */
 function cleanWorkout(w) {
+  const prDetail = prDetailOf(w)
   return {
     d: w.d,
     name: w.name || null,
@@ -320,6 +376,7 @@ function cleanWorkout(w) {
     ...(w.rating ? { rating: w.rating } : {}),
     ...(w.note ? { note: String(w.note).slice(0, 300) } : {}),
     prs: (w.prs || []).length,
+    ...(prDetail ? { prDetail } : {}),
     entries: (w.entries || []).map(en => ({
       id: en.id,
       name: libraryName(en.id),
@@ -360,6 +417,7 @@ export function workoutMeta(S, workoutId) {
       vol += (s.w || 0) * (s.r || 0)
     }),
   )
+  const prDetail = prDetailOf(w)
   return {
     id: w.id || null,
     d: w.d,
@@ -368,7 +426,32 @@ export function workoutMeta(S, workoutId) {
     vol: Number.isFinite(w.vol) ? Math.round(w.vol) : Math.round(vol),
     sets,
     prs: (w.prs || []).length,
+    ...(prDetail ? { prDetail } : {}),
   }
+}
+
+/**
+ * The create payload's memory of recent training (C1).
+ *
+ * A plan used to be built from `history.workingWeights` alone — one best number per exercise,
+ * no idea what the last weeks actually looked like. `recent` is the compact answer: date,
+ * exercise ids and working sets per session, plus the PR detail behind any badge, capped at
+ * RECENT_SESSIONS so a long history cannot turn a create payload into a transcript. Nothing
+ * here is set-by-set: the full detail belongs to the review window, where the sessions that
+ * earn it are the few most recent ones.
+ */
+function recentBlock(S) {
+  return (S.workouts || [])
+    .filter(w => w && w.d)
+    .slice(-RECENT_SESSIONS)
+    .map(w => {
+      const prDetail = prDetailOf(w)
+      return {
+        d: w.d,
+        entries: (w.entries || []).filter(en => en && en.id).map(en => ({ id: en.id, sets: workingSetsOf(en) })),
+        ...(prDetail ? { prDetail } : {}),
+      }
+    })
 }
 
 /**
@@ -485,6 +568,9 @@ export function build(S, opts = {}) {
         workingWeights: Object.entries(best).map(([id, w]) => ({ id, name: libraryName(id), best: w })),
       }
     }
+    // …and the sessions themselves, compact (C1): what the plan is being built around, so the
+    // Coach cites the last few weeks of real training rather than only their best numbers.
+    p.recent = recentBlock(S)
     if (opts.refine && opts.previous) {
       p.refine = { text: String(opts.refine).slice(0, 1000), previous: opts.previous }
     } else if (opts.refine) {

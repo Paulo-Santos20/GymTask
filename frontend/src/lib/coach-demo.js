@@ -12,8 +12,8 @@
 // Nothing here ships in a self-hosted bundle: every entry point is behind DEMO, which Vite
 // replaces at build time.
 
-import { EXIDX, EXDB } from './exercises.js'
-import { modeOf, workoutVolume } from './history.js'
+import { EXIDX, EXDB, betterWeight } from './exercises.js'
+import { modeOf, workoutVolume, doneUnits } from './history.js'
 import { isWarmupRow } from './workout-model.js'
 import { best1RM } from './onerm.js'
 import { fmtNum } from './format.js'
@@ -104,8 +104,56 @@ function buildReview(S) {
   }
 }
 
+/* The create payload's memory of recent training, and the PR detail beside every `prs` count:
+ * the demo's twin of api/coach/core/payload.js (recentBlock / prDetailOf), since a canned
+ * proposal never reaches a server to be built there. The demo answers from the frontend's own
+ * code — doneUnits for working sets (history.js), the fold that awarded the badge
+ * (doFinishWorkout, sheets.jsx) for a load, EXIDX for a name — while the server re-implements
+ * each; coach-parity.test.js pins the two together over a table of sessions. */
+const RECENT_SESSIONS = 5
+
+/** The load behind one badge: the fold from doFinishWorkout — completed non-warm-up rows,
+ *  positive loads only, less help or more weight (betterWeight), 0 when there is nothing. */
+const prLoadOf = (id, en) => {
+  const loads = ((en && en.sets) || [])
+    .filter(s => s && s.done && !isWarmupRow(s))
+    .map(s => s.w)
+    .filter(w => w > 0)
+  return loads.length ? loads.reduce(betterWeight.bind(null, id)) : 0
+}
+
+/** One session's PR badges as detail; null when it set none, so the count alone travels. */
+const prDetailOf = w => {
+  const prs = (w && w.prs) || []
+  if (!prs.length) return null
+  return prs.map(id => {
+    const en = (w.entries || []).find(e => e && e.id === id) || null
+    return { id, name: EXIDX[id]?.n || null, load: prLoadOf(id, en) }
+  })
+}
+
+/** The newest RECENT_SESSIONS sessions, compact: date, exercise ids, working sets, and the
+ *  PR detail behind any badge. */
+const recentOf = S =>
+  (S.workouts || [])
+    .filter(w => w && w.d)
+    .slice(-RECENT_SESSIONS)
+    .map(w => {
+      const prDetail = prDetailOf(w)
+      return {
+        d: w.d,
+        entries: (w.entries || [])
+          .filter(en => en && en.id)
+          .map(en => ({
+            id: en.id,
+            sets: (en.sets || []).reduce((n, s) => n + (isWarmupRow(s) ? 0 : doneUnits(s)), 0),
+          })),
+        ...(prDetail ? { prDetail } : {}),
+      }
+    })
+
 /** A small, honest starter plan for the demo's creation flow. */
-function buildPlan(S, intake) {
+export function buildPlan(S, intake) {
   const pick = (bp, eq) => EXDB.find(e => e.bp === bp && (!eq || e.eq === eq)) || EXDB.find(e => e.bp === bp)
   const days = intake?.preferredDays?.length ? intake.preferredDays.slice(0, 3) : [1, 3, 5]
   const eq = (intake?.equipment || [])[0] || null
@@ -153,6 +201,7 @@ function buildPlan(S, intake) {
     expiresAt: Date.now() + 864e5,
     iteration: 1,
     planHash: planHash(S),
+    recent: recentOf(S),
     summary: t(
       'A two-day rotation across three sessions a week, built around the equipment you listed. Compounds first, one pull for every press, and enough overlap between the days that nothing goes two weeks without being trained.',
     ),
@@ -173,7 +222,7 @@ function buildPlan(S, intake) {
 }
 
 /** One session, read back with its own numbers — no plan changes, just what a coach would say after. */
-function buildDebrief(S, workoutId) {
+export function buildDebrief(S, workoutId) {
   const all = (S.workouts || []).filter(w => w && w.d)
   const w = all.find(x => x.id === workoutId) || all[all.length - 1]
   if (!w) return null
@@ -181,6 +230,7 @@ function buildDebrief(S, workoutId) {
   const planned = (w.entries || []).reduce((n, en) => n + (en.sets || []).filter(s => !isWarmupRow(s)).length, 0)
   const vol = Math.round(Number.isFinite(w.vol) ? w.vol : workoutVolume(w))
   const prs = (w.prs || []).length
+  const prDetail = prDetailOf(w)
   const minutes = w.end && w.start ? Math.round((w.end - w.start) / 60000) : null
   const complete = planned > 0 && done >= planned
   const score = complete ? (prs ? 9 : 8) : 7
@@ -206,7 +256,16 @@ function buildDebrief(S, workoutId) {
     expiresAt: Date.now() + 864e5,
     planHash: planHash(S),
     iteration: 1,
-    workout: { id: w.id, d: w.d, name: w.name || null, minutes, vol, sets: done, prs },
+    workout: {
+      id: w.id,
+      d: w.d,
+      name: w.name || null,
+      minutes,
+      vol,
+      sets: done,
+      prs,
+      ...(prDetail ? { prDetail } : {}),
+    },
     summary: complete
       ? t(
           'A clean session: everything on the sheet got done and the loads held. This is exactly what progress looks like from the inside — unremarkable, repeated.',
