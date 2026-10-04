@@ -2,6 +2,37 @@
 // server-side per user, same as everything else under /api).
 import { api } from './api.js'
 
+// FCM topic the daily reminder goes to (functions/index.js `pushDailyReminder` sends to this
+// exact name). Topic-only contract: the registration token never leaves this device — nothing
+// is stored server-side. Both halves are gated on `firebaseConfigured` so local/demo mode
+// never triggers the permission prompt, and both lazy-import `firebase/messaging` so that
+// without Firebase configured the SDK never even loads.
+export const DAILY_TOPIC = 'gytask-daily'
+
+export async function subscribeDailyTopic() {
+  const { firebaseConfigured, app } = await import('./firebase.js')
+  if (!firebaseConfigured) return false
+  const { isSupported, getMessaging, getToken, subscribeToTopic } = await import('firebase/messaging')
+  if (!(await isSupported())) return false
+  const permission = await Notification.requestPermission()
+  if (permission !== 'granted') return false
+  const messaging = getMessaging(app)
+  const token = await getToken(messaging, { vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY })
+  if (!token) return false
+  await subscribeToTopic(messaging, DAILY_TOPIC)
+  return true
+}
+
+export async function unsubscribeDailyTopic() {
+  const { firebaseConfigured, app } = await import('./firebase.js')
+  if (!firebaseConfigured) return
+  const { isSupported, getMessaging, unsubscribeFromTopic, deleteToken } = await import('firebase/messaging')
+  if (!(await isSupported())) return
+  const messaging = getMessaging(app)
+  await unsubscribeFromTopic(messaging, DAILY_TOPIC).catch(() => {})
+  await deleteToken(messaging).catch(() => {})
+}
+
 // main.jsx registers the service worker on https only, so on any other origin there is no
 // worker and `navigator.serviceWorker.ready` never settles — the toggle looked usable and hung.
 const secureOrigin = () => typeof location === 'undefined' || location.protocol === 'https:'
@@ -47,9 +78,14 @@ export async function enablePush() {
   const { key } = await api('/api/push/public-key')
   const subscription = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(key) })
   await register(subscription)
+  // Topic subscription rides along with the toggle (PushCard calls this on enable). Best
+  // effort: a missing VAPID key or an FCM hiccup must not undo the Web Push that just worked.
+  await subscribeDailyTopic().catch(() => {})
 }
 
 export async function disablePush() {
+  // Symmetric with enable: leave the topic before tearing the Web Push subscription down.
+  await unsubscribeDailyTopic().catch(() => {})
   if (!pushSupported()) return
   const reg = await readyWorker()
   const sub = await reg.pushManager.getSubscription()

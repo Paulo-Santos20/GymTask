@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { createHash } from 'node:crypto'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
 const backend = process.env.API_TARGET || 'http://127.0.0.1:3000'
@@ -46,6 +46,43 @@ const swStamp = {
   }
 }
 
+// The FCM messaging worker (public/firebase-messaging-sw.js) carries __VITE_FIREBASE_*__
+// placeholders for the same reason: a worker cannot read import.meta.env and Vite copies
+// public/ verbatim. Fill them here from the same VITE_FIREBASE_* env the page uses — build
+// (dist copy) and dev (served instead of the raw placeholder file). Values are escaped for
+// the single-quoted literals in the template; an empty env leaves `''`, which the worker
+// reads as "not configured" and skips Firebase init instead of crashing.
+let fcmEnv = null
+const fillFcmSw = source => {
+  const esc = v => String(v ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r?\n/g, '')
+  return source.replace(/__VITE_FIREBASE_([A-Z_]+)__/g, (_, name) => esc(fcmEnv?.['VITE_FIREBASE_' + name]))
+}
+const fcmSw = {
+  name: 'gytask-fcm-sw',
+  apply: 'build',
+  configResolved(config) { fcmEnv = loadEnv(config.mode, config.envDir, 'VITE_') },
+  closeBundle() {
+    const f = new URL('firebase-messaging-sw.js', new URL('./dist/', import.meta.url))
+    if (!existsSync(f)) return
+    writeFileSync(f, fillFcmSw(readFileSync(f, 'utf8')))
+  }
+}
+// Dev: same fill, served in place of the raw placeholder file so `getToken` finds a working
+// worker on localhost when a local .env exists.
+const fcmSwDev = {
+  name: 'gytask-fcm-sw-dev',
+  configureServer(server) {
+    if (!fcmEnv) fcmEnv = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), 'VITE_')
+    server.middlewares.use((req, res, next) => {
+      if ((req.url || '').split('?')[0] !== '/firebase-messaging-sw.js') return next()
+      const f = new URL('firebase-messaging-sw.js', new URL('./public/', import.meta.url))
+      if (!existsSync(f)) return next()
+      res.setHeader('content-type', 'text/javascript')
+      res.end(fillFcmSw(readFileSync(f, 'utf8')))
+    })
+  }
+}
+
 // The version people are asked for in #install-help and on every bug report. Read from
 // package.json so it cannot drift from the release it was built in, and inlined at build
 // time so no runtime fetch is involved.
@@ -53,7 +90,7 @@ const pkgVersion = JSON.parse(readFileSync(new URL('./package.json', import.meta
 
 export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(pkgVersion) },
-  plugins: [react(), umami, swStamp],
+  plugins: [react(), umami, swStamp, fcmSw, fcmSwDev],
   base: './',
   test: { setupFiles: ['./vitest.setup.js'] },
   server: {
