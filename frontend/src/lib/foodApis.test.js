@@ -1,6 +1,7 @@
-// External food search — the NON-buggy paths only. `searchExternal`'s error propagation is a
-// separate known bug with its own red→green test (plan todo 28), so every fetch here SUCCEEDS:
-// no rejecting mocks, no assertions about what happens when a source throws.
+// External food search — normalised mapping for each source, plus `searchExternal`'s
+// error-propagation contract (plan todo 28): a rejected fetch must surface as a
+// distinguishable rejection — never a silent [] that the caller would render as "no
+// results" — while a single failing source still fails soft against the survivors.
 // Network is fully stubbed (vi.stubGlobal('fetch', ...) — the pattern from coach-local.test.js).
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { searchUSDA, searchOFF, searchNutritionix, searchExternal, nutritionixProxy } from './foodApis.js'
@@ -117,5 +118,26 @@ describe('searchExternal', () => {
     expect(out).toHaveLength(1)
     expect(out[0].source).toBe('usda')   // USDA runs first, so its row wins the dedup
     expect(out[0].name).toBe('Feijão carioca cozido')
+  })
+
+  it('propagates a distinguishable rejection when every source fails — never a silent []', async () => {
+    fetchMock.mockRejectedValue(new Error('network down'))
+
+    // Nutrition.jsx maps a rejection to its explicit "Could not search online" state;
+    // resolving [] here would render it as "no results" instead (plan todo 28, audit #13).
+    await expect(searchExternal('banana')).rejects.toThrow(/All external food sources failed/)
+  })
+
+  it('still fails soft per source: one rejecting source keeps the other one’s results', async () => {
+    fetchMock.mockImplementation(url => Promise.resolve(
+      String(url).includes('nal.usda.gov')
+        ? Promise.reject(new Error('HTTP 429'))   // DEMO_KEY pool exhausted
+        : jsonRes({ products: [{ product_name: 'Pão Integral', nutriments: { 'energy-kcal_100g': 247 } }] }),
+    ))
+
+    const out = await searchExternal('pao')
+
+    expect(out).toHaveLength(1)
+    expect(out[0].source).toBe('off')
   })
 })
