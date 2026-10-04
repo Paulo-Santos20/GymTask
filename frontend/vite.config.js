@@ -67,5 +67,25 @@ export default defineConfig({
       '/gif': { target: media, changeOrigin: true }
     }
   },
-  build: { chunkSizeWarningLimit: 1500 }
+  build: {
+    chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      output: {
+        // Vendor split: heavyweight libraries get their own long-lived chunks so an app
+        // deploy doesn't invalidate the react/firebase payloads in everyone's cache.
+        // Groups mirror package.json deps. No vendor-charts: the Stats charts are hand-rolled
+        // SVG (no chart dependency exists). Everything else keeps Vite's default chunking —
+        // grouping "the rest" into one `vendor` chunk was tried and regressed: it hoisted the
+        // dynamically-imported jsQR/lean-qr (~137 kB) into the eagerly-loaded graph, growing
+        // first paint while only making the entry number look smaller. QR code + zustand stay
+        // lazy/entry-local by default instead.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+          if (/(?:^|[/\\])node_modules[/\\]@remix-run[/\\]/.test(id)) return 'vendor-react'
+          if (/(?:^|[/\\])node_modules[/\\](react|react-dom|react-router|react-router-dom|scheduler)[/\\]/.test(id)) return 'vendor-react'
+          if (/(?:^|[/\\])node_modules[/\\](firebase|@firebase)[/\\]/.test(id)) return 'vendor-firebase'
+        }
+      }
+    }
+  }
 })
