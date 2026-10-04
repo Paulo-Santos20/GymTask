@@ -24,23 +24,31 @@ afterEach(() => {
 
 describe('searchUSDA', () => {
   it('maps USDA rows onto the shared per-100 g shape, skipping rows with no usable nutrition', async () => {
-    fetchMock.mockResolvedValue(jsonRes({
-      foods: [
-        { description: 'Banana, raw', foodNutrients: [
-          { nutrientId: 1008, value: 89 },
-          { nutrientId: 1003, value: 1.09 },
-          { nutrientId: 1005, value: 22.84 },
-          { nutrientId: 1004, value: 0.33 },
-        ] },
-        // Present-but-partial macros: missing ones stay 0, values round to 1 decimal.
-        { description: 'Partial macros', foodNutrients: [
-          { nutrientId: 208, value: 52 },
-          { nutrientId: 203, value: 0.26 },
-        ] },
-        { description: 'Empty plate', foodNutrients: [] },                          // no kcal/protein → dropped
-        { foodNutrients: [{ nutrientId: 1008, value: 10 }] },                       // no description → dropped
-      ],
-    }))
+    fetchMock.mockResolvedValue(
+      jsonRes({
+        foods: [
+          {
+            description: 'Banana, raw',
+            foodNutrients: [
+              { nutrientId: 1008, value: 89 },
+              { nutrientId: 1003, value: 1.09 },
+              { nutrientId: 1005, value: 22.84 },
+              { nutrientId: 1004, value: 0.33 },
+            ],
+          },
+          // Present-but-partial macros: missing ones stay 0, values round to 1 decimal.
+          {
+            description: 'Partial macros',
+            foodNutrients: [
+              { nutrientId: 208, value: 52 },
+              { nutrientId: 203, value: 0.26 },
+            ],
+          },
+          { description: 'Empty plate', foodNutrients: [] }, // no kcal/protein → dropped
+          { foodNutrients: [{ nutrientId: 1008, value: 10 }] }, // no description → dropped
+        ],
+      }),
+    )
 
     const out = await searchUSDA('açúcar')
 
@@ -60,17 +68,25 @@ describe('searchUSDA', () => {
 
 describe('searchOFF', () => {
   it('reads Open Food Facts names and macros, with the kJ→kcal fallback', async () => {
-    fetchMock.mockResolvedValue(jsonRes({
-      products: [
-        { product_name: 'Pão Integral', nutriments: {
-          'energy-kcal_100g': 247, proteins_100g: 8, carbohydrates_100g: 44, fat_100g: 3.5,
-        } },
-        // No energy-kcal_100g → energy_100g (kJ) divided by 4.184; name from generic_name.
-        { generic_name: 'Suco de Laranja', nutriments: { energy_100g: 418.4, proteins_100g: 5 } },
-        { product_name: 'Sem Macros', nutriments: {} },   // no kcal, no protein → dropped
-        { nutriments: { proteins_100g: 1 } },             // no name at all → dropped
-      ],
-    }))
+    fetchMock.mockResolvedValue(
+      jsonRes({
+        products: [
+          {
+            product_name: 'Pão Integral',
+            nutriments: {
+              'energy-kcal_100g': 247,
+              proteins_100g: 8,
+              carbohydrates_100g: 44,
+              fat_100g: 3.5,
+            },
+          },
+          // No energy-kcal_100g → energy_100g (kJ) divided by 4.184; name from generic_name.
+          { generic_name: 'Suco de Laranja', nutriments: { energy_100g: 418.4, proteins_100g: 5 } },
+          { product_name: 'Sem Macros', nutriments: {} }, // no kcal, no protein → dropped
+          { nutriments: { proteins_100g: 1 } }, // no name at all → dropped
+        ],
+      }),
+    )
 
     const out = await searchOFF('pão')
 
@@ -107,16 +123,20 @@ describe('searchExternal', () => {
   })
 
   it('keeps a single entry when both sources return the same food with different accents/case', async () => {
-    fetchMock.mockImplementation(url => Promise.resolve(
-      String(url).includes('nal.usda.gov')
-        ? jsonRes({ foods: [{ description: 'Feijão carioca cozido', foodNutrients: [{ nutrientId: 1008, value: 76 }] }] })
-        : jsonRes({ products: [{ product_name: 'FEIJÃO CARIOCA COZIDO', nutriments: { 'energy-kcal_100g': 76 } }] }),
-    ))
+    fetchMock.mockImplementation(url =>
+      Promise.resolve(
+        String(url).includes('nal.usda.gov')
+          ? jsonRes({
+              foods: [{ description: 'Feijão carioca cozido', foodNutrients: [{ nutrientId: 1008, value: 76 }] }],
+            })
+          : jsonRes({ products: [{ product_name: 'FEIJÃO CARIOCA COZIDO', nutriments: { 'energy-kcal_100g': 76 } }] }),
+      ),
+    )
 
     const out = await searchExternal('feijao')
 
     expect(out).toHaveLength(1)
-    expect(out[0].source).toBe('usda')   // USDA runs first, so its row wins the dedup
+    expect(out[0].source).toBe('usda') // USDA runs first, so its row wins the dedup
     expect(out[0].name).toBe('Feijão carioca cozido')
   })
 
@@ -129,11 +149,13 @@ describe('searchExternal', () => {
   })
 
   it('still fails soft per source: one rejecting source keeps the other one’s results', async () => {
-    fetchMock.mockImplementation(url => Promise.resolve(
-      String(url).includes('nal.usda.gov')
-        ? Promise.reject(new Error('HTTP 429'))   // DEMO_KEY pool exhausted
-        : jsonRes({ products: [{ product_name: 'Pão Integral', nutriments: { 'energy-kcal_100g': 247 } }] }),
-    ))
+    fetchMock.mockImplementation(url =>
+      Promise.resolve(
+        String(url).includes('nal.usda.gov')
+          ? Promise.reject(new Error('HTTP 429')) // DEMO_KEY pool exhausted
+          : jsonRes({ products: [{ product_name: 'Pão Integral', nutriments: { 'energy-kcal_100g': 247 } }] }),
+      ),
+    )
 
     const out = await searchExternal('pao')
 

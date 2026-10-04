@@ -16,7 +16,8 @@ export const KMH_PER_MPH = 1.609344
  * General) it follows the weight unit — a profile in pounds reads mph — so imperial users get
  * miles without looking for a setting, and a kg lifter on an mph treadmill can still pick it.
  */
-export const speedUnitOf = S => (S?.speedUnit === 'mph' || S?.speedUnit === 'kmh' ? S.speedUnit : S?.unit === 'lb' ? 'mph' : 'kmh')
+export const speedUnitOf = S =>
+  S?.speedUnit === 'mph' || S?.speedUnit === 'kmh' ? S.speedUnit : S?.unit === 'lb' ? 'mph' : 'kmh'
 
 /** The unit's short label, as the numbers carry it: "km/h" or "mph". */
 export const speedLabel = unit => (unit === 'mph' ? 'mph' : 'km/h')
@@ -30,7 +31,7 @@ export const speedLabel = unit => (unit === 'mph' ? 'mph' : 'km/h')
  */
 export function toSpeed(kmh, unit) {
   if (unit !== 'mph' || kmh == null || kmh === '' || !Number.isFinite(Number(kmh))) return kmh
-  return Math.round(Number(kmh) / KMH_PER_MPH * 100) / 100
+  return Math.round((Number(kmh) / KMH_PER_MPH) * 100) / 100
 }
 export function fromSpeed(value, unit) {
   if (unit !== 'mph' || value == null || value === '' || !Number.isFinite(Number(value))) return value

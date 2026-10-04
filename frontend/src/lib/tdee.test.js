@@ -1,7 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import {
-  ACTIVITY_FACTORS, GOAL_ADJUST, PROTEIN_G_PER_KG, FAT_KCAL_FRAC,
-  DEFAULT_PROFILE, calcBMR, calcTDEE, calcCalories, calcMacros, getTargets
+  ACTIVITY_FACTORS,
+  GOAL_ADJUST,
+  PROTEIN_G_PER_KG,
+  FAT_KCAL_FRAC,
+  DEFAULT_PROFILE,
+  calcBMR,
+  calcTDEE,
+  calcCalories,
+  calcMacros,
+  getTargets,
 } from './tdee.js'
 
 // 80 kg / 180 cm / 30 yr man: 800 + 1125 − 150 + 5 = 1780.
@@ -82,12 +90,24 @@ describe('getTargets', () => {
     expect(getTargets(man)).toEqual({ bmr: 1780, tdee: 2759, kcal: 2759, protein: 144, carbs: 356, fat: 84 })
   })
   it('snapshots a cut: −17.5% kcal, 2.2 g/kg protein, 25% fat', () => {
-    expect(getTargets({ ...man, objetivo: 'emagrecer' }))
-      .toEqual({ bmr: 1780, tdee: 2759, kcal: 2276, protein: 176, carbs: 251, fat: 63 })
+    expect(getTargets({ ...man, objetivo: 'emagrecer' })).toEqual({
+      bmr: 1780,
+      tdee: 2759,
+      kcal: 2276,
+      protein: 176,
+      carbs: 251,
+      fat: 63,
+    })
   })
   it('snapshots a bulk: +10% kcal, 1.6 g/kg protein, 30% fat', () => {
-    expect(getTargets({ ...man, objetivo: 'ganhar' }))
-      .toEqual({ bmr: 1780, tdee: 2759, kcal: 3035, protein: 128, carbs: 403, fat: 101 })
+    expect(getTargets({ ...man, objetivo: 'ganhar' })).toEqual({
+      bmr: 1780,
+      tdee: 2759,
+      kcal: 3035,
+      protein: 128,
+      carbs: 403,
+      fat: 101,
+    })
   })
   it('snapshots a sedentary woman', () => {
     expect(getTargets(woman)).toEqual({ bmr: 1345, tdee: 1614, kcal: 1614, protein: 108, carbs: 185, fat: 49 })

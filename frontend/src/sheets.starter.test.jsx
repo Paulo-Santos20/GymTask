@@ -25,14 +25,17 @@ function renderTop() {
   return host
 }
 
-const rowFor = (host, name) => [...host.querySelectorAll('.item')].find(el => el.querySelector('.tt')?.textContent === name)
+const rowFor = (host, name) =>
+  [...host.querySelectorAll('.item')].find(el => el.querySelector('.tt')?.textContent === name)
 const buttonFor = (host, label) => [...host.querySelectorAll('button')].find(b => b.textContent === label)
 
 // Opens the chooser and taps one of its rows.
 function choose(name) {
   starterPlanSheet()
   const host = renderTop()
-  act(() => { rowFor(host, name).click() })
+  act(() => {
+    rowFor(host, name).click()
+  })
 }
 
 beforeEach(() => {
@@ -45,15 +48,24 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  act(() => { mounted.splice(0).forEach(root => root.unmount()) })
+  act(() => {
+    mounted.splice(0).forEach(root => root.unmount())
+  })
 })
 
 describe('starter plan chooser', () => {
   it('lists every plan with its day count', () => {
     starterPlanSheet()
     const host = renderTop()
-    expect([...host.querySelectorAll('.item .tt')].map(el => el.textContent))
-      .toEqual(['Push / Pull / Legs', 'Upper / Lower', 'Full Body', '5×5', 'Push / Pull', 'Upper A/B', 'Bro Split (upper)'])
+    expect([...host.querySelectorAll('.item .tt')].map(el => el.textContent)).toEqual([
+      'Push / Pull / Legs',
+      'Upper / Lower',
+      'Full Body',
+      '5×5',
+      'Push / Pull',
+      'Upper A/B',
+      'Bro Split (upper)',
+    ])
     expect(rowFor(host, 'Upper / Lower').querySelector('.ss').textContent).toContain('4 days per week')
   })
 
@@ -61,14 +73,14 @@ describe('starter plan chooser', () => {
     useStore.setState(s => ({ S: { ...s.S, week: { 0: ['mine'], 6: ['mine'] } } }))
     choose('Upper / Lower')
 
-    expect(useUI.getState().sheets).toHaveLength(0)   // no confirmation was raised
+    expect(useUI.getState().sheets).toHaveLength(0) // no confirmation was raised
     expect(nameOn(1)).toBe('Upper A')
     expect(nameOn(2)).toBe('Lower A')
     expect(nameOn(4)).toBe('Upper B')
     expect(nameOn(5)).toBe('Lower B')
-    expect(S().week[0]).toEqual(['mine'])             // untouched weekdays stay put
+    expect(S().week[0]).toEqual(['mine']) // untouched weekdays stay put
     expect(S().week[6]).toEqual(['mine'])
-    expect(S().routines[0].name).toBe('My routine')   // and nothing is deleted
+    expect(S().routines[0].name).toBe('My routine') // and nothing is deleted
     expect(useUI.getState().toastMsg).toBe('Upper / Lower loaded')
   })
 
@@ -79,10 +91,12 @@ describe('starter plan chooser', () => {
     const confirm = renderTop()
     expect(confirm.querySelector('h3').textContent).toBe('Load Full Body?')
     expect(confirm.textContent).toContain('Monday, Wednesday e Friday')
-    expect(S().week[3]).toEqual(['mine'])                  // nothing applied yet
+    expect(S().week[3]).toEqual(['mine']) // nothing applied yet
     expect(S().routines).toHaveLength(1)
 
-    act(() => { buttonFor(confirm, 'Load plan').click() })
+    act(() => {
+      buttonFor(confirm, 'Load plan').click()
+    })
     expect(nameOn(1)).toBe('Full Body A')
     expect(nameOn(3)).toBe('Full Body B')
     expect(nameOn(5)).toBe('Full Body C')
@@ -94,14 +108,16 @@ describe('starter plan chooser', () => {
     choose('5×5')
 
     const confirm = renderTop()
-    act(() => { buttonFor(confirm, 'Cancel').click() })
+    act(() => {
+      buttonFor(confirm, 'Cancel').click()
+    })
     expect(S()).toEqual(before)
     expect(useUI.getState().toastMsg).toBe('')
   })
 
   it('does not ask when only weekdays outside the plan are occupied', () => {
-    useStore.setState(s => ({ S: { ...s.S, week: { 2: ['mine'], 4: ['mine'] } } }))   // Tue + Thu
-    choose('5×5')                                                                // wants Mon/Wed/Fri
+    useStore.setState(s => ({ S: { ...s.S, week: { 2: ['mine'], 4: ['mine'] } } })) // Tue + Thu
+    choose('5×5') // wants Mon/Wed/Fri
     expect(useUI.getState().sheets).toHaveLength(0)
     expect(nameOn(1)).toBe('5×5 A')
   })
@@ -110,9 +126,13 @@ describe('starter plan chooser', () => {
 describe('loadStarterPlan', () => {
   it('appends independent routines each time the same plan is loaded', () => {
     loadStarterPlan('ppl')
-    const first = S().routines.slice(1).map(r => r.id)
+    const first = S()
+      .routines.slice(1)
+      .map(r => r.id)
     loadStarterPlan('ppl')
-    const second = S().routines.slice(4).map(r => r.id)
+    const second = S()
+      .routines.slice(4)
+      .map(r => r.id)
     expect(S().routines).toHaveLength(7)
     expect(new Set([...first, ...second]).size).toBe(6)
     expect(second.some(id => first.includes(id))).toBe(false)

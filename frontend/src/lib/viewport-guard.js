@@ -15,7 +15,7 @@
  * on every other platform it is a no-op.
  */
 const KEYBOARD_MIN_PX = 100
-const SETTLE_MS = 350   // the keyboard's dismiss animation; the offset is only wrong after it
+const SETTLE_MS = 350 // the keyboard's dismiss animation; the offset is only wrong after it
 
 const isText = el => !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
 
@@ -30,7 +30,7 @@ export function viewportDisplacement(win = window) {
 export function keyboardOpen(win = window) {
   const vv = win.visualViewport
   if (!vv) return false
-  return (win.innerHeight - vv.height) > KEYBOARD_MIN_PX
+  return win.innerHeight - vv.height > KEYBOARD_MIN_PX
 }
 
 /** Realign the viewports if iOS left them apart. Returns true when a correction was issued. */
@@ -76,16 +76,29 @@ export function installViewportGuard(win = window) {
   if (!vv) return () => {}
   let wasOpen = keyboardOpen(win)
   const timers = new Set()
-  const later = (fn, ms) => { const t = win.setTimeout(() => { timers.delete(t); fn() }, ms); timers.add(t) }
-  const settle = () => { realign(win); later(() => realign(win), SETTLE_MS) }
+  const later = (fn, ms) => {
+    const t = win.setTimeout(() => {
+      timers.delete(t)
+      fn()
+    }, ms)
+    timers.add(t)
+  }
+  const settle = () => {
+    realign(win)
+    later(() => realign(win), SETTLE_MS)
+  }
 
   const onResize = () => {
     const open = keyboardOpen(win)
     if (wasOpen && !open) settle()
     wasOpen = open
   }
-  const onScroll = () => { if (!wasOpen) realign(win) }
-  const onFocusOut = e => { if (isText(e.target)) settle() }
+  const onScroll = () => {
+    if (!wasOpen) realign(win)
+  }
+  const onFocusOut = e => {
+    if (isText(e.target)) settle()
+  }
 
   vv.addEventListener('resize', onResize)
   vv.addEventListener('scroll', onScroll)

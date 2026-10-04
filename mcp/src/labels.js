@@ -47,4 +47,6 @@ export function ratio(done, total) {
   return `${done}/${total}`
 }
 
-export function muscleOrder() { return MUSCLES.slice() }
+export function muscleOrder() {
+  return MUSCLES.slice()
+}

@@ -42,9 +42,7 @@ function snapshotWeights(entry) {
     const weights = musclesOf(catalogue)
     if (Object.keys(weights).length) return weights
   }
-  const direct = entry && typeof entry === 'object'
-    ? (entry.muscleWeights || entry.muscleSnapshot?.muscleWeights)
-    : null
+  const direct = entry && typeof entry === 'object' ? entry.muscleWeights || entry.muscleSnapshot?.muscleWeights : null
   if (direct && typeof direct === 'object' && !Array.isArray(direct) && Object.keys(direct).length) {
     return direct
   }

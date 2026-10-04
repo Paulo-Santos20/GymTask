@@ -8,20 +8,43 @@ const KEY = 'coach.apiKey'
 const memory = new Map()
 
 const store = () => {
-  try { return typeof localStorage === 'undefined' ? null : localStorage } catch (e) { return null }
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage
+  } catch (e) {
+    return null
+  }
 }
 
 export async function getApiKey() {
-  try { const v = store() && store().getItem(KEY); if (typeof v === 'string' && v) return v } catch (e) { /* fall through */ }
+  try {
+    const v = store() && store().getItem(KEY)
+    if (typeof v === 'string' && v) return v
+  } catch (e) {
+    /* fall through */
+  }
   return memory.get(KEY) || null
 }
 export async function setApiKey(value) {
   const v = String(value || '').trim()
   if (!v) return clearApiKey()
-  try { const s = store(); if (s) { s.setItem(KEY, v); memory.delete(KEY); return } } catch (e) { /* fall through */ }
+  try {
+    const s = store()
+    if (s) {
+      s.setItem(KEY, v)
+      memory.delete(KEY)
+      return
+    }
+  } catch (e) {
+    /* fall through */
+  }
   memory.set(KEY, v)
 }
 export async function clearApiKey() {
-  try { const s = store(); if (s) s.removeItem(KEY) } catch (e) { /* nothing to clear */ }
+  try {
+    const s = store()
+    if (s) s.removeItem(KEY)
+  } catch (e) {
+    /* nothing to clear */
+  }
   memory.delete(KEY)
 }

@@ -5,18 +5,27 @@ import { buildPlanBundle, mergePlan, parsePlan } from './plan-share.js'
 // went missing without anyone noticing.
 const stateWith = ex => ({
   routines: [{ id: 'r1', name: 'Push', ex: [{ id: '0025', sets: 3, reps: 5, weight: 100, ...ex }] }],
-  week: {}, customEx: [],
+  week: {},
+  customEx: [],
 })
 const roundTrip = ex => parsePlan(JSON.stringify(buildPlanBundle(stateWith(ex), 'Plan'))).routines[0].ex[0]
 
 describe('plan-share units', () => {
   it('exports a unit and converts every load prescription at the import boundary', () => {
     const source = {
-      unit: 'kg', week: {}, customEx: [],
-      routines: [{ id: 'r', name: 'Strength', ex: [
-        { id: '0025', mode: 'reps', sets: 3, reps: 5, weight: 60, inc: 2.5 },
-        { id: '0007', mode: 'time', sets: 1, sec: 30, weight: 20, inc: 5 },
-      ] }],
+      unit: 'kg',
+      week: {},
+      customEx: [],
+      routines: [
+        {
+          id: 'r',
+          name: 'Strength',
+          ex: [
+            { id: '0025', mode: 'reps', sets: 3, reps: 5, weight: 60, inc: 2.5 },
+            { id: '0007', mode: 'time', sets: 1, sec: 30, weight: 20, inc: 5 },
+          ],
+        },
+      ],
     }
     const bundle = buildPlanBundle(source, 'Strength')
     expect(bundle.unit).toBe('kg')
@@ -28,7 +37,9 @@ describe('plan-share units', () => {
 
   it('converts pounds back to kilograms and merges the converted prescription', () => {
     const source = {
-      unit: 'lb', week: {}, customEx: [],
+      unit: 'lb',
+      week: {},
+      customEx: [],
       routines: [{ id: 'r', name: 'Strength', ex: [{ id: '0025', sets: 3, reps: 5, weight: 135, inc: 10 }] }],
     }
     const bundle = buildPlanBundle(source, 'Strength')
@@ -39,8 +50,11 @@ describe('plan-share units', () => {
 
   it('keeps valid legacy bundles without a unit in their destination-unit semantics', () => {
     const legacy = {
-      opengym_plan: 1, name: 'Legacy', summary: 'old export',
-      week: { 1: 'r' }, customEx: [],
+      opengym_plan: 1,
+      name: 'Legacy',
+      summary: 'old export',
+      week: { 1: 'r' },
+      customEx: [],
       routines: [{ id: 'r', name: 'Strength', ex: [{ id: '0025', sets: 3, reps: 5, weight: 60, inc: 2.5 }] }],
     }
     const parsed = parsePlan(legacy, 'lb')
@@ -50,7 +64,9 @@ describe('plan-share units', () => {
 
   it('accepts legacy root omissions and the older weightUnit marker', () => {
     const legacy = {
-      opengym_plan: 1, weightUnit: 'lbs', legacyNote: 'kept as metadata',
+      opengym_plan: 1,
+      weightUnit: 'lbs',
+      legacyNote: 'kept as metadata',
       routines: [{ id: 'r', name: 'Strength', ex: [{ id: '0025', sets: 3, reps: 5, weight: 135, inc: 10 }] }],
     }
     const parsed = parsePlan(legacy, 'kg')
@@ -62,13 +78,19 @@ describe('plan-share units', () => {
 
 describe('what survives a shared plan', () => {
   it('carries a drop-set prescription', () => {
-    expect(roundTrip({ intensifier: { type: 'dropset', count: 2, pct: 20 } }).intensifier)
-      .toEqual({ type: 'dropset', count: 2, pct: 20 })
+    expect(roundTrip({ intensifier: { type: 'dropset', count: 2, pct: 20 } }).intensifier).toEqual({
+      type: 'dropset',
+      count: 2,
+      pct: 20,
+    })
   })
 
   it('carries a rest-pause prescription', () => {
-    expect(roundTrip({ intensifier: { type: 'restpause', totalReps: 12, restSec: 15 } }).intensifier)
-      .toEqual({ type: 'restpause', totalReps: 12, restSec: 15 })
+    expect(roundTrip({ intensifier: { type: 'restpause', totalReps: 12, restSec: 15 } }).intensifier).toEqual({
+      type: 'restpause',
+      totalReps: 12,
+      restSec: 15,
+    })
   })
 
   it('carries planned warm-ups', () => {
@@ -124,14 +146,26 @@ describe('what survives a shared plan', () => {
   })
 
   it('clamps a hand-edited warm-up count instead of showing it verbatim', () => {
-    const bundle = { opengym_plan: 1, name: 'x', routines: [{ id: 'r', name: 'R', ex: [{ id: '0025', sets: 3, reps: 5, warmupSets: 999 }] }], week: {}, customEx: [] }
+    const bundle = {
+      opengym_plan: 1,
+      name: 'x',
+      routines: [{ id: 'r', name: 'R', ex: [{ id: '0025', sets: 3, reps: 5, warmupSets: 999 }] }],
+      week: {},
+      customEx: [],
+    }
     expect(parsePlan(bundle).routines[0].ex[0].warmupSets).toBe(5)
   })
 
   // A plan file is someone else's data: a rest that arrives as a string would reach the timer's
   // arithmetic as one, and a negative or garbage one has no meaning to keep.
   it('normalises a hand-edited rest to a positive whole number or drops it', () => {
-    const withRest = restSec => ({ opengym_plan: 1, name: 'x', routines: [{ id: 'r', name: 'R', ex: [{ id: '0025', sets: 3, reps: 5, restSec }] }], week: {}, customEx: [] })
+    const withRest = restSec => ({
+      opengym_plan: 1,
+      name: 'x',
+      routines: [{ id: 'r', name: 'R', ex: [{ id: '0025', sets: 3, reps: 5, restSec }] }],
+      week: {},
+      customEx: [],
+    })
     expect(parsePlan(withRest('120')).routines[0].ex[0].restSec).toBe(120)
     expect(parsePlan(withRest(90.6)).routines[0].ex[0].restSec).toBe(91)
     expect('restSec' in parsePlan(withRest(-30)).routines[0].ex[0]).toBe(false)
@@ -141,12 +175,30 @@ describe('what survives a shared plan', () => {
   // The floors are the config sheet's own (count >= 1, pct >= 5); a value that is present but
   // out of range is pulled up to the floor, while a missing one falls back to the default.
   it('clamps out-of-range intensifier numbers to the floors the app enforces', () => {
-    const bundle = { opengym_plan: 1, name: 'x', routines: [{ id: 'r', name: 'R', ex: [{ id: '0025', sets: 3, reps: 5, intensifier: { type: 'dropset', count: 0, pct: -5 } }] }], week: {}, customEx: [] }
+    const bundle = {
+      opengym_plan: 1,
+      name: 'x',
+      routines: [
+        {
+          id: 'r',
+          name: 'R',
+          ex: [{ id: '0025', sets: 3, reps: 5, intensifier: { type: 'dropset', count: 0, pct: -5 } }],
+        },
+      ],
+      week: {},
+      customEx: [],
+    }
     expect(parsePlan(bundle).routines[0].ex[0].intensifier).toEqual({ type: 'dropset', count: 1, pct: 5 })
   })
 
   it('falls back to the default drop percentage when the file omits it', () => {
-    const bundle = { opengym_plan: 1, name: 'x', routines: [{ id: 'r', name: 'R', ex: [{ id: '0025', sets: 3, reps: 5, intensifier: { type: 'dropset' } }] }], week: {}, customEx: [] }
+    const bundle = {
+      opengym_plan: 1,
+      name: 'x',
+      routines: [{ id: 'r', name: 'R', ex: [{ id: '0025', sets: 3, reps: 5, intensifier: { type: 'dropset' } }] }],
+      week: {},
+      customEx: [],
+    }
     expect(parsePlan(bundle).routines[0].ex[0].intensifier).toEqual({ type: 'dropset', count: 1, pct: 20 })
   })
 })
@@ -184,15 +236,21 @@ describe('week schedule as a routine-id list', () => {
 
   it('mergePlan drops an element whose id did not survive parsing, never writes undefined', () => {
     // 'gone' is not among the bundle routines → ridMap has no entry → filtered out
-    const bundle = { routines: [{ id: 'a', name: 'A', ex: [{ id: '0025', sets: 3, reps: 5 }] }], week: { 1: ['a', 'gone'], 2: ['gone'] }, customEx: [] }
+    const bundle = {
+      routines: [{ id: 'a', name: 'A', ex: [{ id: '0025', sets: 3, reps: 5 }] }],
+      week: { 1: ['a', 'gone'], 2: ['gone'] },
+      customEx: [],
+    }
     const target = { routines: [], week: {}, customEx: [] }
     mergePlan(target, bundle, { schedule: true })
     expect(target.week[1]).toEqual([target.routines[0].id])
-    expect(target.week[2]).toBeUndefined()             // emptied → left absent, not stored as []
+    expect(target.week[2]).toBeUndefined() // emptied → left absent, not stored as []
   })
 
   it('scheduledDays counts a populated array day as 1 and a [] / absent day as 0', () => {
-    expect(parsePlan({ opengym_plan: 1, routines: [], customEx: [], week: { 1: ['a'], 2: [], 4: 'b' } }).scheduledDays).toBe(2)
+    expect(
+      parsePlan({ opengym_plan: 1, routines: [], customEx: [], week: { 1: ['a'], 2: [], 4: 'b' } }).scheduledDays,
+    ).toBe(2)
   })
 })
 
@@ -203,18 +261,35 @@ describe('week schedule as a routine-id list', () => {
 describe('custom exercises in a shared plan', () => {
   // The shape CustomExForm writes, in the map's order.
   const landmine = {
-    id: 'c1', n: 'QA Landmine Row', bp: 'back', desc: 'Bar in the corner', tg: 'upper-back', sm: ['biceps'],
-    muscleGroups: ['upper-back', 'biceps'], primaries: ['upper-back'], secondaries: ['biceps'], eq: 'barbell', custom: true,
+    id: 'c1',
+    n: 'QA Landmine Row',
+    bp: 'back',
+    desc: 'Bar in the corner',
+    tg: 'upper-back',
+    sm: ['biceps'],
+    muscleGroups: ['upper-back', 'biceps'],
+    primaries: ['upper-back'],
+    secondaries: ['biceps'],
+    eq: 'barbell',
+    custom: true,
   }
   const source = {
     routines: [{ id: 'r', name: 'Back day', ex: [{ id: 'c1', sets: 3, reps: 8, weight: 40 }] }],
-    week: {}, customEx: [landmine],
+    week: {},
+    customEx: [landmine],
   }
 
   it('exports equipment, muscles and description with the custom exercise', () => {
     expect(buildPlanBundle(source, 'Plan').customEx[0]).toEqual({
-      id: 'c1', n: 'QA Landmine Row', bp: 'back', desc: 'Bar in the corner', eq: 'barbell', tg: 'upper-back',
-      primaries: ['upper-back'], secondaries: ['biceps'], muscleGroups: ['upper-back', 'biceps'],
+      id: 'c1',
+      n: 'QA Landmine Row',
+      bp: 'back',
+      desc: 'Bar in the corner',
+      eq: 'barbell',
+      tg: 'upper-back',
+      primaries: ['upper-back'],
+      secondaries: ['biceps'],
+      muscleGroups: ['upper-back', 'biceps'],
     })
   })
 
@@ -231,7 +306,11 @@ describe('custom exercises in a shared plan', () => {
   // A file written before the metadata travelled has only a name and a body part; it still imports,
   // and the recipient can now add the equipment and muscles themselves.
   it('keeps importing an old name-plus-body-part file, editable at the other end', () => {
-    const legacy = { opengym_plan: 1, routines: [{ id: 'r', name: 'R', ex: [{ id: 'x', sets: 3, reps: 5 }] }], customEx: [{ id: 'x', n: 'Old one', bp: 'legs' }] }
+    const legacy = {
+      opengym_plan: 1,
+      routines: [{ id: 'r', name: 'R', ex: [{ id: 'x', sets: 3, reps: 5 }] }],
+      customEx: [{ id: 'x', n: 'Old one', bp: 'legs' }],
+    }
     const target = { routines: [], week: {}, customEx: [] }
     mergePlan(target, parsePlan(legacy))
     expect(target.customEx[0]).toEqual({ id: target.customEx[0].id, n: 'Old one', bp: 'legs', custom: true })
@@ -241,10 +320,29 @@ describe('custom exercises in a shared plan', () => {
   // A plan file is someone else's data: only muscles the map can draw are kept, and a muscle listed
   // as both primary and secondary counts once, as the form itself enforces.
   it('drops muscles it cannot draw and a secondary that repeats a primary', () => {
-    const bundle = { opengym_plan: 1, routines: [], customEx: [{ id: 'x', n: 'Odd', bp: 'back', eq: 'barbell', primaries: ['upper-back', 'wings'], secondaries: ['upper-back', 'biceps', 7] }] }
+    const bundle = {
+      opengym_plan: 1,
+      routines: [],
+      customEx: [
+        {
+          id: 'x',
+          n: 'Odd',
+          bp: 'back',
+          eq: 'barbell',
+          primaries: ['upper-back', 'wings'],
+          secondaries: ['upper-back', 'biceps', 7],
+        },
+      ],
+    }
     const target = { routines: [], week: {}, customEx: [] }
     mergePlan(target, parsePlan(bundle))
-    expect(target.customEx[0]).toMatchObject({ primaries: ['upper-back'], secondaries: ['biceps'], muscleGroups: ['upper-back', 'biceps'], tg: 'upper-back', sm: ['biceps'] })
+    expect(target.customEx[0]).toMatchObject({
+      primaries: ['upper-back'],
+      secondaries: ['biceps'],
+      muscleGroups: ['upper-back', 'biceps'],
+      tg: 'upper-back',
+      sm: ['biceps'],
+    })
   })
 
   it('still reuses a custom the recipient already has under the same name and body part', () => {

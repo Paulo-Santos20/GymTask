@@ -8,18 +8,52 @@ const chest = ids.find(id => EXIDX[id].bp === 'chest')
 const legs = ids.find(id => EXIDX[id].bp === 'upper legs')
 
 const day = (d, h = 10) => new Date(d + 'T' + String(h).padStart(2, '0') + ':00:00').getTime()
-const w = (id, d, entries, over = {}) => ({ id, d, name: 'Push', start: day(d), end: day(d) + 55 * 60000, entries, ...over })
+const w = (id, d, entries, over = {}) => ({
+  id,
+  d,
+  name: 'Push',
+  start: day(d),
+  end: day(d) + 55 * 60000,
+  entries,
+  ...over,
+})
 const set = (w_, r, extra = {}) => ({ done: true, w: w_, r, ...extra })
 
 const S = () => ({
-  unit: 'kg', targetW: 80, customEx: [{ id: 'cx1', n: 'My row', bp: 'back' }],
-  bodyweight: [{ d: '2026-07-01', w: 90 }, { d: '2026-08-02', w: 84 }, { d: '2026-08-10', w: 83 }, { d: '2026-08-20', w: 82.5 }],
+  unit: 'kg',
+  targetW: 80,
+  customEx: [{ id: 'cx1', n: 'My row', bp: 'back' }],
+  bodyweight: [
+    { d: '2026-07-01', w: 90 },
+    { d: '2026-08-02', w: 84 },
+    { d: '2026-08-10', w: 83 },
+    { d: '2026-08-20', w: 82.5 },
+  ],
   workouts: [
-    w('w0', '2026-07-20', [{ id: chest, sets: [set(60, 10)] }]),                                             // outside the window
-    w('w1', '2026-08-03', [{ id: chest, sets: [set(40, 8, { phase: 'warmup' }), set(60, 10), set(60, 10)] }, { id: legs, sets: [set(100, 5)] }]),
-    w('w2', '2026-08-06', [{ id: chest, sets: [set(65, 10), set(65, 9)] }, { id: 'cx1', sets: [set(50, 10)] }], { name: 'Pull' }),
-    w('w3', '2026-08-12', [{ id: chest, sets: [set(70, 10), set(70, 10), { done: false, w: 70, r: 0 }] }, { id: legs, sets: [set(110, 5)] }], { prs: [chest] })
-  ]
+    w('w0', '2026-07-20', [{ id: chest, sets: [set(60, 10)] }]), // outside the window
+    w('w1', '2026-08-03', [
+      { id: chest, sets: [set(40, 8, { phase: 'warmup' }), set(60, 10), set(60, 10)] },
+      { id: legs, sets: [set(100, 5)] },
+    ]),
+    w(
+      'w2',
+      '2026-08-06',
+      [
+        { id: chest, sets: [set(65, 10), set(65, 9)] },
+        { id: 'cx1', sets: [set(50, 10)] },
+      ],
+      { name: 'Pull' },
+    ),
+    w(
+      'w3',
+      '2026-08-12',
+      [
+        { id: chest, sets: [set(70, 10), set(70, 10), { done: false, w: 70, r: 0 }] },
+        { id: legs, sets: [set(110, 5)] },
+      ],
+      { prs: [chest] },
+    ),
+  ],
 })
 
 describe('insightsFor', () => {
@@ -55,7 +89,7 @@ describe('insightsFor', () => {
     expect(c.last).toBeGreaterThan(c.first)
     expect(c.pct).toBeGreaterThan(0)
     expect(c.delta).toBeCloseTo(c.last - c.first, 1)
-    expect(insightsFor(S(), win).strength.length).toBe(2)   // chest + legs; the custom row has one session
+    expect(insightsFor(S(), win).strength.length).toBe(2) // chest + legs; the custom row has one session
   })
   it('falls back to the workouts’ own span when no window is given', () => {
     const i = insightsFor(S())
@@ -75,12 +109,12 @@ describe('insightsFor', () => {
 describe('sessionInsights', () => {
   it('compares a workout with the previous one of the same name', () => {
     const s = S()
-    const r = sessionInsights(s, s.workouts[3])   // w3 'Push' — previous Push is w1
+    const r = sessionInsights(s, s.workouts[3]) // w3 'Push' — previous Push is w1
     expect(r.prevDate).toBe('2026-08-03')
     expect(r.now.sets).toBe(3)
     expect(r.now.prs).toBe(1)
     expect(r.then.sets).toBe(3)
-    expect(r.now.volume - r.then.volume).toBe((70 * 10 * 2 + 110 * 5) - (60 * 10 * 2 + 100 * 5))
+    expect(r.now.volume - r.then.volume).toBe(70 * 10 * 2 + 110 * 5 - (60 * 10 * 2 + 100 * 5))
     const chestLift = r.lifts.find(l => l.id === chest)
     expect(chestLift.w).toBe(70)
     expect(chestLift.prev).not.toBeNull()
@@ -88,10 +122,12 @@ describe('sessionInsights', () => {
   })
   it('has no comparison when the name was never trained before', () => {
     const s = S()
-    const r = sessionInsights(s, s.workouts[2])   // the only 'Pull'
+    const r = sessionInsights(s, s.workouts[2]) // the only 'Pull'
     expect(r.then).toBeNull()
     expect(r.prevDate).toBeNull()
     expect(r.lifts.every(l => l.prev === null)).toBe(true)
   })
-  it('returns null for nothing', () => { expect(sessionInsights(S(), null)).toBeNull() })
+  it('returns null for nothing', () => {
+    expect(sessionInsights(S(), null)).toBeNull()
+  })
 })

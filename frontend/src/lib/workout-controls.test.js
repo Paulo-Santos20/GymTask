@@ -23,12 +23,12 @@ describe('workoutControls', () => {
   it('turns one group on without disturbing the others — and off again', () => {
     const on = workoutControls({ wc: { setShortcuts: true } })
     expect(on.setShortcuts).toBe(true)
-    expect(on.steppers).toBe(true)          // untouched default still applies
+    expect(on.steppers).toBe(true) // untouched default still applies
     expect(on.pairButtons).toBe(false)
     expect(on.exerciseButtons).toBe(false)
 
     const off = workoutControls({ wc: { steppers: false } })
-    expect(off.steppers).toBe(false)        // a default can be disabled too
+    expect(off.steppers).toBe(false) // a default can be disabled too
     expect(off.setShortcuts).toBe(false)
     expect(off.pairButtons).toBe(false)
   })
@@ -56,6 +56,8 @@ describe('workoutControls', () => {
 
   it('keeps the shared defaults frozen', () => {
     expect(Object.isFrozen(WC_DEFAULT)).toBe(true)
-    expect(() => { WC_DEFAULT.setShortcuts = true }).toThrow(TypeError)
+    expect(() => {
+      WC_DEFAULT.setShortcuts = true
+    }).toThrow(TypeError)
   })
 })

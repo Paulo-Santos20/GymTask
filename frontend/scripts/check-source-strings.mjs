@@ -65,5 +65,7 @@ for (const key of missing) {
   console.log(`  ${JSON.stringify(key)}`)
   for (const f of [...used.get(key)].sort()) console.log(`      ${f}`)
 }
-console.log(`\nThese render English in all ${readdirSync(localesDir).filter(f => f.endsWith('.js')).length} translated languages.`)
+console.log(
+  `\nThese render English in all ${readdirSync(localesDir).filter(f => f.endsWith('.js')).length} translated languages.`,
+)
 process.exit(strict ? 1 : 0)

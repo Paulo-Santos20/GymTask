@@ -31,10 +31,12 @@ async function startServer(env) {
     args: [INDEX_JS],
     env: { ...process.env, ...env },
     stderr: 'pipe',
-    cwd: MCP_ROOT
+    cwd: MCP_ROOT,
   })
   let stderr = ''
-  transport.stderr?.on('data', chunk => { stderr += chunk.toString() })
+  transport.stderr?.on('data', chunk => {
+    stderr += chunk.toString()
+  })
   const client = new Client({ name: 'gytask-wiring-test', version: '0.0.0' })
   await client.connect(transport)
   const server = { client, stderrText: () => stderr }
@@ -44,17 +46,31 @@ async function startServer(env) {
 
 beforeAll(() => {
   DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'gytask-mcp-index-'))
-  fs.writeFileSync(path.join(DATA_DIR, 'db.json'), JSON.stringify({
-    users: [{ id: 'alice', name: 'Alice', created: '2026-07-26T00:00:00.000Z' }],
-    creds: [], subs: [], invites: []
-  }))
-  fs.writeFileSync(path.join(DATA_DIR, 'state-alice.json'),
-    JSON.stringify({ unit: 'kg', routines: [], workouts: [] }))
+  fs.writeFileSync(
+    path.join(DATA_DIR, 'db.json'),
+    JSON.stringify({
+      users: [{ id: 'alice', name: 'Alice', created: '2026-07-26T00:00:00.000Z' }],
+      creds: [],
+      subs: [],
+      invites: [],
+    }),
+  )
+  fs.writeFileSync(path.join(DATA_DIR, 'state-alice.json'), JSON.stringify({ unit: 'kg', routines: [], workouts: [] }))
 })
 
 afterAll(async () => {
-  for (const s of started) { try { await s.client.close() } catch { /* already gone */ } }
-  try { fs.rmSync(DATA_DIR, { recursive: true, force: true, maxRetries: 5 }) } catch { /* best-effort */ }
+  for (const s of started) {
+    try {
+      await s.client.close()
+    } catch {
+      /* already gone */
+    }
+  }
+  try {
+    fs.rmSync(DATA_DIR, { recursive: true, force: true, maxRetries: 5 })
+  } catch {
+    /* best-effort */
+  }
 })
 
 const GOOD_ENV = () => ({ OPENGYM_DATA: DATA_DIR, OPENGYM_UID: 'alice' })
@@ -72,7 +88,7 @@ describe('index: tool registration over the real transport', () => {
     for (const t of tools) {
       expect(typeof t.description).toBe('string')
       expect(t.description.length).toBeGreaterThan(0)
-      expect(typeof t.inputSchema).toBe('object')  // zod shape → JSON schema, at the wire
+      expect(typeof t.inputSchema).toBe('object') // zod shape → JSON schema, at the wire
     }
   })
 
@@ -94,7 +110,9 @@ describe('index: tool registration over the real transport', () => {
     expect(res.content[0].text).toContain('no routine with id')
   })
 
-  test('the server announces the resolved profile on stderr — diagnostics, not stdout', { timeout: 30000 }, async () => {
+  test('the server announces the resolved profile on stderr — diagnostics, not stdout', {
+    timeout: 30000,
+  }, async () => {
     // The banner proves index.js ran init() + getUser() against the fixture, and stderr is
     // the channel that must carry it: stdout is the JSON-RPC channel.
     expect(server.stderrText()).toContain('[gytask-mcp] serving profile Alice (alice)')
@@ -102,7 +120,9 @@ describe('index: tool registration over the real transport', () => {
 })
 
 describe('index: fail-soft on bad config', () => {
-  test('a missing OPENGYM_DATA keeps the full tool list up and answers errors readably', { timeout: 30000 }, async () => {
+  test('a missing OPENGYM_DATA keeps the full tool list up and answers errors readably', {
+    timeout: 30000,
+  }, async () => {
     const server = await startServer({ OPENGYM_DATA: path.join(DATA_DIR, 'missing'), OPENGYM_UID: '' })
 
     // index.js logs the config error but does NOT exit — the user still sees the tool list

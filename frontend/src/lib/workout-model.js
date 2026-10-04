@@ -2,7 +2,7 @@
 // Legacy records have no explicit phase or mode, so the defaults preserve main's work/reps shape.
 
 const MODES = ['reps', 'time', 'cardio']
-const objectOf = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+const objectOf = value => (value && typeof value === 'object' && !Array.isArray(value) ? value : {})
 
 function normalizedPhase(value, fallback = 'work') {
   const token = typeof value === 'string' ? value.trim().toLowerCase() : ''
@@ -61,7 +61,9 @@ export function extraVolumeOf(set) {
   // both sides' drops — the row itself has no `drops`. dropsOf reads a side's own {type,drops}.
   if (isSideSet(source)) {
     return [source.sides.L, source.sides.R].reduce(
-      (v, side) => v + dropsOf(side).reduce((n, d) => n + (Number(d?.w) || 0) * (Number(d?.r) || 0), 0), 0)
+      (v, side) => v + dropsOf(side).reduce((n, d) => n + (Number(d?.w) || 0) * (Number(d?.r) || 0), 0),
+      0,
+    )
   }
   const drops = dropsOf(source)
   return drops.reduce((v, d) => v + (Number(d?.w) || 0) * (Number(d?.r) || 0), 0)
@@ -76,7 +78,11 @@ export function addDrop(set, drop) {
 /** Append a short-rest burst to a row, marking it a rest-pause set. */
 export function addCluster(set, cluster) {
   const prev = Array.isArray(objectOf(set).clusters) ? objectOf(set).clusters : []
-  return { ...objectOf(set), type: 'restpause', clusters: [...prev, { r: Number(cluster?.r) || 0, restSec: Number(cluster?.restSec) || 0 }] }
+  return {
+    ...objectOf(set),
+    type: 'restpause',
+    clusters: [...prev, { r: Number(cluster?.r) || 0, restSec: Number(cluster?.restSec) || 0 }],
+  }
 }
 
 /** Remove one drop by index. Clearing the last one reverts the row to a straight set. */
@@ -177,9 +183,8 @@ export function isSideSet(set) {
 export const WEIGHT_ORIGIN_MANUAL = 'manual'
 
 /** Includes a completed limb even when its partner is still unchecked. */
-export const hasCompletedWork = set => isSideSet(set)
-  ? set.sides.L.done === true || set.sides.R.done === true
-  : set?.done === true
+export const hasCompletedWork = set =>
+  isSideSet(set) ? set.sides.L.done === true || set.sides.R.done === true : set?.done === true
 
 /** Actual completed load x reps; the scalar maximum weight is only a summary. */
 export function completedVolumeOf(set) {
@@ -213,7 +218,8 @@ export function makeSideSet(row = {}) {
   const next = { ...base, sides: { L: side(), R: side() } }
   // effort/done/reps on the parent become derived — drop any straight-set leftovers so the row
   // carries one source of truth, then recompute the aggregate.
-  delete next.rir; delete next.rpe
+  delete next.rir
+  delete next.rpe
   return syncSideAggregate(next)
 }
 
@@ -227,14 +233,17 @@ export function syncSideAggregate(row) {
   const out = { ...base, sides: { L, R }, r: L.r + R.r, w: Math.max(L.w, R.w), done: L.done && R.done }
   // The row's effort tail shows the harder side: fewer reps in reserve (lower RIR) or a higher RPE.
   // Only one scale is ever in play, matching how a straight row carries rir XOR rpe.
-  delete out.rir; delete out.rpe
+  delete out.rir
+  delete out.rpe
   const rirs = [L.rir, R.rir].filter(v => v != null)
   const rpes = [L.rpe, R.rpe].filter(v => v != null)
   if (rirs.length) out.rir = Math.min(...rirs)
   else if (rpes.length) out.rpe = Math.max(...rpes)
   // Drops/clusters live on the sides now, so the row itself never carries them — only the shared
   // `type` so isDropSet/isRestPauseSet still classify the set. extraVolumeOf reads the sides.
-  delete out.drops; delete out.clusters; delete out.type
+  delete out.drops
+  delete out.clusters
+  delete out.type
   const sideType = setType(L) !== 'straight' ? setType(L) : setType(R)
   if (sideType !== 'straight') out.type = sideType
   return out
@@ -284,7 +293,7 @@ function patchBothSides(row, fn) {
 export function addSideDrop(row, pct, grid) {
   return patchBothSides(row, side => {
     const drops = dropsOf(side)
-    const base = drops.length ? drops[drops.length - 1].w : (side.w || 0)
+    const base = drops.length ? drops[drops.length - 1].w : side.w || 0
     return addDrop(side, { w: nextDropWeight(base, pct, grid), r: side.r })
   })
 }
@@ -301,7 +310,7 @@ export function setSideDropAt(row, side, i, patch) {
 export function addSideCluster(row, restSec) {
   return patchBothSides(row, side => {
     const clusters = clustersOf(side)
-    const base = clusters.length ? clusters[clusters.length - 1].r : (side.r || 0)
+    const base = clusters.length ? clusters[clusters.length - 1].r : side.r || 0
     const added = nextBurstReps(base)
     return { ...addCluster(side, { r: added, restSec }), r: (side.r || 0) + added }
   })
@@ -343,7 +352,12 @@ function inferredMode(source) {
   const value = objectOf(source)
   const explicit = explicitMode(value)
   if (explicit) return explicit
-  if (String(value.mode || '').trim().toLowerCase() === 'amrap') return 'reps'
+  if (
+    String(value.mode || '')
+      .trim()
+      .toLowerCase() === 'amrap'
+  )
+    return 'reps'
   if (value.min != null || value.speed != null) return 'cardio'
   if (value.sec != null || value.seconds != null || value.durationSec != null) return 'time'
   if (value.r != null || value.reps != null || value.actualReps != null) return 'reps'

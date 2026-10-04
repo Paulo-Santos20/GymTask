@@ -28,14 +28,24 @@ vi.mock('../store/useStore.js', () => {
 })
 vi.mock('react-router-dom', () => ({ useNavigate: () => () => {} }))
 vi.mock('../sheets.jsx', () => ({
-  starterPlanSheet: vi.fn(), dayAssignSheet: vi.fn(), dayAddRoutineSheet: vi.fn(), planToolsSheet: vi.fn(),
+  starterPlanSheet: vi.fn(),
+  dayAssignSheet: vi.fn(),
+  dayAddRoutineSheet: vi.fn(),
+  planToolsSheet: vi.fn(),
 }))
 
 let host, root
 beforeEach(() => {
   mocks.S = {
-    unit: 'kg', workouts: [], exWeights: {}, week: {}, dayPlan: {},
-    routines: [{ id: 'r1', name: 'Push', emoji: null, ex: [] }, { id: 'r2', name: 'Pull', emoji: null, ex: [] }],
+    unit: 'kg',
+    workouts: [],
+    exWeights: {},
+    week: {},
+    dayPlan: {},
+    routines: [
+      { id: 'r1', name: 'Push', emoji: null, ex: [] },
+      { id: 'r2', name: 'Pull', emoji: null, ex: [] },
+    ],
   }
   host = document.createElement('div')
   document.body.appendChild(host)
@@ -47,7 +57,10 @@ afterEach(() => {
 })
 
 const mount = () => act(() => root.render(<Plan />))
-const countOn = day => [...host.querySelectorAll('.item')].find(el => el.querySelector('.tt')?.textContent === day)?.querySelector('.small.dim')?.textContent
+const countOn = day =>
+  [...host.querySelectorAll('.item')]
+    .find(el => el.querySelector('.tt')?.textContent === day)
+    ?.querySelector('.small.dim')?.textContent
 
 describe('Plan â€” the day header counts its routines', () => {
   it('uses the singular for one routine and the plural for more', () => {

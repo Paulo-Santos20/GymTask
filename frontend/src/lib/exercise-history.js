@@ -41,7 +41,16 @@ export function exerciseHistory(S, exId, { limit = HISTORY_SESSIONS } = {}) {
   })
   logged.sort((a, b) => startOf(a.w) - startOf(b.w))
 
-  const empty = { mode: modeOf({ id: exId }), metric: 'weight', best: 0, prId: null, total: 0, sessions: [], points: [], e1rmPoints: [] }
+  const empty = {
+    mode: modeOf({ id: exId }),
+    metric: 'weight',
+    best: 0,
+    prId: null,
+    total: 0,
+    sessions: [],
+    points: [],
+    e1rmPoints: [],
+  }
   if (!logged.length) return empty
 
   const mode = logged[logged.length - 1].mode
@@ -54,8 +63,11 @@ export function exerciseHistory(S, exId, { limit = HISTORY_SESSIONS } = {}) {
     return bestWeightForEntry(en)
   }
 
-  let best = 0, prId = null
-  const sessions = [], points = [], e1rmPoints = []
+  let best = 0,
+    prId = null
+  const sessions = [],
+    points = [],
+    e1rmPoints = []
   logged.forEach(({ w, en, mode: m, rows }) => {
     const same = m === mode
     const value = same ? valueOf({ en, rows }) : null
@@ -63,11 +75,21 @@ export function exerciseHistory(S, exId, { limit = HISTORY_SESSIONS } = {}) {
     const t = startOf(w)
     // "PR" goes on the session that first reached the all-time best, not on every session
     // that later matched it — one marker says where the record was set.
-    if (value != null && value > best) { best = value; prId = w.id }
+    if (value != null && value > best) {
+      best = value
+      prId = w.id
+    }
     if (value != null && value > 0) points.push({ t, d: w.d, y: value, e1rm })
     if (e1rm != null) e1rmPoints.push({ t, d: w.d, y: e1rm })
     sessions.push({
-      id: w.id, d: w.d, t, mode: m, target: en.target || null, sets: rows, value, e1rm,
+      id: w.id,
+      d: w.d,
+      t,
+      mode: m,
+      target: en.target || null,
+      sets: rows,
+      value,
+      e1rm,
       volume: m === 'reps' ? entryVolume(rows) : null,
     })
   })
@@ -76,8 +98,16 @@ export function exerciseHistory(S, exId, { limit = HISTORY_SESSIONS } = {}) {
   if (best <= 0) prId = null
 
   return {
-    mode, metric, best, prId, total: sessions.length,
-    sessions: sessions.slice(-limit).reverse().map(s => ({ ...s, pr: s.id === prId })),
-    points, e1rmPoints,
+    mode,
+    metric,
+    best,
+    prId,
+    total: sessions.length,
+    sessions: sessions
+      .slice(-limit)
+      .reverse()
+      .map(s => ({ ...s, pr: s.id === prId })),
+    points,
+    e1rmPoints,
   }
 }

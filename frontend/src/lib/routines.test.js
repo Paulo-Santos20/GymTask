@@ -9,8 +9,8 @@ const routine = {
   ex: [
     { id: 'ex1', sets: 3, reps: 10, weight: 60, sg: 'sg1' },
     { id: 'ex2', sets: 4, reps: 8, weight: 80, sg: 'sg1' },
-    { id: 'ex3', sets: 3, reps: 12, weight: 20 }
-  ]
+    { id: 'ex3', sets: 3, reps: 12, weight: 20 },
+  ],
 }
 
 describe('copyRoutine', () => {
@@ -91,10 +91,13 @@ describe('copyRoutine of a copy', () => {
 
 describe('deleteRoutine', () => {
   const store = () => ({
-    routines: [{ id: 'r1', name: 'Push', ex: [] }, { id: 'r2', name: 'Pull', ex: [] }],
+    routines: [
+      { id: 'r1', name: 'Push', ex: [] },
+      { id: 'r2', name: 'Pull', ex: [] },
+    ],
     // Monday combines both, Wednesday is Pull alone, Friday a legacy scalar day.
     week: { 1: ['r1', 'r2'], 3: ['r2'], 5: 'r1' },
-    dayPlan: { '2099-01-01': 'r2', '2099-01-02': 'r1', '2099-01-03': 'rest' }
+    dayPlan: { '2099-01-01': 'r2', '2099-01-02': 'r1', '2099-01-03': 'rest' },
   })
 
   it('removes the routine and pulls it from every day, dropping a day it leaves empty', () => {
@@ -103,7 +106,7 @@ describe('deleteRoutine', () => {
     expect(s.routines.map(r => r.id)).toEqual(['r1'])
     expect(s.week[1]).toEqual(['r1'])
     expect(s.week[3]).toBeUndefined()
-    expect(s.week[5]).toBe('r1')   // a day that never named it is left as it was
+    expect(s.week[5]).toBe('r1') // a day that never named it is left as it was
   })
 
   it('drops the reschedules naming it and returns them, leaving every other one', () => {

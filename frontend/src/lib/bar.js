@@ -17,9 +17,21 @@ import { EXIDX } from './exercises.js'
 export const BAR_EQ = new Set(['barbell', 'olympic barbell', 'ez barbell', 'smith machine', 'trap bar'])
 
 /** Typical bar weights per equipment type, for a kg profile. */
-export const DEFAULT_BAR_KG = { barbell: 20, 'olympic barbell': 20, 'ez barbell': 10, 'smith machine': 9, 'trap bar': 25 }
+export const DEFAULT_BAR_KG = {
+  barbell: 20,
+  'olympic barbell': 20,
+  'ez barbell': 10,
+  'smith machine': 9,
+  'trap bar': 25,
+}
 /** The same bars as a lb profile knows them — real markings, not converted kg. */
-export const DEFAULT_BAR_LB = { barbell: 45, 'olympic barbell': 45, 'ez barbell': 25, 'smith machine': 20, 'trap bar': 55 }
+export const DEFAULT_BAR_LB = {
+  barbell: 45,
+  'olympic barbell': 45,
+  'ez barbell': 25,
+  'smith machine': 20,
+  'trap bar': 55,
+}
 
 const exOf = exOrId => (typeof exOrId === 'string' ? EXIDX[exOrId] : exOrId)
 
@@ -27,8 +39,7 @@ const exOf = exOrId => (typeof exOrId === 'string' ? EXIDX[exOrId] : exOrId)
 export const usesBar = exOrId => BAR_EQ.has(exOf(exOrId)?.eq)
 
 /** The default bar weight for an equipment type, in the given unit. null off the list. */
-export const defaultBarWeight = (eq, unit) =>
-  (unit === 'lb' ? DEFAULT_BAR_LB : DEFAULT_BAR_KG)[eq] ?? null
+export const defaultBarWeight = (eq, unit) => (unit === 'lb' ? DEFAULT_BAR_LB : DEFAULT_BAR_KG)[eq] ?? null
 
 /**
  * A stored 0 is "no bar", not "unset" (issue #138). Smith machines that counterbalance their

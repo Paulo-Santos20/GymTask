@@ -11,7 +11,7 @@ import { t } from '../lib/i18n.js'
 // render instead of riding along in the main bundle. Until it lands the component
 // renders nothing but keeps its height, so nothing below it jumps on arrival.
 
-let CACHE = null                                  // shared across every mounted map
+let CACHE = null // shared across every mounted map
 let PENDING = null
 
 function useBodyPaths() {
@@ -20,8 +20,12 @@ function useBodyPaths() {
     if (CACHE) return
     let alive = true
     PENDING = PENDING || import('../lib/body-paths.js').then(m => (CACHE = m.default))
-    PENDING.then(p => { if (alive) setPaths(p) }).catch(() => {})
-    return () => { alive = false }
+    PENDING.then(p => {
+      if (alive) setPaths(p)
+    }).catch(() => {})
+    return () => {
+      alive = false
+    }
   }, [])
   return paths
 }
@@ -34,22 +38,24 @@ function View({ view, levels, onMuscle, selected }) {
   }
   return (
     <svg className="bm-v" viewBox={view.vb} role={onMuscle ? 'group' : 'img'}>
-      {INERT.map(slug => (view.p[slug] || []).map((d, i) =>
-        <path key={slug + i} className="bm-sil" d={d} />))}
-      {MUSCLES.map(slug => (view.p[slug] || []).map((d, i) =>
-        <path
-          key={slug + i}
-          className={'bm-m l' + (levels[slug] || 0) + (selected === slug ? ' sel' : '')}
-          d={d}
-          onClick={onMuscle ? () => onMuscle(slug) : undefined}
-          onKeyDown={onMuscle ? event => activate(event, slug) : undefined}
-          role={onMuscle ? 'button' : undefined}
-          tabIndex={onMuscle ? 0 : undefined}
-          aria-label={onMuscle ? t(MUSCLE_NAME[slug]) : undefined}
-          aria-pressed={onMuscle ? selected === slug : undefined}
-        >
-          <title>{t(MUSCLE_NAME[slug])}</title>
-        </path>))}
+      {INERT.map(slug => (view.p[slug] || []).map((d, i) => <path key={slug + i} className="bm-sil" d={d} />))}
+      {MUSCLES.map(slug =>
+        (view.p[slug] || []).map((d, i) => (
+          <path
+            key={slug + i}
+            className={'bm-m l' + (levels[slug] || 0) + (selected === slug ? ' sel' : '')}
+            d={d}
+            onClick={onMuscle ? () => onMuscle(slug) : undefined}
+            onKeyDown={onMuscle ? event => activate(event, slug) : undefined}
+            role={onMuscle ? 'button' : undefined}
+            tabIndex={onMuscle ? 0 : undefined}
+            aria-label={onMuscle ? t(MUSCLE_NAME[slug]) : undefined}
+            aria-pressed={onMuscle ? selected === slug : undefined}
+          >
+            <title>{t(MUSCLE_NAME[slug])}</title>
+          </path>
+        )),
+      )}
     </svg>
   )
 }
@@ -67,17 +73,26 @@ export default function BodyMap({ load = {}, thresholds, body = 'male', onMuscle
   const g = paths && (paths[body] || paths.male)
   return (
     <div className={'bodymap ' + className}>
-      {g ? <>
-        <View view={g.front} levels={levels} onMuscle={onMuscle} selected={selected} />
-        <View view={g.back} levels={levels} onMuscle={onMuscle} selected={selected} />
-      </> : <div className="bm-ph" aria-hidden="true" />}
+      {g ? (
+        <>
+          <View view={g.front} levels={levels} onMuscle={onMuscle} selected={selected} />
+          <View view={g.back} levels={levels} onMuscle={onMuscle} selected={selected} />
+        </>
+      ) : (
+        <div className="bm-ph" aria-hidden="true" />
+      )}
     </div>
   )
 }
 
 export function BodyMapLegend() {
-  return <div className="hm-legend" aria-label={`${t('Less')} ${t('More')}`}>
-    {t('Less')} <div className="hm-c l0" /><div className="hm-c l1" /><div className="hm-c l2" />
-    <div className="hm-c l3" /><div className="hm-c l4" /> {t('More')}
-  </div>
+  return (
+    <div className="hm-legend" aria-label={`${t('Less')} ${t('More')}`}>
+      {t('Less')} <div className="hm-c l0" />
+      <div className="hm-c l1" />
+      <div className="hm-c l2" />
+      <div className="hm-c l3" />
+      <div className="hm-c l4" /> {t('More')}
+    </div>
+  )
 }

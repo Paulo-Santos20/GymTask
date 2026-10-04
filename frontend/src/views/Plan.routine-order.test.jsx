@@ -10,17 +10,33 @@ import Plan from './Plan.jsx'
 
 vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }))
 vi.mock('../sheets.jsx', () => ({
-  dayAssignSheet: vi.fn(), dayAddRoutineSheet: vi.fn(), starterPlanSheet: vi.fn(), planToolsSheet: vi.fn(),
+  dayAssignSheet: vi.fn(),
+  dayAddRoutineSheet: vi.fn(),
+  starterPlanSheet: vi.fn(),
+  planToolsSheet: vi.fn(),
 }))
 
 const routine = (id, name) => ({ id, name, emoji: null, ex: [{ id: '0025' }] })
 let host, root
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
-  host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host)
-  useStore.setState(s => ({ S: { ...s.S, routines: [routine('a', 'Push A'), routine('b', 'Pull A'), routine('c', 'Legs A')], week: {}, dayPlan: {} }, user: null }))
+  host = document.createElement('div')
+  document.body.appendChild(host)
+  root = createRoot(host)
+  useStore.setState(s => ({
+    S: {
+      ...s.S,
+      routines: [routine('a', 'Push A'), routine('b', 'Pull A'), routine('c', 'Legs A')],
+      week: {},
+      dayPlan: {},
+    },
+    user: null,
+  }))
 })
-afterEach(() => { act(() => root.unmount()); host.remove() })
+afterEach(() => {
+  act(() => root.unmount())
+  host.remove()
+})
 
 const mount = () => act(() => root.render(<Plan />))
 // The weekday rows above the routine list share the `.item` class, so the rows are found by the
@@ -28,7 +44,10 @@ const mount = () => act(() => root.render(<Plan />))
 const rows = () => [...host.querySelectorAll('.item')].filter(e => e.querySelector("button[aria-label='Move up']"))
 const names = () => rows().map(e => e.querySelector('.tt').textContent)
 const btn = (row, label) => rows()[row].querySelector(`button[aria-label='${label}']`)
-const click = el => act(() => { el.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
+const click = el =>
+  act(() => {
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+  })
 
 describe('routine order', () => {
   it('moves a routine down and the stored order follows', () => {

@@ -3,9 +3,19 @@ import { buildCombinedEntries, deriveSessionName } from './session-merge.js'
 import { buildSessionEntries } from './session-start.js'
 
 const st = {
-  unit: 'kg', workouts: [], exWeights: {},
+  unit: 'kg',
+  workouts: [],
+  exWeights: {},
   routines: [
-    { id: 'r1', name: 'Strength', prog: 'off', ex: [{ id: '0025', sets: 3, reps: 5, weight: 60 }, { id: '0031', sets: 3, reps: 8, weight: 40 }] },
+    {
+      id: 'r1',
+      name: 'Strength',
+      prog: 'off',
+      ex: [
+        { id: '0025', sets: 3, reps: 5, weight: 60 },
+        { id: '0031', sets: 3, reps: 8, weight: 40 },
+      ],
+    },
     { id: 'r2', name: 'Core', prog: 'off', ex: [{ id: '0047', sets: 3, reps: 12, weight: 0 }] },
     { id: 'rehab', name: 'Rehab', excludeFromProgression: true, ex: [{ id: '0050', sets: 2, reps: 15, weight: 5 }] },
   ],

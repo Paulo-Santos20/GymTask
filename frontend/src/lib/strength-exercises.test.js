@@ -23,37 +23,57 @@ function workout(dayAgo, entries) {
   return { id: 'x' + iso, d: iso, start: NOW - dayAgo * DAY, unit: 'kg', entries }
 }
 
-const bench = { id: 'bench', n: 'Bench Press', muscleWeights: { chest: 1, triceps: 0.4, deltoids: 0.4 }, sets: [
-  { phase: 'warmup', w: 40, r: 8, done: true, unit: 'kg' },
-  { phase: 'work', w: 80, r: 8, done: true, unit: 'kg' },
-  { phase: 'work', w: 85, r: 6, done: true, unit: 'kg' },
-] }
+const bench = {
+  id: 'bench',
+  n: 'Bench Press',
+  muscleWeights: { chest: 1, triceps: 0.4, deltoids: 0.4 },
+  sets: [
+    { phase: 'warmup', w: 40, r: 8, done: true, unit: 'kg' },
+    { phase: 'work', w: 80, r: 8, done: true, unit: 'kg' },
+    { phase: 'work', w: 85, r: 6, done: true, unit: 'kg' },
+  ],
+}
 // est 85x6 -> 102.0 ; 80x8 -> 101.3 ; warmup 40x8 -> 50.7 (must never win)
 
-const squat = { id: 'squat', n: 'Squat', muscleWeights: { quadriceps: 1, glutes: 0.4 }, sets: [
-  { phase: 'work', w: 100, r: 5, done: true, unit: 'kg' },
-] }
+const squat = {
+  id: 'squat',
+  n: 'Squat',
+  muscleWeights: { quadriceps: 1, glutes: 0.4 },
+  sets: [{ phase: 'work', w: 100, r: 5, done: true, unit: 'kg' }],
+}
 // est 100x5 -> 116.7 ; trained 30 days ago -> quadriceps decayed (30d - 14d = 16d / 28d half-life)
 
-const fly = { id: 'fly', n: 'Cable Crossovers', muscleWeights: { chest: 0.4, deltoids: 1 }, sets: [
-  { phase: 'work', w: 20, r: 12, done: true, unit: 'kg' },
-] }
+const fly = {
+  id: 'fly',
+  n: 'Cable Crossovers',
+  muscleWeights: { chest: 0.4, deltoids: 1 },
+  sets: [{ phase: 'work', w: 20, r: 12, done: true, unit: 'kg' }],
+}
 // est 20x12 -> 28 ; chest is SECONDARY here
 
-const pushdown = { id: 'pushdown', n: 'Triceps Pushdown', muscleWeights: { triceps: 1 }, sets: [
-  { phase: 'work', w: 30, r: 10, done: true, unit: 'kg' },
-] }
+const pushdown = {
+  id: 'pushdown',
+  n: 'Triceps Pushdown',
+  muscleWeights: { triceps: 1 },
+  sets: [{ phase: 'work', w: 30, r: 10, done: true, unit: 'kg' }],
+}
 // est 30x10 -> 40
 
-const undone = { id: 'undone', n: 'Undone Lift', muscleWeights: { 'upper-back': 1 }, sets: [
-  { phase: 'work', w: 200, r: 5, done: false, unit: 'kg' },
-] }
+const undone = {
+  id: 'undone',
+  n: 'Undone Lift',
+  muscleWeights: { 'upper-back': 1 },
+  sets: [{ phase: 'work', w: 200, r: 5, done: false, unit: 'kg' }],
+}
 
-const noLoad = { id: 'stretch', n: 'Chest Stretch', muscleWeights: { chest: 0.4 }, sets: [
-  { phase: 'work', w: 0, r: 10, done: true },
-] }
+const noLoad = {
+  id: 'stretch',
+  n: 'Chest Stretch',
+  muscleWeights: { chest: 0.4 },
+  sets: [{ phase: 'work', w: 0, r: 10, done: true }],
+}
 
-const unitState = (workouts) => ({ unit: 'kg', workouts })
+const unitState = workouts => ({ unit: 'kg', workouts })
 
 describe('strengthExerciseRows', () => {
   it('lists every exercise with an estimate, warm-ups excluded, sorted by expected current 1RM', () => {

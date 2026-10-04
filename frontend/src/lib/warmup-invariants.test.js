@@ -8,17 +8,19 @@ import { applyPrescription } from './progression.js'
 // plans them by default and the number is written into the saved workout for good.
 describe('warm-ups and volume', () => {
   const w = {
-    entries: [{
-      id: 'bench',
-      sets: [
-        { w: 50, r: 5, done: true, phase: 'warmup', warmup: true },
-        { w: 75, r: 5, done: true, phase: 'warmup', warmup: true },
-        { w: 87.5, r: 5, done: true, phase: 'warmup', warmup: true },
-        { w: 100, r: 5, done: true },
-        { w: 100, r: 5, done: true },
-        { w: 100, r: 5, done: true },
-      ],
-    }],
+    entries: [
+      {
+        id: 'bench',
+        sets: [
+          { w: 50, r: 5, done: true, phase: 'warmup', warmup: true },
+          { w: 75, r: 5, done: true, phase: 'warmup', warmup: true },
+          { w: 87.5, r: 5, done: true, phase: 'warmup', warmup: true },
+          { w: 100, r: 5, done: true },
+          { w: 100, r: 5, done: true },
+          { w: 100, r: 5, done: true },
+        ],
+      },
+    ],
   }
 
   it('counts only the work sets', () => {
@@ -39,14 +41,20 @@ describe('a warm-up never outweighs the work set', () => {
   // would be worse than leaving it. What must not happen is the NEW row inheriting it, which
   // is how one bad number used to spread through the whole warm-up block.
   it('does not copy a hand-edited warm-up that sits above the work weight', () => {
-    const rows = [{ warmup: true, phase: 'warmup', w: 120, r: 5 }, { w: 100, r: 5 }]
+    const rows = [
+      { warmup: true, phase: 'warmup', w: 120, r: 5 },
+      { w: 100, r: 5 },
+    ]
     const out = insertWarmupRow(rows, 'reps', { reps: 5 }, 2.5)
     expect(out.map(r => r.w)).toEqual([120, 100, 100])
     expect(out[1].phase).toBe('warmup')
   })
 
   it('still ramps normally when the previous warm-up is below the work weight', () => {
-    const rows = [{ warmup: true, phase: 'warmup', w: 50, r: 5 }, { w: 100, r: 5 }]
+    const rows = [
+      { warmup: true, phase: 'warmup', w: 50, r: 5 },
+      { w: 100, r: 5 },
+    ]
     const out = insertWarmupRow(rows, 'reps', { reps: 5 }, 2.5)
     expect(out.filter(r => r.phase === 'warmup').map(r => r.w)).toEqual([50, 75])
   })

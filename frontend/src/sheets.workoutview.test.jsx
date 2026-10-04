@@ -33,7 +33,11 @@ describe('workout view is snapshot onto the active session', () => {
     useStore.setState(s => ({ S: { ...s.S, active: null, routines: [], workouts: [], workoutView: 'cards' } }))
     document.body.innerHTML = ''
   })
-  afterEach(() => { act(() => { mounted.splice(0).forEach(root => root.unmount()) }) })
+  afterEach(() => {
+    act(() => {
+      mounted.splice(0).forEach(root => root.unmount())
+    })
+  })
 
   it('beginWorkout copies the current default onto s.active', () => {
     useStore.setState(s => ({ S: { ...s.S, workoutView: 'compact' } }))
@@ -42,7 +46,11 @@ describe('workout view is snapshot onto the active session', () => {
   })
 
   it('beginWorkout falls back to cards when the default is unset', () => {
-    useStore.setState(s => { const S = { ...s.S }; delete S.workoutView; return { S } })
+    useStore.setState(s => {
+      const S = { ...s.S }
+      delete S.workoutView
+      return { S }
+    })
     act(() => beginWorkout(null, null))
     expect(useStore.getState().S.active.workoutView).toBe('cards')
   })
@@ -58,8 +66,12 @@ describe('workout view is snapshot onto the active session', () => {
     useStore.setState(s => ({ S: { ...s.S, workoutView: 'list' } }))
     logPastWorkoutSheet()
     const host = mountTopSheet()
-    act(() => { type(host.querySelector('input[type=date]'), '2020-01-02') })
-    act(() => { button(host, 'Continue').click() })
+    act(() => {
+      type(host.querySelector('input[type=date]'), '2020-01-02')
+    })
+    act(() => {
+      button(host, 'Continue').click()
+    })
     expect(useStore.getState().S.active.workoutView).toBe('list')
   })
 })

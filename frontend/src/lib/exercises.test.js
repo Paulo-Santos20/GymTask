@@ -25,7 +25,7 @@ describe('matchExercise', () => {
     tg: 'pectorals',
     eq: 'barbell',
     sm: ['triceps', 'deltoids'],
-    desc: 'Classic chest exercise using a barbell on a flat bench.'
+    desc: 'Classic chest exercise using a barbell on a flat bench.',
   }
 
   const lateralRaise = {
@@ -35,7 +35,7 @@ describe('matchExercise', () => {
     tg: 'delts',
     eq: 'dumbbell',
     sm: ['traps'],
-    desc: 'Shoulder isolation movement.'
+    desc: 'Shoulder isolation movement.',
   }
 
   it('returns true for empty or whitespace-only query', () => {
@@ -74,7 +74,7 @@ describe('matchExercise', () => {
       bp: 'lower legs',
       tg: 'calves',
       eq: 'body weight',
-      desc: 'Exercício para panturrilhas em pé.'
+      desc: 'Exercício para panturrilhas em pé.',
     }
 
     expect(matchExercise(customEx, 'elevacao')).toBe(true)
@@ -84,12 +84,16 @@ describe('matchExercise', () => {
   })
 
   it('matches translated UI terms when a language is active', () => {
-    _setLangState('pt', {
-      chest: 'peito',
-      barbell: 'barra',
-      dumbbell: 'halteres',
-      shoulders: 'ombros'
-    }, null)
+    _setLangState(
+      'pt',
+      {
+        chest: 'peito',
+        barbell: 'barra',
+        dumbbell: 'halteres',
+        shoulders: 'ombros',
+      },
+      null,
+    )
 
     // "peito" is the translated bp, "barra" is the translated eq
     expect(matchExercise(benchPress, 'peito')).toBe(true)
@@ -106,8 +110,8 @@ describe('matchExercise', () => {
 
     expect(matchExercise(benchPress, 'supino')).toBe(true)
     expect(matchExercise(benchPress, 'supino barra')).toBe(true)
-    expect(matchExercise(benchPress, 'bench press')).toBe(true)   // English still reaches it
-    expect(matchExercise(lateralRaise, 'supino')).toBe(false)     // untranslated entry unaffected
+    expect(matchExercise(benchPress, 'bench press')).toBe(true) // English still reaches it
+    expect(matchExercise(lateralRaise, 'supino')).toBe(false) // untranslated entry unaffected
   })
 
   it('rebuilds the cached haystack when the language changes', () => {

@@ -7,7 +7,11 @@
 // layout and the fallback matrix. Every other route keeps its HTTP behaviour everywhere.
 export const IS_APPLE = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent)
 export const IS_ANDROID = /Android/.test(navigator.userAgent)
-export const BIO = IS_APPLE ? 'Face ID / Touch ID' : IS_ANDROID ? 'fingerprint or face unlock' : 'your fingerprint, face or PIN'
+export const BIO = IS_APPLE
+  ? 'Face ID / Touch ID'
+  : IS_ANDROID
+    ? 'fingerprint or face unlock'
+    : 'your fingerprint, face or PIN'
 export const VAULT = IS_APPLE ? 'iCloud Keychain' : IS_ANDROID ? 'Google Password Manager' : 'your password manager'
 
 /* Where this copy of the app is served from, e.g. "/" or "/myGym/" (issue #238).
@@ -48,31 +52,38 @@ export function appBase(loc = typeof location !== 'undefined' ? location : null)
  * ./firebase.js — the only module allowed to import firebase/*. The modules are loaded lazily
  * so a deployment without the firebase package or without env never pays for either.
  */
-let fbModule = null   // './firebase' module namespace, or false when it failed to load
-let fsModule = null   // 'firebase/firestore' module namespace, or false when it failed to load
-let lastRev = 0       // highest revision this tab has issued (two writes in the same ms)
+let fbModule = null // './firebase' module namespace, or false when it failed to load
+let fsModule = null // 'firebase/firestore' module namespace, or false when it failed to load
+let lastRev = 0 // highest revision this tab has issued (two writes in the same ms)
 
 async function stateBackend() {
   // Credentials absent → don't even import ./firebase (which pulls the whole firebase chunk
   // tree with it): a self-hosted instance with no VITE_FIREBASE_* pays nothing for phase ②.
   // firebase.js re-checks these same keys authoritatively, so this can only skip dead work.
-  if (!import.meta.env || !import.meta.env.VITE_FIREBASE_API_KEY || !import.meta.env.VITE_FIREBASE_PROJECT_ID) return null
+  if (!import.meta.env || !import.meta.env.VITE_FIREBASE_API_KEY || !import.meta.env.VITE_FIREBASE_PROJECT_ID)
+    return null
   if (fbModule === null) {
-    fbModule = await import('./firebase').then(m => m, e => {
-      console.error('[api] ./firebase could not be loaded — /api/data stays on HTTP.', e)
-      return false
-    })
+    fbModule = await import('./firebase').then(
+      m => m,
+      e => {
+        console.error('[api] ./firebase could not be loaded — /api/data stays on HTTP.', e)
+        return false
+      },
+    )
   }
   if (fbModule === false) return null
   const { firebaseConfigured, auth, db } = fbModule
   if (!firebaseConfigured || !db || !auth) return null
-  const user = auth.currentUser   // read fresh every call — never cached across a sign-out
+  const user = auth.currentUser // read fresh every call — never cached across a sign-out
   if (!user) return null
   if (fsModule === null) {
-    fsModule = await import('firebase/firestore').then(m => m, e => {
-      console.error('[api] firebase/firestore could not be loaded — /api/data stays on HTTP.', e)
-      return false
-    })
+    fsModule = await import('firebase/firestore').then(
+      m => m,
+      e => {
+        console.error('[api] firebase/firestore could not be loaded — /api/data stays on HTTP.', e)
+        return false
+      },
+    )
   }
   if (fsModule === false) return null
   return { fs: fsModule, db, uid: user.uid }
@@ -85,10 +96,14 @@ async function stateBackend() {
 function stateError(e, what) {
   const code = (e && e.code) || ''
   console.error('[api] Firestore ' + what + ' failed' + (code ? ' (' + code + ')' : '') + ':', e)
-  e.status = code === 'unauthenticated' ? 401
-    : code === 'permission-denied' ? 403
-    : code === 'unavailable' || code === 'deadline-exceeded' || code === 'cancelled' ? undefined
-    : 500
+  e.status =
+    code === 'unauthenticated'
+      ? 401
+      : code === 'permission-denied'
+        ? 403
+        : code === 'unavailable' || code === 'deadline-exceeded' || code === 'cancelled'
+          ? undefined
+          : 500
   return e
 }
 
@@ -99,7 +114,11 @@ const stateRef = (fs, db, uid) => fs.doc(db, 'users', uid, 'state', 'app')
 async function stateGet(backend, path) {
   const { fs, db, uid } = backend
   let snap
-  try { snap = await fs.getDoc(stateRef(fs, db, uid)) } catch (e) { throw stateError(e, 'read') }
+  try {
+    snap = await fs.getDoc(stateRef(fs, db, uid))
+  } catch (e) {
+    throw stateError(e, 'read')
+  }
   const state = snap.exists() ? snap.data() : null
   const rev = (state && state._rev) || 0
   return path === '/api/data/rev' ? { rev } : { state, rev }
@@ -112,12 +131,28 @@ async function stateGet(backend, path) {
 async function statePut(backend, opts) {
   const { fs, db, uid } = backend
   let body
-  try { body = JSON.parse((opts && opts.body) || '{}') } catch { body = null }
-  if (!body || typeof body !== 'object') { const e = new Error('invalid JSON body'); e.status = 400; throw e }
+  try {
+    body = JSON.parse((opts && opts.body) || '{}')
+  } catch {
+    body = null
+  }
+  if (!body || typeof body !== 'object') {
+    const e = new Error('invalid JSON body')
+    e.status = 400
+    throw e
+  }
   const st = body.state
-  if (!st || typeof st !== 'object' || Array.isArray(st)) { const e = new Error('state required'); e.status = 400; throw e }
+  if (!st || typeof st !== 'object' || Array.isArray(st)) {
+    const e = new Error('state required')
+    e.status = 400
+    throw e
+  }
   const list = v => v == null || Array.isArray(v)
-  if (!list(st.workouts) || !list(st.routines)) { const e = new Error('invalid state'); e.status = 400; throw e }
+  if (!list(st.workouts) || !list(st.routines)) {
+    const e = new Error('invalid state')
+    e.status = 400
+    throw e
+  }
 
   const next = { ...st }
   for (const k of ['workouts', 'routines']) {
@@ -126,7 +161,11 @@ async function statePut(backend, opts) {
   delete next.active
 
   let snap
-  try { snap = await fs.getDoc(stateRef(fs, db, uid)) } catch (e) { throw stateError(e, 'read') }
+  try {
+    snap = await fs.getDoc(stateRef(fs, db, uid))
+  } catch (e) {
+    throw stateError(e, 'read')
+  }
   const cur = snap.exists() ? snap.data() : null
   const curRev = (cur && cur._rev) || 0
   if (body.baseRev != null && body.baseRev !== curRev) {
@@ -139,12 +178,20 @@ async function statePut(backend, opts) {
   // One document is capped near 1 MB — the same ceiling nginx's client_max_body_size put in
   // front of the HTTP route, and the reason useStore has a dedicated 413 toast. Raised here
   // first so the client reports it the way it always has instead of as a generic failure.
-  if (JSON.stringify(next).length > 1000000) { const e = new Error('state too large'); e.status = 413; throw e }
+  if (JSON.stringify(next).length > 1000000) {
+    const e = new Error('state too large')
+    e.status = 413
+    throw e
+  }
 
   // A revision that changes on every write: wall-clock, floored by the document's own counter
   // (a clock behind the last writer) and by this tab's last issue (same-millisecond writes).
   next._rev = lastRev = Math.max(Date.now(), curRev + 1, lastRev + 1)
-  try { await fs.setDoc(stateRef(fs, db, uid), next) } catch (e) { throw stateError(e, 'write') }
+  try {
+    await fs.setDoc(stateRef(fs, db, uid), next)
+  } catch (e) {
+    throw stateError(e, 'write')
+  }
   return { ok: true, ts: next._ts || null, rev: next._rev }
 }
 
@@ -161,6 +208,11 @@ export async function api(path, opts) {
   const r = await fetch(url, Object.assign({}, opts, { headers }))
   const data = await r.json().catch(() => ({}))
   // The body rides along on the error: a 409 from /api/data carries the server's document.
-  if (!r.ok) { const e = new Error(data.error || ('HTTP ' + r.status)); e.status = r.status; e.data = data; throw e }
+  if (!r.ok) {
+    const e = new Error(data.error || 'HTTP ' + r.status)
+    e.status = r.status
+    e.data = data
+    throw e
+  }
   return data
 }

@@ -41,12 +41,15 @@ const Nutrition = lazy(() => import('./views/Nutrition.jsx'))
 // last known scrollY per route, so back-navigation can put the page where it was
 const scrollPositions = new Map()
 
-bindUI(useUI)   // lets the shared controls open sheets without importing the store at module scope
+bindUI(useUI) // lets the shared controls open sheets without importing the store at module scope
 
 // theme === 'system' follows the OS/browser preference instead of a fixed choice.
-const resolveTheme = theme => theme === 'light' || theme === 'dark'
-  ? theme
-  : (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+const resolveTheme = theme =>
+  theme === 'light' || theme === 'dark'
+    ? theme
+    : window.matchMedia?.('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light'
 
 function applyPrefs(theme, accent) {
   const de = document.documentElement
@@ -76,11 +79,17 @@ function Shell() {
   const ready = useStore(s => s.ready)
   // iOS: whether timer sounds get past the ring/silent switch (Settings → Sounds). Page-level,
   // so it is applied here on load and on change rather than at each beep.
-  useEffect(() => { setPlayOnSilent(!!soundOnSilent) }, [soundOnSilent])
+  useEffect(() => {
+    setPlayOnSilent(!!soundOnSilent)
+  }, [soundOnSilent])
   const isGuest = useStore(s => s.isGuest())
-  const langV = useLang()   // re-renders the whole shell when the language (pack) changes
-  useEffect(() => { setNav(navigate) }, [navigate])
-  useEffect(() => { applyPrefs(theme, accent) }, [theme, accent])
+  const langV = useLang() // re-renders the whole shell when the language (pack) changes
+  useEffect(() => {
+    setNav(navigate)
+  }, [navigate])
+  useEffect(() => {
+    applyPrefs(theme, accent)
+  }, [theme, accent])
   // 'system' needs to react live if the OS theme flips while the app is open, not just on
   // the next mount — a fixed 'dark'/'light' choice never re-fires this since matchMedia
   // isn't consulted for those.
@@ -91,10 +100,16 @@ function Shell() {
     mql.addEventListener('change', onChange)
     return () => mql.removeEventListener('change', onChange)
   }, [theme, accent])
-  useEffect(() => { setLang(lang || 'pt-BR') }, [lang])
+  useEffect(() => {
+    setLang(lang || 'pt-BR')
+  }, [lang])
   // Same shape as the language: a module-level display setting, pushed when it changes (#139).
-  useEffect(() => { setWeightDecimals(wdec) }, [wdec])
-  useEffect(() => { document.documentElement.lang = getLang() }, [langV, lang])
+  useEffect(() => {
+    setWeightDecimals(wdec)
+  }, [wdec])
+  useEffect(() => {
+    document.documentElement.lang = getLang()
+  }, [langV, lang])
   // Forward navigation starts at the top; going back lands where you left off.
   // The position is recorded from scroll events rather than read at route
   // change, because by then a shorter page may already have clamped it.
@@ -123,7 +138,10 @@ function Shell() {
   useLayoutEffect(() => {
     const samePath = pathRef.current === loc.pathname
     pathRef.current = loc.pathname
-    if (navType !== 'POP') { window.scrollTo(0, 0); return }
+    if (navType !== 'POP') {
+      window.scrollTo(0, 0)
+      return
+    }
     // A POP that stays on the route we are on is not a back-navigation: it is the history
     // entry a sheet pushed (Modals.jsx, #63) being unwound as the sheet closes. Nothing new
     // mounted, Modals puts the page back where it was itself, and a view that scrolled on
@@ -140,13 +158,22 @@ function Shell() {
   useWakeLock(!!active && keepAwake !== false)
 
   const authed = user || isGuest
-  if (!ready && !authed) return (
-    <div id="app">
-      <div style={{ paddingTop: '44vh', display: 'flex', justifyContent: 'center', fontSize: 34, color: 'var(--label-3)' }}>
-        <Icon name="dumbbell" />
+  if (!ready && !authed)
+    return (
+      <div id="app">
+        <div
+          style={{
+            paddingTop: '44vh',
+            display: 'flex',
+            justifyContent: 'center',
+            fontSize: 34,
+            color: 'var(--label-3)',
+          }}
+        >
+          <Icon name="dumbbell" />
+        </div>
       </div>
-    </div>
-  )
+    )
 
   return (
     <>
@@ -155,36 +182,48 @@ function Shell() {
       <div id="app" className="vfade" key={loc.pathname}>
         <ErrorBoundary>
           {authed && <SyncBanner />}
-          {!authed ? <Login /> : (
-            <Suspense fallback={(
-              <div style={{ paddingTop: '44vh', display: 'flex', justifyContent: 'center', fontSize: 34, color: 'var(--label-3)' }}>
-                <Icon name="dumbbell" />
-              </div>
-            )}>
+          {!authed ? (
+            <Login />
+          ) : (
+            <Suspense
+              fallback={
+                <div
+                  style={{
+                    paddingTop: '44vh',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    fontSize: 34,
+                    color: 'var(--label-3)',
+                  }}
+                >
+                  <Icon name="dumbbell" />
+                </div>
+              }
+            >
               <Routes>
-              <Route path="/home" element={<Home />} />
-              {/* Gym check-in — switched off in Settings, the route falls through to the
+                <Route path="/home" element={<Home />} />
+                {/* Gym check-in — switched off in Settings, the route falls through to the
                   catch-all redirect below. */}
-              {checkIn !== false && <Route path="/checkin" element={<CheckIn />} />}
-              <Route path="/plan" element={<Plan />} />
-              <Route path="/plan/r/:id" element={<RoutineEdit />} />
-              <Route path="/workout" element={<Workout />} />
-              <Route path="/stats" element={<Stats />} />
-              <Route path="/history" element={<History />} />
-<Route path="/nutrition" element={<Nutrition />} />
-              <Route path="/library" element={<Library />} />
-              <Route path="/muscles" element={<Muscles />} />
-              <Route path="/settings" element={<Settings />} />
-              {/* The Coach screens gate themselves on the instance config; the routes exist
+                {checkIn !== false && <Route path="/checkin" element={<CheckIn />} />}
+                <Route path="/plan" element={<Plan />} />
+                <Route path="/plan/r/:id" element={<RoutineEdit />} />
+                <Route path="/workout" element={<Workout />} />
+                <Route path="/stats" element={<Stats />} />
+                <Route path="/history" element={<History />} />
+                <Route path="/nutrition" element={<Nutrition />} />
+                <Route path="/library" element={<Library />} />
+                <Route path="/muscles" element={<Muscles />} />
+                <Route path="/settings" element={<Settings />} />
+                {/* The Coach screens gate themselves on the instance config; the routes exist
                   unconditionally so a deep link from a notification lands somewhere sane
                   rather than on the catch-all. */}
-              <Route path="/coach" element={<CoachChat />} />
-              <Route path="/coach/intake" element={<CoachIntake />} />
-              <Route path="/coach/proposal" element={<Navigate to="/coach" replace />} />
-              {/* /coach/setup is the mode picker: run on the server, or in this browser
+                <Route path="/coach" element={<CoachChat />} />
+                <Route path="/coach/intake" element={<CoachIntake />} />
+                <Route path="/coach/proposal" element={<Navigate to="/coach" replace />} />
+                {/* /coach/setup is the mode picker: run on the server, or in this browser
                   with the user's own API key. */}
-              <Route path="/coach/setup" element={<CoachSetup />} />
-              <Route path="*" element={<Navigate to="/home" replace />} />
+                <Route path="/coach/setup" element={<CoachSetup />} />
+                <Route path="*" element={<Navigate to="/home" replace />} />
               </Routes>
             </Suspense>
           )}
@@ -202,6 +241,12 @@ function Shell() {
 
 export default function App() {
   const boot = useStore(s => s.boot)
-  useEffect(() => { boot() }, [boot])
-  return <HashRouter><Shell /></HashRouter>
+  useEffect(() => {
+    boot()
+  }, [boot])
+  return (
+    <HashRouter>
+      <Shell />
+    </HashRouter>
+  )
 }

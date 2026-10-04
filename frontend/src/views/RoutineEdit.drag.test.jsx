@@ -5,7 +5,10 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const sheets = vi.hoisted(() => ({
-  exConfigSheet: vi.fn(), exercisePicker: vi.fn(), glyphPicker: vi.fn(), confirmSheet: vi.fn(),
+  exConfigSheet: vi.fn(),
+  exercisePicker: vi.fn(),
+  glyphPicker: vi.fn(),
+  confirmSheet: vi.fn(),
 }))
 vi.mock('../lib/api.js', () => ({ api: vi.fn(() => Promise.resolve({})) }))
 vi.mock('../sheets.jsx', () => sheets)
@@ -33,10 +36,14 @@ const rows = () => [...host.querySelectorAll('[data-routine-row]')]
 function geometry(heights = rows().map(() => 70)) {
   const list = host.querySelector('.routine-list')
   let top = 100
-  const tops = [], bottoms = [], centers = []
+  const tops = [],
+    bottoms = [],
+    centers = []
   rows().forEach((row, i) => {
     const height = heights[i] ?? 70
-    tops.push(top); bottoms.push(top + height); centers.push(top + height / 2)
+    tops.push(top)
+    bottoms.push(top + height)
+    centers.push(top + height / 2)
     vi.spyOn(row, 'getBoundingClientRect').mockImplementation(() => rect(tops[i], height))
     top += height + 10
   })
@@ -49,19 +56,42 @@ function mount(entries) {
   host = document.createElement('div')
   document.body.appendChild(host)
   root = createRoot(host)
-  act(() => root.render(<MemoryRouter initialEntries={['/plan/r/r1']}><Routes><Route path="/plan/r/:id" element={<RoutineEdit />} /></Routes></MemoryRouter>))
+  act(() =>
+    root.render(
+      <MemoryRouter initialEntries={['/plan/r/r1']}>
+        <Routes>
+          <Route path="/plan/r/:id" element={<RoutineEdit />} />
+        </Routes>
+      </MemoryRouter>,
+    ),
+  )
   return geometry()
 }
 function remountCurrentState() {
   host = document.createElement('div')
   document.body.appendChild(host)
   root = createRoot(host)
-  act(() => root.render(<MemoryRouter initialEntries={['/plan/r/r1']}><Routes><Route path="/plan/r/:id" element={<RoutineEdit />} /></Routes></MemoryRouter>))
+  act(() =>
+    root.render(
+      <MemoryRouter initialEntries={['/plan/r/r1']}>
+        <Routes>
+          <Route path="/plan/r/:id" element={<RoutineEdit />} />
+        </Routes>
+      </MemoryRouter>,
+    ),
+  )
   return geometry()
 }
 function pointer(target, type, { id = 7, kind = 'touch', primary = true, button = 0, x = 120, y = 120 } = {}) {
   const event = new Event(type, { bubbles: true, cancelable: true })
-  for (const [key, value] of Object.entries({ pointerId: id, pointerType: kind, isPrimary: primary, button, clientX: x, clientY: y })) {
+  for (const [key, value] of Object.entries({
+    pointerId: id,
+    pointerType: kind,
+    isPrimary: primary,
+    button,
+    clientX: x,
+    clientY: y,
+  })) {
     Object.defineProperty(event, key, { configurable: true, value })
   }
   act(() => target.dispatchEvent(event))
@@ -79,12 +109,15 @@ beforeEach(() => {
   vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(id => window.clearTimeout(id))
   localStorage.clear()
   Object.values(sheets).forEach(mock => mock.mockReset())
-  root = null; host = null
+  root = null
+  host = null
 })
 afterEach(() => {
   if (root) act(() => root.unmount())
   host?.remove()
-  vi.clearAllTimers(); vi.restoreAllMocks(); vi.useRealTimers()
+  vi.clearAllTimers()
+  vi.restoreAllMocks()
+  vi.useRealTimers()
 })
 
 describe('routine long-press reorder', () => {
@@ -112,7 +145,10 @@ describe('routine long-press reorder', () => {
     expect(rows()[0].classList.contains('is-dragging')).toBe(true)
     pointer(item, 'pointercancel', { x: 108, y: layout.centers[0] })
 
-    act(() => root.unmount()); host.remove(); root = null; host = null
+    act(() => root.unmount())
+    host.remove()
+    root = null
+    host = null
     layout = mount([configured('1001'), configured('1002')])
     item = rows()[0].querySelector('.item')
     pointer(item, 'pointerdown', { x: 100, y: layout.centers[0] })
@@ -124,9 +160,12 @@ describe('routine long-press reorder', () => {
 
   it('owns active movement, renders an indicator, and suppresses the compatibility click after cancel', () => {
     const layout = mount([configured('1001'), configured('1002'), configured('1003')])
-    const row = rows()[1], item = row.querySelector('.item')
-    const capture = vi.fn(), release = vi.fn()
-    item.setPointerCapture = capture; item.releasePointerCapture = release
+    const row = rows()[1],
+      item = row.querySelector('.item')
+    const capture = vi.fn(),
+      release = vi.fn()
+    item.setPointerCapture = capture
+    item.releasePointerCapture = release
     lift(row, layout.centers[1])
     expect(capture).toHaveBeenCalledWith(7)
     expect(row.classList.contains('is-dragging')).toBe(true)
@@ -144,7 +183,8 @@ describe('routine long-press reorder', () => {
     const layout = mount([configured('a'), configured('b'), configured('c'), configured('d')])
     const before = localStorage.getItem('gym_state_v1')
     const writes = vi.spyOn(Storage.prototype, 'setItem')
-    const row = rows()[0], item = row.querySelector('.item')
+    const row = rows()[0],
+      item = row.querySelector('.item')
     lift(row, layout.centers[0])
     pointer(item, 'pointermove', { y: layout.centers[2] + 1 })
     pointer(item, 'pointerup', { y: layout.centers[2] + 1 })
@@ -200,16 +240,30 @@ describe('routine long-press reorder', () => {
     const pairA = configured('dup', { sg: 'pair', weight: 11, note: 'first', future: { a: 1 } })
     const pairB = configured('dup', { sg: 'pair', weight: 22, note: 'second', future: { b: 2 } })
     const layout = mount([pairA, pairB, configured('c'), configured('d')])
-    const row = rows()[1], item = row.querySelector('.item')
+    const row = rows()[1],
+      item = row.querySelector('.item')
     lift(row, layout.centers[1])
-    expect(rows().slice(0, 2).every(node => node.classList.contains('is-dragging'))).toBe(true)
+    expect(
+      rows()
+        .slice(0, 2)
+        .every(node => node.classList.contains('is-dragging')),
+    ).toBe(true)
     pointer(item, 'pointermove', { y: layout.listRect.bottom - 1 })
     pointer(item, 'pointerup', { y: layout.listRect.bottom - 1 })
     expect(exercises()).toEqual([configured('c'), configured('d'), pairA, pairB])
 
-    act(() => root.unmount()); host.remove(); root = null; host = null
-    const splitLayout = mount([configured('a'), configured('b', { sg: 'g' }), configured('c', { sg: 'g' }), configured('tail')])
-    const tail = rows()[3], tailItem = tail.querySelector('.item')
+    act(() => root.unmount())
+    host.remove()
+    root = null
+    host = null
+    const splitLayout = mount([
+      configured('a'),
+      configured('b', { sg: 'g' }),
+      configured('c', { sg: 'g' }),
+      configured('tail'),
+    ])
+    const tail = rows()[3],
+      tailItem = tail.querySelector('.item')
     lift(tail, splitLayout.centers[3])
     const betweenMembers = (splitLayout.bottoms[1] + splitLayout.tops[2]) / 2
     pointer(tailItem, 'pointermove', { y: betweenMembers })
@@ -221,7 +275,8 @@ describe('routine long-press reorder', () => {
     const first = configured('dup', { weight: 10, reps: 3, note: 'first' })
     const second = configured('dup', { weight: 20, reps: 9, note: 'second' })
     const layout = mount([first, configured('middle'), second, configured('tail')])
-    const row = rows()[2], item = row.querySelector('.item')
+    const row = rows()[2],
+      item = row.querySelector('.item')
     lift(row, layout.centers[2])
     pointer(item, 'pointermove', { y: layout.tops[0] + 1 })
     pointer(item, 'pointerup', { y: layout.tops[0] + 1 })
@@ -231,15 +286,24 @@ describe('routine long-press reorder', () => {
   it('cancels without persistence on outside release, lost capture, Escape, blur, hidden document, or second pointer', () => {
     const cancelCases = ['outside', 'lost', 'escape', 'blur', 'hidden', 'second']
     for (const cancel of cancelCases) {
-      if (root) { act(() => root.unmount()); host.remove(); root = null; host = null }
+      if (root) {
+        act(() => root.unmount())
+        host.remove()
+        root = null
+        host = null
+      }
       const layout = mount([configured('a'), configured('b'), configured('c')])
-      const row = rows()[0], item = row.querySelector('.item')
+      const row = rows()[0],
+        item = row.querySelector('.item')
       const before = localStorage.getItem('gym_state_v1')
       lift(row, layout.centers[0])
       pointer(item, 'pointermove', { y: layout.centers[2] })
       if (cancel === 'outside') pointer(item, 'pointerup', { x: layout.listRect.right + 20, y: layout.centers[2] })
       if (cancel === 'lost') pointer(item, 'lostpointercapture', { y: layout.centers[2] })
-      if (cancel === 'escape') act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
+      if (cancel === 'escape')
+        act(() =>
+          document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })),
+        )
       if (cancel === 'blur') act(() => window.dispatchEvent(new Event('blur')))
       if (cancel === 'hidden') {
         Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
@@ -247,7 +311,10 @@ describe('routine long-press reorder', () => {
         Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
       }
       if (cancel === 'second') pointer(rows()[1].querySelector('.item'), 'pointerdown', { id: 8, y: layout.centers[1] })
-      expect(exercises().map(e => e.id), cancel).toEqual(['a', 'b', 'c'])
+      expect(
+        exercises().map(e => e.id),
+        cancel,
+      ).toEqual(['a', 'b', 'c'])
       expect(localStorage.getItem('gym_state_v1'), cancel).toBe(before)
       expect(host.querySelector('.is-dragging'), cancel).toBeNull()
     }
@@ -274,7 +341,8 @@ describe('routine long-press reorder', () => {
     Object.defineProperty(host, 'scrollHeight', { configurable: true, value: 900 })
     host.scrollTop = 100
     vi.spyOn(host, 'getBoundingClientRect').mockImplementation(() => rect(0, 320))
-    const row = rows()[2], item = row.querySelector('.item')
+    const row = rows()[2],
+      item = row.querySelector('.item')
     pointer(item, 'pointerdown', { y: 310 })
     act(() => vi.advanceTimersByTime(16))
     expect(host.scrollTop).toBe(100)
@@ -288,7 +356,8 @@ describe('routine long-press reorder', () => {
 
   it('fails closed when row geometry disappears during an active drag', () => {
     const layout = mount([configured('a'), configured('b'), configured('c')])
-    const row = rows()[0], item = row.querySelector('.item')
+    const row = rows()[0],
+      item = row.querySelector('.item')
     const before = localStorage.getItem('gym_state_v1')
     lift(row, layout.centers[0])
     rows()[1].getBoundingClientRect.mockReturnValue(undefined)
@@ -304,7 +373,8 @@ describe('routine long-press reorder', () => {
     const item = rows()[0].querySelector('.item')
     const before = localStorage.getItem('gym_state_v1')
     pointer(item, 'pointerdown', { y: layout.centers[0] })
-    act(() => root.unmount()); root = null
+    act(() => root.unmount())
+    root = null
     act(() => vi.advanceTimersByTime(1000))
     expect(localStorage.getItem('gym_state_v1')).toBe(before)
 
@@ -313,7 +383,8 @@ describe('routine long-press reorder', () => {
     const release = vi.fn()
     activeItem.releasePointerCapture = release
     lift(rows()[0], activeLayout.centers[0])
-    act(() => root.unmount()); root = null
+    act(() => root.unmount())
+    root = null
     act(() => vi.advanceTimersByTime(1000))
     expect(release).toHaveBeenCalledWith(7)
     expect(localStorage.getItem('gym_state_v1')).toBe(before)
@@ -327,7 +398,10 @@ describe('routine long-press reorder', () => {
     pointer(item, 'pointerup', { y: layout.tops[1] + 1 })
     expect(exercises().map(e => e.id)).toEqual(['a', 'd', 'b', 'c'])
 
-    act(() => root.unmount()); host.remove(); root = null; host = null
+    act(() => root.unmount())
+    host.remove()
+    root = null
+    host = null
     layout = mount([configured('a'), configured('b'), configured('c')])
     const before = localStorage.getItem('gym_state_v1')
     item = rows()[1].querySelector('.item')
@@ -345,7 +419,10 @@ describe('routine long-press reorder', () => {
     pointer(item, 'pointermove', { y: layout.centers[2] + 1 })
     pointer(item, 'pointerup', { y: layout.centers[2] + 1 })
     const saved = JSON.parse(localStorage.getItem('gym_state_v1'))
-    act(() => root.unmount()); host.remove(); root = null; host = null
+    act(() => root.unmount())
+    host.remove()
+    root = null
+    host = null
     useStore.setState({ S: saved, user: null })
     remountCurrentState()
     expect(exercises().map(e => e.id)).toEqual(['b', 'c', 'a'])
@@ -363,7 +440,10 @@ describe('routine long-press reorder', () => {
     expect(localStorage.getItem('gym_state_v1')).toBe(before)
     expect(host.querySelector('.is-dragging')).toBeNull()
 
-    act(() => root.unmount()); host.remove(); root = null; host = null
+    act(() => root.unmount())
+    host.remove()
+    root = null
+    host = null
     layout = mount([configured('a'), configured('b')])
     item = rows()[0].querySelector('.item')
     pointer(item, 'pointerdown', { y: layout.centers[0] })
@@ -377,22 +457,29 @@ describe('routine long-press reorder', () => {
     let item = rows()[0].querySelector('.item')
     lift(rows()[0], layout.centers[0])
     pointer(item, 'pointermove', { y: layout.centers[2] })
-    act(() => useStore.getState().update(s => {
-      const current = s.routines[0]
-      s.routines[0] = { ...current, ex: clone(current.ex) }
-    }))
+    act(() =>
+      useStore.getState().update(s => {
+        const current = s.routines[0]
+        s.routines[0] = { ...current, ex: clone(current.ex) }
+      }),
+    )
     pointer(item, 'pointerup', { y: layout.centers[2] })
     expect(exercises().map(e => e.id)).toEqual(['a', 'b', 'c'])
     expect(host.querySelector('.is-dragging')).toBeNull()
 
-    act(() => root.unmount()); host.remove(); root = null; host = null
+    act(() => root.unmount())
+    host.remove()
+    root = null
+    host = null
     layout = mount([configured('a'), configured('b')])
     item = rows()[0].querySelector('.item')
     pointer(item, 'pointerdown', { y: layout.centers[0] })
-    act(() => useStore.getState().update(s => {
-      const current = s.routines[0]
-      s.routines[0] = { ...current, ex: clone(current.ex) }
-    }))
+    act(() =>
+      useStore.getState().update(s => {
+        const current = s.routines[0]
+        s.routines[0] = { ...current, ex: clone(current.ex) }
+      }),
+    )
     act(() => vi.advanceTimersByTime(ROUTINE_LONG_PRESS_MS))
     expect(host.querySelector('.is-dragging')).toBeNull()
   })
@@ -420,7 +507,9 @@ describe('routine long-press reorder', () => {
     Object.defineProperty(rootElement, 'scrollHeight', { configurable: true, value: 900 })
     Object.defineProperty(window, 'innerHeight', { configurable: true, value: 300 })
     Object.defineProperty(window, 'scrollY', { configurable: true, writable: true, value: 100 })
-    const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation((_, delta) => { window.scrollY += delta })
+    const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation((_, delta) => {
+      window.scrollY += delta
+    })
     const item = rows()[2].querySelector('.item')
     lift(rows()[2], 295)
     act(() => vi.advanceTimersByTime(16))
@@ -435,16 +524,24 @@ describe('routine long-press reorder', () => {
     const release = vi.fn(pointerId => pointer(document, 'lostpointercapture', { id: pointerId, y: layout.centers[0] }))
     item.releasePointerCapture = release
     lift(rows()[0], layout.centers[0])
-    act(() => root.unmount()); root = null
+    act(() => root.unmount())
+    root = null
     expect(release).toHaveBeenCalledTimes(1)
   })
 })
 
 describe('reorderRoutineUnit', () => {
   it('splices complete units at canonical slots and cleans true orphans', () => {
-    const items = [configured('a', { sg: 'pair' }), configured('b', { sg: 'pair' }), configured('c', { sg: 'orphan' }), configured('d')]
+    const items = [
+      configured('a', { sg: 'pair' }),
+      configured('b', { sg: 'pair' }),
+      configured('c', { sg: 'orphan' }),
+      configured('d'),
+    ]
     expect(reorderRoutineUnit(items, 3, 1)).toBe(true)
     expect(items.map(e => e.id)).toEqual(['a', 'b', 'd', 'c'])
-    expect(items[0].sg).toBe('pair'); expect(items[1].sg).toBe('pair'); expect(items[3].sg).toBeUndefined()
+    expect(items[0].sg).toBe('pair')
+    expect(items[1].sg).toBe('pair')
+    expect(items[3].sg).toBeUndefined()
   })
 })

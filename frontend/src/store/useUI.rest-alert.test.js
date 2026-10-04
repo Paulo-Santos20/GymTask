@@ -9,7 +9,7 @@ import { useStore } from './useStore.js'
 let showNotification, requestPermission, subscription, originalSettings
 const hide = hidden => {
   Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden })
-  Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => hidden ? 'hidden' : 'visible' })
+  Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (hidden ? 'hidden' : 'visible') })
   document.dispatchEvent(new Event('visibilitychange'))
 }
 const runOut = async () => {
@@ -30,7 +30,9 @@ beforeEach(() => {
   window.Notification = globalThis.Notification
   Object.defineProperty(navigator, 'serviceWorker', {
     configurable: true,
-    value: { getRegistration: async () => ({ showNotification, pushManager: { getSubscription: async () => subscription } }) },
+    value: {
+      getRegistration: async () => ({ showNotification, pushManager: { getSubscription: async () => subscription } }),
+    },
   })
 })
 afterEach(() => {

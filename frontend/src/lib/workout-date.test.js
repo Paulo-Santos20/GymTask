@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { legacySyncKey, startTimeOf, sameWorkout, retimeWorkout, rebuildPrHistory, moveWorkout, durationMinOf, setWorkoutDuration } from './workout-date.js'
+import {
+  legacySyncKey,
+  startTimeOf,
+  sameWorkout,
+  retimeWorkout,
+  rebuildPrHistory,
+  moveWorkout,
+  durationMinOf,
+  setWorkoutDuration,
+} from './workout-date.js'
 import { backfillStart } from './backfill.js'
 
 const set = w => ({ w, r: 5, done: true })
@@ -71,7 +80,11 @@ describe('retimeWorkout', () => {
   // The sync key of a legacy record is its day and start time, which is what this edit
   // changes. Freezing the old key as the id is what stops the merge duplicating it.
   it('gives a legacy record the old day-and-start as its id', () => {
-    const moved = retimeWorkout({ d: '2026-03-10', start: 1741626000000, end: 1741626000000, entries: [] }, '2026-02-01', '07:30')
+    const moved = retimeWorkout(
+      { d: '2026-03-10', start: 1741626000000, end: 1741626000000, entries: [] },
+      '2026-02-01',
+      '07:30',
+    )
     expect(moved.id).toBe('2026-03-10|1741626000000')
   })
   it('never rewrites an id it already has', () => {
@@ -90,45 +103,56 @@ describe('rebuildPrHistory', () => {
   })
   it('takes the badge away from a session that no longer leads', () => {
     const stale = w('b', '2026-01-05', '18:00', 60, [entry('bench', 90)], ['bench'])
-    const out = rebuildPrHistory([
-      w('a', '2026-01-01', '18:00', 60, [entry('bench', 100)], ['bench']),
-      stale,
-    ], ['bench'])
+    const out = rebuildPrHistory(
+      [w('a', '2026-01-01', '18:00', 60, [entry('bench', 100)], ['bench']), stale],
+      ['bench'],
+    )
     expect(out.map(x => x.prs)).toEqual([['bench'], []])
   })
   it('takes it away from the moved session too when it no longer leads', () => {
     const moved = w('moved', '2026-01-05', '18:00', 60, [entry('bench', 80)], ['bench'])
-    const out = rebuildPrHistory([
-      w('a', '2026-01-01', '18:00', 60, [entry('bench', 100)], ['bench']),
+    const out = rebuildPrHistory(
+      [w('a', '2026-01-01', '18:00', 60, [entry('bench', 100)], ['bench']), moved],
+      ['bench'],
       moved,
-    ], ['bench'], moved)
+    )
     expect(out.map(x => x.prs)).toEqual([['bench'], []])
   })
   // Imports and backfilled sessions are filed with no badges on purpose. Rebuilding by pure
   // chronology would hand a year of imported history trophies it never had.
   it('never hands a badge to a session that did not move', () => {
     const moved = w('mine', '2026-02-01', '18:00', 60, [entry('bench', 120)], ['bench'])
-    const out = rebuildPrHistory([
-      w('imported-1', '2026-01-01', '18:00', 60, [entry('bench', 70)], []),
-      w('imported-2', '2026-01-08', '18:00', 60, [entry('bench', 80)], []),
+    const out = rebuildPrHistory(
+      [
+        w('imported-1', '2026-01-01', '18:00', 60, [entry('bench', 70)], []),
+        w('imported-2', '2026-01-08', '18:00', 60, [entry('bench', 80)], []),
+        moved,
+      ],
+      ['bench'],
       moved,
-    ], ['bench'], moved)
-    expect(out.map(x => [x.id, x.prs])).toEqual([['imported-1', []], ['imported-2', []], ['mine', ['bench']]])
+    )
+    expect(out.map(x => [x.id, x.prs])).toEqual([
+      ['imported-1', []],
+      ['imported-2', []],
+      ['mine', ['bench']],
+    ])
   })
   it('a moved session does not gain a badge on an exercise it does not lead', () => {
     const moved = w('moved', '2026-01-08', '18:00', 60, [entry('bench', 60)], [])
-    const out = rebuildPrHistory([
-      w('imported', '2026-01-01', '18:00', 60, [entry('bench', 80)], []),
+    const out = rebuildPrHistory(
+      [w('imported', '2026-01-01', '18:00', 60, [entry('bench', 80)], []), moved],
+      ['bench'],
       moved,
-    ], ['bench'], moved)
+    )
     expect(out.map(x => x.prs)).toEqual([[], []])
   })
   it('keeps the badges of exercises it was not asked about', () => {
     const later = w('b', '2026-01-05', '18:00', 60, [entry('bench', 90), entry('squat', 150)], ['squat'])
-    const out = rebuildPrHistory([
-      w('a', '2026-01-01', '18:00', 60, [entry('bench', 100), entry('squat', 140)], ['bench', 'squat']),
+    const out = rebuildPrHistory(
+      [w('a', '2026-01-01', '18:00', 60, [entry('bench', 100), entry('squat', 140)], ['bench', 'squat']), later],
+      ['bench'],
       later,
-    ], ['bench'], later)
+    )
     expect(out[0].prs).toEqual(['squat', 'bench'])
     expect(out[1].prs).toEqual(['squat'])
   })
@@ -141,27 +165,30 @@ describe('rebuildPrHistory', () => {
   })
   it('an unloaded or cardio entry is never a record', () => {
     const moved = w('b', '2026-01-05', '18:00', 60, [entry('pullup', 0)], [])
-    const out = rebuildPrHistory([
-      w('a', '2026-01-01', '18:00', 60, [entry('pullup', 0)], []),
+    const out = rebuildPrHistory(
+      [w('a', '2026-01-01', '18:00', 60, [entry('pullup', 0)], []), moved],
+      ['pullup'],
       moved,
-    ], ['pullup'], moved)
+    )
     expect(out.map(x => x.prs)).toEqual([[], []])
   })
   it('equalling a weight is not a new record', () => {
     const moved = w('b', '2026-01-05', '18:00', 60, [entry('bench', 100)], [])
-    const out = rebuildPrHistory([
-      w('a', '2026-01-01', '18:00', 60, [entry('bench', 100)], ['bench']),
+    const out = rebuildPrHistory(
+      [w('a', '2026-01-01', '18:00', 60, [entry('bench', 100)], ['bench']), moved],
+      ['bench'],
       moved,
-    ], ['bench'], moved)
+    )
     expect(out.map(x => x.prs)).toEqual([['bench'], []])
   })
   it('a session that cannot gain a badge still raises the bar for the next', () => {
     // The imported 100 kg carries no badge, and must still stop the mover claiming 90 kg.
     const moved = w('moved', '2026-01-08', '18:00', 60, [entry('bench', 90)], [])
-    const out = rebuildPrHistory([
-      w('imported', '2026-01-01', '18:00', 60, [entry('bench', 100)], []),
+    const out = rebuildPrHistory(
+      [w('imported', '2026-01-01', '18:00', 60, [entry('bench', 100)], []), moved],
+      ['bench'],
       moved,
-    ], ['bench'], moved)
+    )
     expect(out.map(x => x.prs)).toEqual([[], []])
   })
   // Less help is the record on an assistance machine (issue #232): the finish sheet awards the
@@ -169,10 +196,11 @@ describe('rebuildPrHistory', () => {
   it('on an assistance machine the session with less help leads', () => {
     const assisted = '0017'
     const moved = w('moved', '2026-01-01', '18:00', 60, [entry(assisted, 20)], [])
-    const out = rebuildPrHistory([
+    const out = rebuildPrHistory(
+      [moved, w('later', '2026-01-08', '18:00', 60, [entry(assisted, 30)], [assisted])],
+      [assisted],
       moved,
-      w('later', '2026-01-08', '18:00', 60, [entry(assisted, 30)], [assisted]),
-    ], [assisted], moved)
+    )
     expect(out.map(x => x.prs)).toEqual([[assisted], []])
   })
   it('does nothing without exercises and never mutates the input', () => {
@@ -197,17 +225,29 @@ describe('moveWorkout', () => {
   it('rebuilds the badges of every exercise the session trained', () => {
     // 90 kg on 2026-01-03 beats the 80 kg before it, and the 100 kg session still leads.
     const out = moveWorkout(list(), { id: 'c' }, '2026-01-03', '07:00')
-    expect(out.map(x => [x.id, x.prs])).toEqual([['a', ['bench']], ['c', ['bench']], ['b', ['bench']]])
+    expect(out.map(x => [x.id, x.prs])).toEqual([
+      ['a', ['bench']],
+      ['c', ['bench']],
+      ['b', ['bench']],
+    ])
   })
   it('a session left where it is never gains a badge from someone else moving', () => {
     // 'c' (90 kg, no badge) moves to the front. 'a' (80 kg) now trails it and loses its badge;
     // nothing that stayed put is handed one.
     const out = moveWorkout(list(), { id: 'c' }, '2025-12-31', '07:00')
-    expect(out.map(x => [x.id, x.prs])).toEqual([['c', ['bench']], ['a', []], ['b', ['bench']]])
+    expect(out.map(x => [x.id, x.prs])).toEqual([
+      ['c', ['bench']],
+      ['a', []],
+      ['b', ['bench']],
+    ])
   })
   it('a session moved after a heavier one loses its badge', () => {
     const out = moveWorkout(list(), { id: 'a' }, '2026-01-07', '07:00')
-    expect(out.map(x => [x.id, x.prs])).toEqual([['b', ['bench']], ['a', []], ['c', []]])
+    expect(out.map(x => [x.id, x.prs])).toEqual([
+      ['b', ['bench']],
+      ['a', []],
+      ['c', []],
+    ])
   })
   it('places the session by start time within the day it lands on', () => {
     const out = moveWorkout(list(), { id: 'c' }, '2026-01-05', '07:00')
@@ -247,12 +287,15 @@ describe('setWorkoutDuration', () => {
     expect(durationMinOf({ start: 1000 })).toBe(1)
   })
   it('moves the end, keeps the start, the day, the order and the badges, and stamps the edit', () => {
-    const list = [w('a', '2026-01-01', '18:00', 300, [entry('bench', 100)], ['bench']), w('b', '2026-01-05', '18:00', 60)]
+    const list = [
+      w('a', '2026-01-01', '18:00', 300, [entry('bench', 100)], ['bench']),
+      w('b', '2026-01-05', '18:00', 60),
+    ]
     const out = setWorkoutDuration(list, list[0], 75, 4242)
     expect(out.map(x => x.id)).toEqual(['a', 'b'])
     expect(out[0]).toEqual({ ...list[0], end: list[0].start + 75 * 60000, _ts: 4242 })
     expect(out[1]).toBe(list[1])
-    expect(list[0].end - list[0].start).toBe(300 * 60000)   // the input is left alone
+    expect(list[0].end - list[0].start).toBe(300 * 60000) // the input is left alone
   })
   it('never makes a session shorter than a minute', () => {
     const list = [w('a', '2026-01-01', '18:00', 30)]

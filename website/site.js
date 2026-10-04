@@ -7,7 +7,8 @@ const GH_REPO = 'https://api.github.com/repos/Paulo-Santos20/GymTask'
 
 // The network lookup below is decoration; it waits until the page is idle so it
 // never competes with the stylesheet, the hero image or the demo frame.
-const whenIdle = (fn) => ('requestIdleCallback' in window ? requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 1200))
+const whenIdle = fn =>
+  'requestIdleCallback' in window ? requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 1200)
 
 /* ------------------------------------------------------- one panel controller
    The navigation sheet and the contents drawer are the same object with different
@@ -44,11 +45,16 @@ function panel({ opener, panelEl, flag, closeBtn }) {
     }
   }
 
-  opener.addEventListener('click', e => { e.stopPropagation(); set(!isOpen()) })
+  opener.addEventListener('click', e => {
+    e.stopPropagation()
+    set(!isOpen())
+  })
   panelEl.querySelector(closeBtn)?.addEventListener('click', () => set(false))
   // Tapping a link inside navigates, so the panel has to get out of the way —
   // in-page anchors especially, which do not reload anything.
-  panelEl.addEventListener('click', e => { if (e.target.closest('a')) set(false) })
+  panelEl.addEventListener('click', e => {
+    if (e.target.closest('a')) set(false)
+  })
   // The scrim is body::after, so it has no element of its own to listen on — a click
   // that lands outside both the panel and its opener is a click on the scrim.
   document.addEventListener('click', e => {
@@ -58,7 +64,11 @@ function panel({ opener, panelEl, flag, closeBtn }) {
   })
   document.addEventListener('keydown', e => {
     if (!isOpen()) return
-    if (e.key === 'Escape') { e.preventDefault(); set(false); return }
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      set(false)
+      return
+    }
     if (e.key !== 'Tab') return
     // Focus trap: Tab cycles inside the open panel instead of wandering the page
     // behind the scrim, where nothing is clickable anyway.
@@ -66,8 +76,13 @@ function panel({ opener, panelEl, flag, closeBtn }) {
     if (!items.length) return
     const first = items[0]
     const last = items[items.length - 1]
-    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
-    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault()
+      last.focus()
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault()
+      first.focus()
+    }
   })
   return { set, isOpen }
 }
@@ -77,13 +92,13 @@ function panel({ opener, panelEl, flag, closeBtn }) {
     opener: document.querySelector('.nav-toggle'),
     panelEl: document.getElementById('sitemenu'),
     flag: 'menu-open',
-    closeBtn: '.nl'          // the hamburger itself is the ✕; focus the first link
+    closeBtn: '.nl', // the hamburger itself is the ✕; focus the first link
   })
   const toc = panel({
     opener: document.querySelector('.toc-btn'),
     panelEl: document.getElementById('menu'),
     flag: 'contents-open',
-    closeBtn: '.rail-close'
+    closeBtn: '.rail-close',
   })
   // Only one at a time: opening either closes the other, so there is never a
   // question of which panel a tap outside belongs to.
@@ -91,11 +106,15 @@ function panel({ opener, panelEl, flag, closeBtn }) {
   document.querySelector('.toc-btn')?.addEventListener('click', () => nav?.set(false))
   // Growing past the header breakpoint puts the links back in the bar, which would
   // leave the page scroll-locked behind a sheet nobody can see.
-  addEventListener('resize', () => { if (innerWidth >= 1000) nav?.set(false) })
+  addEventListener('resize', () => {
+    if (innerWidth >= 1000) nav?.set(false)
+  })
 
   // An earlier build remembered an open rail across visits. It no longer does, and
   // the stale key would otherwise sit in the browser forever.
-  try { localStorage.removeItem('og_rail') } catch (e) {}
+  try {
+    localStorage.removeItem('og_rail')
+  } catch (e) {}
 })()
 
 /* --------------------------------------------------------------- you are here
@@ -120,15 +139,13 @@ function panel({ opener, panelEl, flag, closeBtn }) {
 ;(() => {
   const links = [...document.querySelectorAll('.side-link[href^="#"]')]
   if (!links.length) return
-  const pairs = links
-    .map(a => [document.getElementById(a.getAttribute('href').slice(1)), a])
-    .filter(([t]) => t)
+  const pairs = links.map(a => [document.getElementById(a.getAttribute('href').slice(1)), a]).filter(([t]) => t)
   if (!pairs.length) return
   let lit = null
   let raf = 0
   const spy = () => {
     raf = 0
-    const y = scrollY + innerHeight * .33
+    const y = scrollY + innerHeight * 0.33
     let cur = null
     for (const [t, a] of pairs) {
       if (t.getBoundingClientRect().top + scrollY <= y) cur = a
@@ -137,7 +154,13 @@ function panel({ opener, panelEl, flag, closeBtn }) {
     lit?.classList.remove('on')
     ;(lit = cur)?.classList.add('on')
   }
-  addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(spy) }, { passive: true })
+  addEventListener(
+    'scroll',
+    () => {
+      if (!raf) raf = requestAnimationFrame(spy)
+    },
+    { passive: true },
+  )
   addEventListener('resize', spy)
   spy()
 })()
@@ -154,16 +177,12 @@ function panel({ opener, panelEl, flag, closeBtn }) {
     g.querySelector('.side-link')?.addEventListener('click', () => openGroup(g))
   })
   const target = a => a && document.getElementById(a.getAttribute('href').slice(1))
-  const chapPairs = groups
-    .map(g => [target(g.querySelector('.side-link[href^="#"]')), g])
-    .filter(([t]) => t)
-  const subPairs = [...document.querySelectorAll('.side-sub[href^="#"]')]
-    .map(a => [target(a), a])
-    .filter(([t]) => t)
+  const chapPairs = groups.map(g => [target(g.querySelector('.side-link[href^="#"]')), g]).filter(([t]) => t)
+  const subPairs = [...document.querySelectorAll('.side-sub[href^="#"]')].map(a => [target(a), a]).filter(([t]) => t)
   let raf = 0
   const spy = () => {
     raf = 0
-    const y = scrollY + innerHeight * .33
+    const y = scrollY + innerHeight * 0.33
     let curG = null
     for (const [t, g] of chapPairs) if (t.getBoundingClientRect().top + scrollY <= y) curG = g
     if (curG && !curG.classList.contains('open')) openGroup(curG)
@@ -171,7 +190,13 @@ function panel({ opener, panelEl, flag, closeBtn }) {
     for (const [t, a] of subPairs) if (t.getBoundingClientRect().top + scrollY <= y) curS = a
     subPairs.forEach(([, a]) => a.classList.toggle('on', a === curS && !!curS && curS.closest('.side-group') === curG))
   }
-  addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(spy) }, { passive: true })
+  addEventListener(
+    'scroll',
+    () => {
+      if (!raf) raf = requestAnimationFrame(spy)
+    },
+    { passive: true },
+  )
   spy()
 })()
 
@@ -184,13 +209,16 @@ function panel({ opener, panelEl, flag, closeBtn }) {
     items.forEach(el => el.classList.add('in'))
     return
   }
-  const io = new IntersectionObserver((entries, obs) => {
-    for (const e of entries) {
-      if (!e.isIntersecting) continue
-      e.target.classList.add('in')
-      obs.unobserve(e.target)          // one-way: nothing re-hides on the way back up
-    }
-  }, { rootMargin: '0px 0px -12% 0px', threshold: .06 })
+  const io = new IntersectionObserver(
+    (entries, obs) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue
+        e.target.classList.add('in')
+        obs.unobserve(e.target) // one-way: nothing re-hides on the way back up
+      }
+    },
+    { rootMargin: '0px 0px -12% 0px', threshold: 0.06 },
+  )
   items.forEach(el => io.observe(el))
 })()
 
@@ -204,7 +232,7 @@ function panel({ opener, panelEl, flag, closeBtn }) {
 
   const mount = () => {
     if (slot.dataset.mounted) return
-    if (!slot.offsetParent) return                 // frame hidden — phone layout
+    if (!slot.offsetParent) return // frame hidden — phone layout
     slot.dataset.mounted = '1'
     const f = document.createElement('iframe')
     f.src = slot.dataset.demo
@@ -214,10 +242,20 @@ function panel({ opener, panelEl, flag, closeBtn }) {
     slot.appendChild(f)
   }
 
-  if (!('IntersectionObserver' in window)) { mount(); return }
-  const io = new IntersectionObserver((entries, obs) => {
-    for (const e of entries) if (e.isIntersecting) { mount(); obs.disconnect() }
-  }, { rootMargin: '600px' })                      // load just before it scrolls into view
+  if (!('IntersectionObserver' in window)) {
+    mount()
+    return
+  }
+  const io = new IntersectionObserver(
+    (entries, obs) => {
+      for (const e of entries)
+        if (e.isIntersecting) {
+          mount()
+          obs.disconnect()
+        }
+    },
+    { rootMargin: '600px' },
+  ) // load just before it scrolls into view
   io.observe(slot)
   // A rotation or a resized window can reveal the frame long after that first check.
   addEventListener('resize', mount, { passive: true })
@@ -226,8 +264,11 @@ function panel({ opener, panelEl, flag, closeBtn }) {
 /* ------------------------------------------------------- repo counts (nav + specs)
    api.github.com, unauthenticated: 60 requests an hour per IP, which the
    sessionStorage cache keeps us well under. */
-;whenIdle(async () => {
-  const set = (id, v) => document.querySelectorAll('[data-gh="' + id + '"]').forEach(el => { el.textContent = v })
+whenIdle(async () => {
+  const set = (id, v) =>
+    document.querySelectorAll('[data-gh="' + id + '"]').forEach(el => {
+      el.textContent = v
+    })
   try {
     let d = null
     const cached = sessionStorage.getItem('repo_meta_gh2')
@@ -246,7 +287,9 @@ function panel({ opener, panelEl, flag, closeBtn }) {
     set('forks-n', d.forks_count)
     // Leave the placeholder standing rather than writing an empty box.
     if (d.open_issues_count !== '' && d.open_issues_count != null) set('issues-n', d.open_issues_count)
-  } catch (e) { /* offline / rate-limited — leave placeholders */ }
+  } catch (e) {
+    /* offline / rate-limited — leave placeholders */
+  }
 })
 
 /* -------------------------------------------------------------- about timeline
@@ -265,8 +308,15 @@ function panel({ opener, panelEl, flag, closeBtn }) {
     else {
       const r = await fetch(GH_REPO + '/releases?per_page=100')
       if (!r.ok) return
-      rel = (await r.json()).filter(x => !x.draft && !x.prerelease)
-        .map(x => ({ tag: x.tag_name, name: x.name || x.tag_name, at: x.published_at, body: x.body || '', url: x.html_url }))
+      rel = (await r.json())
+        .filter(x => !x.draft && !x.prerelease)
+        .map(x => ({
+          tag: x.tag_name,
+          name: x.name || x.tag_name,
+          at: x.published_at,
+          body: x.body || '',
+          url: x.html_url,
+        }))
       sessionStorage.setItem('repo_releases_gh2', JSON.stringify(rel))
     }
     if (!rel.length) return
@@ -278,11 +328,15 @@ function panel({ opener, panelEl, flag, closeBtn }) {
       if (start < 0) return ''
       let para = []
       for (let i = start; i < lines.length && lines[i].trim(); i++) para.push(lines[i].trim())
-      const txt = para.join(' ').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[*_`>]/g, '')
+      const txt = para
+        .join(' ')
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+        .replace(/[*_`>]/g, '')
       return txt.length > 220 ? txt.slice(0, 217).replace(/\s+\S*$/, '') + '…' : txt
     }
     tl.querySelectorAll('[data-fallback]').forEach(el => el.remove())
-    for (const x of rel.slice().reverse()) {   // oldest → newest, matching the timeline
+    for (const x of rel.slice().reverse()) {
+      // oldest → newest, matching the timeline
       const li = document.createElement('li')
       const title = x.name && x.name !== x.tag ? x.name : x.tag
       li.innerHTML = '<b></b><span class="when"></span><p></p>'
@@ -291,11 +345,15 @@ function panel({ opener, panelEl, flag, closeBtn }) {
       const p = li.querySelector('p')
       p.textContent = blurb(x.body) + ' '
       const a = document.createElement('a')
-      a.href = x.url; a.rel = 'noopener'; a.textContent = 'notes →'
+      a.href = x.url
+      a.rel = 'noopener'
+      a.textContent = 'notes →'
       p.appendChild(a)
       tl.appendChild(li)
     }
-  } catch (e) { /* fallback entries stay */ }
+  } catch (e) {
+    /* fallback entries stay */
+  }
 })()
 
 /* The "and the rest of it" rail: arrows for pointers that cannot swipe. The cards are plain
@@ -331,5 +389,5 @@ function panel({ opener, panelEl, flag, closeBtn }) {
   const done = () => root.classList.remove('intro')
   const last = document.querySelector('.hero-stage') || document.querySelector('.hero .actions')
   if (last) last.addEventListener('animationend', done, { once: true })
-  setTimeout(done, 2400)   // if the animation never fires, do not leave the hero hidden
+  setTimeout(done, 2400) // if the animation never fires, do not leave the hero hidden
 })()

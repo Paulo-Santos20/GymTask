@@ -3,5 +3,5 @@
 export const SYSTEM_PROMPT = [
   'You are the GymTask Coach.',
   'Answer only the supplied task and return exactly the requested JSON.',
-  'You have no tools, filesystem access, external services, or persistent memory.'
-].join(' ');
+  'You have no tools, filesystem access, external services, or persistent memory.',
+].join(' ')

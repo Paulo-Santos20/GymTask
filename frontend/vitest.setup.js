@@ -8,33 +8,57 @@
 // methods would shadow the spy and miss every persisted write. Leave every other environment
 // (CI's Node 22, happy-dom's own storage) untouched.
 let probe = null
-try { probe = globalThis.localStorage } catch { probe = null }
+try {
+  probe = globalThis.localStorage
+} catch {
+  probe = null
+}
 
 if (!probe) {
   class MemoryStorage {
     #m = new Map()
-    get length() { return this.#m.size }
-    clear() { this.#m.clear() }
-    getItem(k) { return this.#m.has(String(k)) ? this.#m.get(String(k)) : null }
-    key(i) { return [...this.#m.keys()][i] ?? null }
-    removeItem(k) { this.#m.delete(String(k)) }
-    setItem(k, v) { this.#m.set(String(k), String(v)) }
+    get length() {
+      return this.#m.size
+    }
+    clear() {
+      this.#m.clear()
+    }
+    getItem(k) {
+      return this.#m.has(String(k)) ? this.#m.get(String(k)) : null
+    }
+    key(i) {
+      return [...this.#m.keys()][i] ?? null
+    }
+    removeItem(k) {
+      this.#m.delete(String(k))
+    }
+    setItem(k, v) {
+      this.#m.set(String(k), String(v))
+    }
   }
   const make = () => {
     // Construct only — do NOT call setItem/getItem here. happy-dom's Storage proxy lazily binds
     // the first method it serves as an own property, capturing whatever is on Storage.prototype
     // at that moment; probing during setup would bind the ORIGINAL setItem before a test installs
     // vi.spyOn(Storage.prototype, 'setItem'), and the spy would then see zero writes.
-    try { return new Storage() } catch { return null }
+    try {
+      return new Storage()
+    } catch {
+      return null
+    }
   }
   const storage = make() || new MemoryStorage()
   const define = obj => {
     if (!obj) return
     try {
       Object.defineProperty(obj, 'localStorage', {
-        value: storage, configurable: true, writable: true
+        value: storage,
+        configurable: true,
+        writable: true,
       })
-    } catch { /* environment owns the name; leave it alone */ }
+    } catch {
+      /* environment owns the name; leave it alone */
+    }
   }
   define(globalThis)
   define(typeof window !== 'undefined' ? window : null)

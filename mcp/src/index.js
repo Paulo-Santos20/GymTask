@@ -9,7 +9,7 @@ import { init, getUser } from './state.js'
 
 const server = new McpServer({
   name: 'gytask',
-  version: '0.1.0'
+  version: '0.1.0',
 })
 
 // Fail fast on bad config so a misnamed OPENGYM_DATA doesn't silently answer every call with
@@ -26,23 +26,18 @@ try {
 }
 
 for (const t of TOOLS) {
-  server.tool(
-    t.name,
-    t.description,
-    t.schema,
-    async (params) => {
-      try {
-        const result = t.handler(params || {})
-        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }
-      } catch (err) {
-        const code = err.code || 'ERROR'
-        return {
-          isError: true,
-          content: [{ type: 'text', text: `${code}: ${err.message}` }]
-        }
+  server.tool(t.name, t.description, t.schema, async params => {
+    try {
+      const result = t.handler(params || {})
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }
+    } catch (err) {
+      const code = err.code || 'ERROR'
+      return {
+        isError: true,
+        content: [{ type: 'text', text: `${code}: ${err.message}` }],
       }
     }
-  )
+  })
 }
 
 const transport = new StdioServerTransport()

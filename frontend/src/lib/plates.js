@@ -39,9 +39,8 @@ const unitOf = S => (S?.unit === 'lb' ? 'lb' : 'kg')
 // of coming back from it (lib/sync-merge.js keeps whichever side set a key last).
 
 /** The sizes of a stored plate list with their counts, `_ts` and junk keys left out. */
-const sizesOf = entry => (entry && typeof entry === 'object' && !Array.isArray(entry)
-  ? Object.entries(entry).filter(([k]) => num(k) > 0)
-  : [])
+const sizesOf = entry =>
+  entry && typeof entry === 'object' && !Array.isArray(entry) ? Object.entries(entry).filter(([k]) => num(k) > 0) : []
 
 /** Whether this profile counts its own plates for its unit, rather than loading the standard set. */
 export const ownsPlates = S => sizesOf(S?.plates?.[unitOf(S)]).length > 0
@@ -57,7 +56,8 @@ export function inventoryFor(S) {
   const out = []
   if (own.length) {
     for (const [k, v] of own) {
-      const w = num(k), n = Math.floor(num(v))
+      const w = num(k),
+        n = Math.floor(num(v))
       if (w > 0 && n > 0) out.push({ w, n })
     }
   } else {
@@ -93,8 +93,10 @@ export function loadKindOf(value) {
 }
 
 /** S.loadKind with the exercise's loading set to `kind`, or back on its equipment's for null. */
-export const withLoadKind = (map, exId, kind, now = Date.now()) =>
-  ({ ...(map || {}), [exId]: { kind: loadKindOf(kind), _ts: now } })
+export const withLoadKind = (map, exId, kind, now = Date.now()) => ({
+  ...(map || {}),
+  [exId]: { kind: loadKindOf(kind), _ts: now },
+})
 
 /** The count of one size in this profile's inventory (0 when it has none). */
 export const pairsOf = (S, w) => inventoryFor(S).find(p => p.w === w)?.n || 0
@@ -120,7 +122,10 @@ export function plateStack(weight, inv) {
   for (const p of items) {
     const unit = q(p.w)
     let k = Math.min(p.n, Math.floor(left / unit))
-    while (k-- > 0) { greedy.push(p.w); left -= unit }
+    while (k-- > 0) {
+      greedy.push(p.w)
+      left -= unit
+    }
   }
   // At or beyond everything you own, greedy has already put every plate on and the rest is
   // missing. The search below would only find that again, with a table as long as the target:
@@ -133,7 +138,8 @@ export function plateStack(weight, inv) {
   const f = Array.from({ length: n + 1 }, () => new Int32Array(target + 1).fill(INF))
   f[n][0] = 0
   for (let i = n - 1; i >= 0; i--) {
-    const unit = q(items[i].w), cap = items[i].n
+    const unit = q(items[i].w),
+      cap = items[i].n
     for (let s = 0; s <= target; s++) {
       let best = f[i + 1][s]
       for (let k = 1; k <= cap && k * unit <= s; k++) {
@@ -149,7 +155,8 @@ export function plateStack(weight, inv) {
   const plates = []
   let s = sum
   for (let i = 0; i < n; i++) {
-    const unit = q(items[i].w), cap = items[i].n
+    const unit = q(items[i].w),
+      cap = items[i].n
     // Largest k that still leaves an optimal remainder → heavier plates on ties.
     for (let k = Math.min(cap, Math.floor(s / unit)); k >= 0; k--) {
       if (f[i + 1][s - k * unit] + k === f[i][s]) {
@@ -167,9 +174,15 @@ export function plateStack(weight, inv) {
  * each heaviest first. { strip: [w…], add: [w…] } — both empty when nothing changes.
  */
 export function plateDelta(prev, next) {
-  const count = arr => { const m = new Map(); for (const w of arr || []) m.set(w, (m.get(w) || 0) + 1); return m }
-  const a = count(prev), b = count(next)
-  const strip = [], add = []
+  const count = arr => {
+    const m = new Map()
+    for (const w of arr || []) m.set(w, (m.get(w) || 0) + 1)
+    return m
+  }
+  const a = count(prev),
+    b = count(next)
+  const strip = [],
+    add = []
   for (const [w, n] of a) for (let i = 0; i < n - (b.get(w) || 0); i++) strip.push(w)
   for (const [w, n] of b) for (let i = 0; i < n - (a.get(w) || 0); i++) add.push(w)
   const desc = (x, y) => y - x
@@ -186,7 +199,7 @@ export function plateDelta(prev, next) {
  * A band's "weight" is its tension, not plates, so bands are none even though isBw counts them.
  */
 export function loadKindFor(S, cfgOrId) {
-  const cfg = typeof cfgOrId === 'string' ? { id: cfgOrId } : (cfgOrId || {})
+  const cfg = typeof cfgOrId === 'string' ? { id: cfgOrId } : cfgOrId || {}
   const ex = exOf(cfg.id)
   const own = loadKindOf(S?.loadKind?.[cfg.id])
   if (own) return own
@@ -228,8 +241,12 @@ export function rowLoad(kind, weight, base, inv) {
 
 /** Two rows load the same when their stacks match, both are (or are not) bar-only, and the same amount is missing. */
 export const sameLoad = (a, b) =>
-  !!a && !!b && a.barOnly === b.barOnly && a.missing === b.missing
-  && a.plates.length === b.plates.length && a.plates.every((w, i) => w === b.plates[i])
+  !!a &&
+  !!b &&
+  a.barOnly === b.barOnly &&
+  a.missing === b.missing &&
+  a.plates.length === b.plates.length &&
+  a.plates.every((w, i) => w === b.plates[i])
 
 /**
  * Where a drop-set's next weight may land (lib/workout-model.js nextDropWeight): on the plates

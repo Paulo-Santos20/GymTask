@@ -41,9 +41,18 @@ function type(el, value) {
 }
 const rowFor = (host, name) => [...host.querySelectorAll('.item')].find(e => e.textContent.includes(name))
 const custom = (over = {}) => ({
-  id: 'cqa1', n: 'QA Custom Thrust', bp: 'upper legs', eq: 'barbell', custom: true, desc: '',
-  tg: 'gluteal', sm: ['forearm', 'hip-flexors'], primaries: ['gluteal'], secondaries: ['forearm', 'hip-flexors'],
-  muscleGroups: ['gluteal', 'forearm', 'hip-flexors'], ...over,
+  id: 'cqa1',
+  n: 'QA Custom Thrust',
+  bp: 'upper legs',
+  eq: 'barbell',
+  custom: true,
+  desc: '',
+  tg: 'gluteal',
+  sm: ['forearm', 'hip-flexors'],
+  primaries: ['gluteal'],
+  secondaries: ['forearm', 'hip-flexors'],
+  muscleGroups: ['gluteal', 'forearm', 'hip-flexors'],
+  ...over,
 })
 function seed(ex) {
   useStore.setState(s => ({ S: { ...s.S, customEx: [ex] } }))
@@ -60,7 +69,9 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  act(() => { mounted.splice(0).forEach(root => root.unmount()) })
+  act(() => {
+    mounted.splice(0).forEach(root => root.unmount())
+  })
   _setLangState('en', null, null, null)
   registerCustom([])
 })

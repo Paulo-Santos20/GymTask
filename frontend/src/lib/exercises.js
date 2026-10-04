@@ -15,7 +15,8 @@ const catalogueExercise = ex => {
   // A future dataset row may carry explicit arrays of its own; preserve those over generated
   // defaults unless the owner has deliberately supplied a correction for the same field.
   for (const key of ['primaries', 'secondaries']) {
-    if (Object.prototype.hasOwnProperty.call(ex, key) && !Object.prototype.hasOwnProperty.call(user, key)) out[key] = ex[key]
+    if (Object.prototype.hasOwnProperty.call(ex, key) && !Object.prototype.hasOwnProperty.call(user, key))
+      out[key] = ex[key]
   }
   if (Array.isArray(out.primaries)) out.primaries = [...out.primaries]
   if (Array.isArray(out.secondaries)) out.secondaries = [...out.secondaries]
@@ -39,12 +40,14 @@ const SECONDARY_ADDITIONS = {
 // (export, print, import) keep reading EXDB untouched, while the muscle map sees the
 // enriched list. Values follow the dataset's existing alias vocabulary.
 export const smOf = ex => {
-  const base = Array.isArray(ex?.sm) ? ex.sm : (ex?.sm ? [ex.sm] : [])
+  const base = Array.isArray(ex?.sm) ? ex.sm : ex?.sm ? [ex.sm] : []
   return [...new Set([...base, ...(SECONDARY_ADDITIONS[ex?.id] || [])])]
 }
 
 export const EXIDX = {}
-CATALOGUE.forEach(e => { EXIDX[e.id] = e })
+CATALOGUE.forEach(e => {
+  EXIDX[e.id] = e
+})
 export const BODYPARTS = [...new Set(CATALOGUE.map(e => e.bp))].sort()
 
 // Equipment options present in a given list of exercises, most common first (issue #6).
@@ -52,7 +55,9 @@ export const BODYPARTS = [...new Set(CATALOGUE.map(e => e.bp))].sort()
 // every body-part × equipment combination on screen has results behind it.
 export function equipmentOf(list) {
   const c = {}
-  list.forEach(e => { if (e.eq) c[e.eq] = (c[e.eq] || 0) + 1 })
+  list.forEach(e => {
+    if (e.eq) c[e.eq] = (c[e.eq] || 0) + 1
+  })
   return Object.keys(c).sort((a, b) => c[b] - c[a] || (a < b ? -1 : 1))
 }
 
@@ -66,7 +71,9 @@ export function registerCustom(list) {
     if (builtIn) EXIDX[id] = builtIn
   })
   customIds = (list || []).map(e => e.id)
-  ;(list || []).forEach(e => { EXIDX[e.id] = e })
+  ;(list || []).forEach(e => {
+    EXIDX[e.id] = e
+  })
 }
 // Full searchable catalogue — customs first so your own exercises are easy to find.
 export const allExercises = st => [...(st.customEx || []), ...CATALOGUE]
@@ -74,7 +81,11 @@ export const allExercises = st => [...(st.customEx || []), ...CATALOGUE]
 function searchableText(value) {
   if (Array.isArray(value)) return value.map(searchableText).join(' ')
   if (value == null) return ''
-  try { return String(value) } catch { return '' }
+  try {
+    return String(value)
+  } catch {
+    return ''
+  }
 }
 
 /** Case-insensitive search over built-in and legacy custom exercise metadata. */
@@ -97,7 +108,17 @@ export function searchScore(exercise, query) {
   const needle = searchableText(query).toLowerCase().trim()
   if (!needle) return 1
   const source = exercise && typeof exercise === 'object' ? exercise : {}
-  const fields = [['n', 100], ['tg', 40], ['eq', 40], ['sm', 30], ['muscleGroups', 30], ['primaries', 30], ['secondaries', 30], ['desc', 10], ['cues', 10]]
+  const fields = [
+    ['n', 100],
+    ['tg', 40],
+    ['eq', 40],
+    ['sm', 30],
+    ['muscleGroups', 30],
+    ['primaries', 30],
+    ['secondaries', 30],
+    ['desc', 10],
+    ['cues', 10],
+  ]
   // Token-level matching: every query word must match somewhere (any order), so
   // "press bench" finds "Bench Press". The score sums each token's best hit.
   const tokens = needle.split(/[^a-z0-9]+/).filter(Boolean)
@@ -146,17 +167,27 @@ export const isCardio = idOrEx => (typeof idOrEx === 'string' ? EXIDX[idOrEx] : 
 // Both default to the bodyweight model (one reps stepper, progression in reps then sets); the
 // per-exercise Bodyweight switch still overrides it either way (issue #39).
 const BODYWEIGHT_EQ = new Set(['body weight', 'band', 'resistance band'])
-export const isBodyweightEq = idOrEx =>
-  BODYWEIGHT_EQ.has((typeof idOrEx === 'string' ? EXIDX[idOrEx] : idOrEx)?.eq)
+export const isBodyweightEq = idOrEx => BODYWEIGHT_EQ.has((typeof idOrEx === 'string' ? EXIDX[idOrEx] : idOrEx)?.eq)
 
 // Equipment that is a load in its own right: a bar, a bell, a stack, a sled, a weight. A set on
 // one of these logged at 0 kg is a number nobody typed in. The rest of the catalogue that is not
 // bodyweight — an ab wheel, a stability ball, a bosu, a rope, a roller, the "assisted" straps —
 // often has no load to enter at all, so 0 there is the honest number and progression moves the
 // reps instead (lib/progression.js).
-const LOADED_EQ = new Set(['barbell', 'ez barbell', 'olympic barbell', 'trap bar', 'dumbbell', 'kettlebell', 'cable', 'leverage machine', 'smith machine', 'sled machine', 'weighted'])
-export const isLoadedEq = idOrEx =>
-  LOADED_EQ.has((typeof idOrEx === 'string' ? EXIDX[idOrEx] : idOrEx)?.eq)
+const LOADED_EQ = new Set([
+  'barbell',
+  'ez barbell',
+  'olympic barbell',
+  'trap bar',
+  'dumbbell',
+  'kettlebell',
+  'cable',
+  'leverage machine',
+  'smith machine',
+  'sled machine',
+  'weighted',
+])
+export const isLoadedEq = idOrEx => LOADED_EQ.has((typeof idOrEx === 'string' ? EXIDX[idOrEx] : idOrEx)?.eq)
 
 /* Assistance machines run the other way round: the stack carries part of your body weight, so
  * a smaller number is the harder set and the record (issue #232). Getting the set wrong is
@@ -178,7 +209,8 @@ const assistedName = n => /\bassist(ed)?\b/i.test(String(n || ''))
 
 // The catalogue entry itself carries an `id`, so this never recurses through it — one lookup,
 // then the shape is read directly.
-const assistedShape = ex => (typeof ex?.assisted === 'boolean' ? ex.assisted : ex?.eq === ASSISTED_EQ && assistedName(ex?.n))
+const assistedShape = ex =>
+  typeof ex?.assisted === 'boolean' ? ex.assisted : ex?.eq === ASSISTED_EQ && assistedName(ex?.n)
 
 export function isAssisted(idOrEx) {
   if (!idOrEx) return false
@@ -193,21 +225,21 @@ export function isAssisted(idOrEx) {
 export const betterWeight = (idOrEx, a, b) => (isAssisted(idOrEx) ? Math.min(a, b) : Math.max(a, b))
 
 /** Is `w` a better load than `prev`? `prev` of 0 means nothing logged yet. */
-export const beatsWeight = (idOrEx, w, prev) =>
-  w > 0 && (prev <= 0 || (isAssisted(idOrEx) ? w < prev : w > prev))
+export const beatsWeight = (idOrEx, w, prev) => w > 0 && (prev <= 0 || (isAssisted(idOrEx) ? w < prev : w > prev))
 
 // An id that resolves to nothing — a plan file built against a different exercise dataset,
 // a custom exercise deleted on another device before the sync arrived — still has to
 // render. A placeholder keeps it visible (and removable) instead of taking the whole view
 // down on the first `ex.n`.
-export const exOr = id => EXIDX[id] ||
-  { id, n: t('Unknown exercise'), bp: '', tg: '', eq: '', sm: [], st: [], missing: true }
+export const exOr = id =>
+  EXIDX[id] || { id, n: t('Unknown exercise'), bp: '', tg: '', eq: '', sm: [], st: [], missing: true }
 
 // Normalizes text by lowercasing and stripping diacritics/accents (e.g. "elevação" -> "elevacao")
-export const normalizeStr = s => (s || '')
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .toLowerCase()
+export const normalizeStr = s =>
+  (s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
 
 // Multi-token, accent-insensitive and multilingual exercise search.
 // Matches when all whitespace-separated words in the query appear anywhere in the exercise's
@@ -230,14 +262,20 @@ function corpusOf(e) {
   if (hit && hit.v === v) return hit
   const sm = Array.isArray(e?.sm) ? e.sm : []
   const name = normalizeStr(exerciseNameSearchText(e))
-  const s = normalizeStr([
-    name,
-    e?.tg || '', t(e?.tg || ''),
-    e?.eq || '', t(e?.eq || ''),
-    e?.bp || '', t(e?.bp || ''),
-    ...sm, ...sm.map(m => t(m)),
-    e?.desc || ''
-  ].join(' '))
+  const s = normalizeStr(
+    [
+      name,
+      e?.tg || '',
+      t(e?.tg || ''),
+      e?.eq || '',
+      t(e?.eq || ''),
+      e?.bp || '',
+      t(e?.bp || ''),
+      ...sm,
+      ...sm.map(m => t(m)),
+      e?.desc || '',
+    ].join(' '),
+  )
   // The name run together, so "benchpress" or "bench-press" finds "bench press" the way "pullup"
   // already found the names that spell it that way (QA 1.3.9). Name only: joined across fields,
   // a body part and an equipment word would start matching as one.
@@ -260,13 +298,17 @@ function nearWord(a, b) {
   while (i < a.length && a[i] === b[i]) i++
   if (i === a.length) return b.length - i <= 1
   if (a.length === b.length) {
-    return a.slice(i + 1) === b.slice(i + 1) ||
-      (a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2))
+    return (
+      a.slice(i + 1) === b.slice(i + 1) || (a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2))
+    )
   }
   return a.length > b.length ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1)
 }
 
-const queryTokens = query => normalizeStr(query || '').split(/\s+/).filter(Boolean)
+const queryTokens = query =>
+  normalizeStr(query || '')
+    .split(/\s+/)
+    .filter(Boolean)
 const joinWords = str => str.replace(/[\s\-‐-―]+/g, '')
 
 // A token appears in the corpus as typed, or in the name with its spaces and hyphens left out.

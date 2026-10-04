@@ -27,8 +27,11 @@ describe('weight decimals', () => {
   })
 
   it('ignores anything that is not 1 or 2', () => {
-    setWeightDecimals(5); expect(weightDecimals()).toBe(1)
-    setWeightDecimals(undefined); expect(weightDecimals()).toBe(1)
-    setWeightDecimals(2); expect(weightDecimals()).toBe(2)
+    setWeightDecimals(5)
+    expect(weightDecimals()).toBe(1)
+    setWeightDecimals(undefined)
+    expect(weightDecimals()).toBe(1)
+    setWeightDecimals(2)
+    expect(weightDecimals()).toBe(2)
   })
 })

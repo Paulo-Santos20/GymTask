@@ -23,8 +23,9 @@ function renderConfig(onSave = vi.fn()) {
   const root = createRoot(host)
   mounted.push(root)
   act(() => root.render(sheet.render(() => useUI.getState().closeSheet(sheet.id))))
-  const stepper = [...host.querySelectorAll('.stp-w')]
-    .find(el => el.querySelector('.stp-l')?.textContent.startsWith('Step'))
+  const stepper = [...host.querySelectorAll('.stp-w')].find(el =>
+    el.querySelector('.stp-l')?.textContent.startsWith('Step'),
+  )
   return { host, step: stepper.querySelector('input'), onSave }
 }
 
@@ -37,44 +38,61 @@ describe('exercise configuration progression step', () => {
   })
 
   afterEach(() => {
-    act(() => { mounted.splice(0).forEach(root => root.unmount()) })
+    act(() => {
+      mounted.splice(0).forEach(root => root.unmount())
+    })
   })
 
   it('keeps the draft empty while clearing the default so a sub-one comma decimal can be entered', () => {
     const { step } = renderConfig()
     expect(step.value).toBe('2.5')
 
-    act(() => { type(step, '') })
+    act(() => {
+      type(step, '')
+    })
     expect(step.value).toBe('')
 
-    act(() => { type(step, '0,5') })
+    act(() => {
+      type(step, '0,5')
+    })
     expect(step.value).toBe('0.5')
   })
 
   it('blocks saving without a positive progression step but accepts a positive decimal', () => {
     const config = renderConfig()
-    const save = [...config.host.querySelectorAll('button')]
-      .find(b => /^(save|add to routine)$/i.test(b.textContent.trim()))
+    const save = [...config.host.querySelectorAll('button')].find(b =>
+      /^(save|add to routine)$/i.test(b.textContent.trim()),
+    )
 
-    act(() => { type(config.step, '') })
+    act(() => {
+      type(config.step, '')
+    })
     expect(config.step.value).toBe('')
     expect(config.step.getAttribute('aria-invalid')).toBe('true')
     expect(save.disabled).toBe(true)
     expect(config.host.textContent).toContain('Enter a positive step to use this progression rule.')
 
-    act(() => { save.click() })
+    act(() => {
+      save.click()
+    })
     expect(config.onSave).not.toHaveBeenCalled()
     expect(useUI.getState().sheets).toHaveLength(1)
 
-    act(() => { type(config.step, '0') })
+    act(() => {
+      type(config.step, '0')
+    })
     expect(save.disabled).toBe(true)
 
-    act(() => { type(config.step, '0,5') })
+    act(() => {
+      type(config.step, '0,5')
+    })
     expect(config.step.value).toBe('0.5')
     expect(config.step.getAttribute('aria-invalid')).not.toBe('true')
     expect(save.disabled).toBe(false)
 
-    act(() => { save.click() })
+    act(() => {
+      save.click()
+    })
     expect(config.onSave).toHaveBeenCalledWith(expect.objectContaining({ inc: 0.5 }))
     expect(useUI.getState().sheets).toHaveLength(0)
   })

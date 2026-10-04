@@ -64,9 +64,15 @@ describe('coach-api VITE_COACH_FUNCTION_URL dispatch', () => {
 
   it('env set → a failed call throws the same {message, status, data} api() throws', async () => {
     vi.stubEnv('VITE_COACH_FUNCTION_URL', SENTINEL)
-    fetchMock.mockImplementationOnce(async () => ({ ok: false, status: 502, json: async () => ({ error: 'provider' }) }))
+    fetchMock.mockImplementationOnce(async () => ({
+      ok: false,
+      status: 502,
+      json: async () => ({ error: 'provider' }),
+    }))
     await expect(coachStatus()).rejects.toMatchObject({
-      message: 'provider', status: 502, data: { error: 'provider' },
+      message: 'provider',
+      status: 502,
+      data: { error: 'provider' },
     })
   })
 

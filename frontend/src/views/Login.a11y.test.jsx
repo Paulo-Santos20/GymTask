@@ -15,12 +15,12 @@ vi.mock('firebase/auth', () => ({
 }))
 vi.mock('../store/useStore.js', () => {
   const snap = () => ({ config: {}, setUser: vi.fn(), adoptProfile: vi.fn(), setGuest: vi.fn() })
-  const useStore = selector => selector ? selector(snap()) : snap()
+  const useStore = selector => (selector ? selector(snap()) : snap())
   return { useStore }
 })
 vi.mock('../store/useUI.js', () => {
   const snap = () => ({ toast: vi.fn() })
-  const useUI = selector => selector ? selector(snap()) : snap()
+  const useUI = selector => (selector ? selector(snap()) : snap())
   useUI.getState = snap
   return { useUI }
 })

@@ -9,9 +9,15 @@ const inherited = Object.entries(pt)
   .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
 const fingerprint = createHash('sha256').update(JSON.stringify(inherited)).digest('hex')
 
-console.log(JSON.stringify({
-  overrides: Object.keys(PT_BR_OVERRIDES).length,
-  inherited: inherited.length,
-  fingerprint,
-  ...(process.argv.includes('--list') ? { entries: inherited } : {})
-}, null, 2))
+console.log(
+  JSON.stringify(
+    {
+      overrides: Object.keys(PT_BR_OVERRIDES).length,
+      inherited: inherited.length,
+      fingerprint,
+      ...(process.argv.includes('--list') ? { entries: inherited } : {}),
+    },
+    null,
+    2,
+  ),
+)

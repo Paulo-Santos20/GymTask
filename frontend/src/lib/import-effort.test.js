@@ -13,9 +13,11 @@ const setsOf = p => p.workouts.flatMap(w => w.entries.flatMap(e => e.sets))
 
 describe('importing effort from another app', () => {
   it('reads the RPE Hevy writes per set', () => {
-    const p = rows(HEVY,
+    const p = rows(
+      HEVY,
       'Push,"12 Jan 2026, 18:00","12 Jan 2026, 19:00",Bench Press (Barbell),0,normal,60,10,8',
-      'Push,"12 Jan 2026, 18:00","12 Jan 2026, 19:00",Bench Press (Barbell),1,normal,60,8,9.5')
+      'Push,"12 Jan 2026, 18:00","12 Jan 2026, 19:00",Bench Press (Barbell),1,normal,60,8,9.5',
+    )
     expect(p.error).toBeUndefined()
     expect(setsOf(p).map(s => s.rpe)).toEqual([8, 9.5])
     expect(p.rpeSets).toBe(2)
@@ -23,27 +25,26 @@ describe('importing effort from another app', () => {
   })
 
   it('reads the RPE Strong writes per set', () => {
-    const p = rows(STRONG,
-      '2026-01-12 18:00:00,Push,Bench Press (Barbell),1,60,10,0,7.5')
+    const p = rows(STRONG, '2026-01-12 18:00:00,Push,Bench Press (Barbell),1,60,10,0,7.5')
     expect(setsOf(p)[0].rpe).toBe(7.5)
     expect(p.rpeSets).toBe(1)
   })
 
   it('reads an RIR column when a file has one', () => {
-    const p = rows('Date,Exercise,Weight,Reps,RIR',
-      '2026-01-12,Bench Press,60,10,2',
-      '2026-01-12,Bench Press,60,6,0')      // 0 RIR is a real rating: taken to failure
+    const p = rows('Date,Exercise,Weight,Reps,RIR', '2026-01-12,Bench Press,60,10,2', '2026-01-12,Bench Press,60,6,0') // 0 RIR is a real rating: taken to failure
     expect(setsOf(p).map(s => s.rir)).toEqual([2, 0])
     expect(p.rirSets).toBe(2)
     expect(setsOf(p).every(s => s.rpe === undefined)).toBe(true)
   })
 
   it('treats a blank rating as not rated, not as zero', () => {
-    const p = rows(HEVY,
+    const p = rows(
+      HEVY,
       'Push,"12 Jan 2026, 18:00",,Bench Press (Barbell),0,normal,60,10,',
-      'Push,"12 Jan 2026, 18:00",,Bench Press (Barbell),1,normal,60,10,8')
+      'Push,"12 Jan 2026, 18:00",,Bench Press (Barbell),1,normal,60,10,8',
+    )
     const s = setsOf(p)
-    expect('rpe' in s[0]).toBe(false)         // the key is absent, so the set reads as unrated
+    expect('rpe' in s[0]).toBe(false) // the key is absent, so the set reads as unrated
     expect(s[1].rpe).toBe(8)
     expect(p.rpeSets).toBe(1)
   })
@@ -62,17 +63,18 @@ describe('importing effort from another app', () => {
   })
 
   it('ignores junk in the rating column', () => {
-    const p = rows(STRONG,
+    const p = rows(
+      STRONG,
       '2026-01-12 18:00:00,Push,Bench Press (Barbell),1,60,10,0,hard',
-      '2026-01-12 18:00:00,Push,Bench Press (Barbell),2,60,10,0,-3')
+      '2026-01-12 18:00:00,Push,Bench Press (Barbell),2,60,10,0,-3',
+    )
     expect(setsOf(p).every(s => !('rpe' in s))).toBe(true)
     expect(p.rpeSets).toBe(0)
-    expect(p.sets).toBe(2)                    // the sets still import, just unrated
+    expect(p.sets).toBe(2) // the sets still import, just unrated
   })
 
   it('keeps one scale per set when a file carries both columns', () => {
-    const p = rows('Date,Exercise,Weight,Reps,RPE,RIR',
-      '2026-01-12,Bench Press,60,10,8,2')
+    const p = rows('Date,Exercise,Weight,Reps,RPE,RIR', '2026-01-12,Bench Press,60,10,8,2')
     const s = setsOf(p)[0]
     expect(s.rir).toBe(2)
     expect('rpe' in s).toBe(false)
@@ -82,8 +84,7 @@ describe('importing effort from another app', () => {
 
   it('puts no effort on a cardio row', () => {
     // a treadmill row has no third stepper to show it in
-    const p = rows('Date,Exercise,Distance,Distance Unit,Time,RPE',
-      '2026-01-12,Running,5,km,00:30:00,7')
+    const p = rows('Date,Exercise,Distance,Distance Unit,Time,RPE', '2026-01-12,Running,5,km,00:30:00,7')
     const s = setsOf(p)[0]
     expect(s.min).toBe(30)
     expect('rpe' in s).toBe(false)
@@ -99,14 +100,14 @@ describe('importing effort from another app', () => {
 
   it('carries the rating through the unit conversion', () => {
     // lb -> kg rewrites the weight; the rating must survive that pass untouched
-    const p = parseWorkoutCSV([
-      'Date,Exercise,Weight,Weight Unit,Reps,RPE',
-      '2026-01-12,Bench Press,135,lbs,10,8',
-    ].join('\n'), { unit: 'kg' })
+    const p = parseWorkoutCSV(
+      ['Date,Exercise,Weight,Weight Unit,Reps,RPE', '2026-01-12,Bench Press,135,lbs,10,8'].join('\n'),
+      { unit: 'kg' },
+    )
     const s = setsOf(p)[0]
     expect(s.w).toBe(61.2)
     expect(s.rpe).toBe(8)
-    expect('u' in s).toBe(false)              // the row's unit marker never reaches the set
+    expect('u' in s).toBe(false) // the row's unit marker never reaches the set
   })
 })
 
@@ -120,14 +121,24 @@ describe('effort in a backup', () => {
 
   it('exports and re-imports both scales and the setting', () => {
     const S = {
-      unit: 'kg', effort: 'rpe', routines: [],
-      workouts: [{
-        d: '2026-01-12', entries: [{ id: '0025', sets: [
-          { w: 60, r: 10, rpe: 8, done: true },
-          { w: 60, r: 8, rir: 1, done: true },
-          { w: 60, r: 12, done: true },
-        ] }],
-      }],
+      unit: 'kg',
+      effort: 'rpe',
+      routines: [],
+      workouts: [
+        {
+          d: '2026-01-12',
+          entries: [
+            {
+              id: '0025',
+              sets: [
+                { w: 60, r: 10, rpe: 8, done: true },
+                { w: 60, r: 8, rir: 1, done: true },
+                { w: 60, r: 12, done: true },
+              ],
+            },
+          ],
+        },
+      ],
     }
     const back = roundTrip(S)
     expect(effortOf(back)).toBe('rpe')

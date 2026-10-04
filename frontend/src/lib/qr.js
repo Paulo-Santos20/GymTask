@@ -31,7 +31,9 @@ export function canRenderFmt(fmt) {
 // mlkit reports BarcodeFormat as e.g. 'QR_CODE' | 'QrCode'; older callers may pass 'qr'. Fold
 // them all to a stable lower-case token we store and compare on.
 export function normalizeFmt(fmt) {
-  const s = String(fmt || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const s = String(fmt || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
   if (s === 'qr' || s === 'qrcode') return 'qrcode'
   return s
 }
@@ -60,7 +62,11 @@ export async function renderQrToCanvas(canvas, value, { on = '#000000', off = '#
 // treated as opaque black/white by the caller's defaults, so this only has to handle hex.
 function hexToRgba(hex) {
   let h = String(hex).replace('#', '')
-  if (h.length === 3) h = h.split('').map(c => c + c).join('')
+  if (h.length === 3)
+    h = h
+      .split('')
+      .map(c => c + c)
+      .join('')
   const n = parseInt(h, 16)
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 255]
 }

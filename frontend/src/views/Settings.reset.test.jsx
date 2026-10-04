@@ -26,32 +26,47 @@ const mocks = vi.hoisted(() => {
       mut(next)
       state.S = next
     },
-    replaceState: state.replaceState, setUser: vi.fn(), pullState: vi.fn(), pushState: vi.fn(),
-    signOut: vi.fn(), signOutAll: vi.fn(), resetDemo: vi.fn(),
+    replaceState: state.replaceState,
+    setUser: vi.fn(),
+    pullState: vi.fn(),
+    pushState: vi.fn(),
+    signOut: vi.fn(),
+    signOutAll: vi.fn(),
+    resetDemo: vi.fn(),
   })
   return state
 })
 vi.mock('../store/useStore.js', () => {
-  const useStore = selector => selector ? selector(mocks.snapshot()) : mocks.snapshot()
+  const useStore = selector => (selector ? selector(mocks.snapshot()) : mocks.snapshot())
   useStore.getState = mocks.snapshot
   return { useStore, DEF: { reminder: { time: '17:30' }, workouts: [] }, hasData: () => false }
 })
 vi.mock('../store/useUI.js', () => {
   const snap = () => ({ toast: (...a) => mocks.toast(...a), openSheet: vi.fn() })
-  const useUI = selector => selector ? selector(snap()) : snap()
+  const useUI = selector => (selector ? selector(snap()) : snap())
   useUI.getState = snap
   return { useUI }
 })
 vi.mock('react-router-dom', () => ({ useNavigate: () => () => {} }))
 vi.mock('../lib/api.js', () => ({
-  api: (...a) => mocks.api(...a), IS_ANDROID: false,
+  api: (...a) => mocks.api(...a),
+  IS_ANDROID: false,
 }))
-vi.mock('../lib/push.js', () => ({ pushSupported: () => false, enablePush: vi.fn(), disablePush: vi.fn(), sendTestPush: vi.fn() }))
+vi.mock('../lib/push.js', () => ({
+  pushSupported: () => false,
+  enablePush: vi.fn(),
+  disablePush: vi.fn(),
+  sendTestPush: vi.fn(),
+}))
 vi.mock('../lib/wakelock.js', () => ({ wakeLockSupported: () => false }))
 vi.mock('../lib/coach-api.js', () => ({ forgetCoach: (...a) => mocks.forgetCoach(...a) }))
 vi.mock('../sheets.jsx', () => ({
-  starterPlanSheet: vi.fn(), confirmSheet: (...a) => mocks.confirmSheet(...a), importFromApp: vi.fn(),
-  importFromHevy: vi.fn(), equipmentProfileSheet: vi.fn(), menuSheet: vi.fn(),
+  starterPlanSheet: vi.fn(),
+  confirmSheet: (...a) => mocks.confirmSheet(...a),
+  importFromApp: vi.fn(),
+  importFromHevy: vi.fn(),
+  equipmentProfileSheet: vi.fn(),
+  menuSheet: vi.fn(),
 }))
 
 globalThis.__APP_VERSION__ ??= 'test'
@@ -59,8 +74,15 @@ globalThis.__APP_VERSION__ ??= 'test'
 let host, root
 beforeEach(() => {
   mocks.S = {
-    unit: 'kg', restSec: 90, restPauseSec: 15, sound: false, effort: 'none',
-    gifSize: 'full', workouts: [], routines: [], exWeights: {},
+    unit: 'kg',
+    restSec: 90,
+    restPauseSec: 15,
+    sound: false,
+    effort: 'none',
+    gifSize: 'full',
+    workouts: [],
+    routines: [],
+    exWeights: {},
   }
   mocks.user = null
   mocks.coachLocal = null
@@ -81,7 +103,9 @@ afterEach(() => {
 const mount = () => act(() => root.render(<Settings />))
 const resetRow = () => [...host.querySelectorAll('.lrow')].find(r => r.textContent.includes('Reset everything'))
 const openDialog = () => {
-  act(() => { resetRow().click() })
+  act(() => {
+    resetRow().click()
+  })
   expect(mocks.confirmSheet).toHaveBeenCalledTimes(1)
   return mocks.confirmSheet.mock.calls[0][0]
 }
@@ -93,7 +117,9 @@ describe('Settings â€” reset everything', () => {
     const dialog = openDialog()
     expect(dialog.title).toBe('Reset everything?')
     expect(dialog.message).toBe('Deletes your plan, workouts and body weight on this device. This cannot be undone.')
-    act(() => { dialog.onConfirm() })
+    act(() => {
+      dialog.onConfirm()
+    })
     expect(mocks.replaceState).toHaveBeenCalledTimes(1)
     expect(mocks.replaceState.mock.calls[0]).toEqual([{ reminder: { time: '17:30' }, workouts: [] }, true])
     expect(serverForgetCalls()).toHaveLength(0)
@@ -105,11 +131,15 @@ describe('Settings â€” reset everything', () => {
     mocks.user = { uid: 'u1', name: 'Ana' }
     mount()
     const dialog = openDialog()
-    expect(dialog.message).toBe('Deletes your plan, workouts and body weight from your profile on this server and on every signed-in device. This cannot be undone.')
-    act(() => { dialog.onConfirm() })
+    expect(dialog.message).toBe(
+      'Deletes your plan, workouts and body weight from your profile on this server and on every signed-in device. This cannot be undone.',
+    )
+    act(() => {
+      dialog.onConfirm()
+    })
     expect(serverForgetCalls()).toHaveLength(1)
     expect(serverForgetCalls()[0][1]).toEqual({ method: 'POST', body: '{}' })
-    expect(mocks.forgetCoach).not.toHaveBeenCalled()   // no device Coach here
+    expect(mocks.forgetCoach).not.toHaveBeenCalled() // no device Coach here
     expect(mocks.replaceState).toHaveBeenCalledTimes(1)
     expect(mocks.replaceState.mock.calls[0][1]).toBe(true)
     expect(mocks.toast).toHaveBeenCalledWith('All data reset')
@@ -120,7 +150,10 @@ describe('Settings â€” reset everything', () => {
     mocks.api.mockRejectedValueOnce(new Error('offline'))
     mount()
     const dialog = openDialog()
-    await act(async () => { dialog.onConfirm(); await Promise.resolve() })
+    await act(async () => {
+      dialog.onConfirm()
+      await Promise.resolve()
+    })
     expect(serverForgetCalls()).toHaveLength(1)
     expect(mocks.replaceState).toHaveBeenCalledTimes(1)
     expect(mocks.toast).toHaveBeenCalledWith('All data reset')
@@ -132,7 +165,9 @@ describe('Settings â€” reset everything', () => {
     mocks.coachLocal = { mode: 'byok', provider: 'anthropic' }
     mount()
     const dialog = openDialog()
-    act(() => { dialog.onConfirm() })
+    act(() => {
+      dialog.onConfirm()
+    })
     expect(serverForgetCalls()).toHaveLength(1)
     expect(mocks.forgetCoach).toHaveBeenCalledTimes(1)
     expect(mocks.replaceState).toHaveBeenCalledTimes(1)
@@ -143,7 +178,9 @@ describe('Settings â€” reset everything', () => {
     mocks.coachLocal = { mode: 'byok', provider: 'anthropic' }
     mount()
     const dialog = openDialog()
-    act(() => { dialog.onConfirm() })
+    act(() => {
+      dialog.onConfirm()
+    })
     expect(serverForgetCalls()).toHaveLength(0)
     expect(mocks.forgetCoach).toHaveBeenCalledTimes(1)
     expect(mocks.replaceState).toHaveBeenCalledTimes(1)

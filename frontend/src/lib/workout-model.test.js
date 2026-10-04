@@ -1,11 +1,36 @@
 import { describe, it, expect } from 'vitest'
 import {
-  phaseForSet, isWarmupRow, modeForSet, modeForEntry,
-  setType, isDropSet, isRestPauseSet, dropsOf, clustersOf, extraVolumeOf,
-  addDrop, addCluster, removeDropAt, removeClusterAt, setDropAt, setClusterAt,
-  nextDropWeight, nextBurstReps, splitBurstReps,
-  isSideSet, makeSideSet, syncSideAggregate, setSideField, toggleSide, WEIGHT_ORIGIN_MANUAL,
-  addSideDrop, removeSideDropAt, setSideDropAt, addSideCluster, removeSideClusterAt, setSideClusterAt,
+  phaseForSet,
+  isWarmupRow,
+  modeForSet,
+  modeForEntry,
+  setType,
+  isDropSet,
+  isRestPauseSet,
+  dropsOf,
+  clustersOf,
+  extraVolumeOf,
+  addDrop,
+  addCluster,
+  removeDropAt,
+  removeClusterAt,
+  setDropAt,
+  setClusterAt,
+  nextDropWeight,
+  nextBurstReps,
+  splitBurstReps,
+  isSideSet,
+  makeSideSet,
+  syncSideAggregate,
+  setSideField,
+  toggleSide,
+  WEIGHT_ORIGIN_MANUAL,
+  addSideDrop,
+  removeSideDropAt,
+  setSideDropAt,
+  addSideCluster,
+  removeSideClusterAt,
+  setSideClusterAt,
 } from './workout-model.js'
 
 describe('phaseForSet / isWarmupRow', () => {
@@ -68,13 +93,32 @@ describe('dropsOf / clustersOf', () => {
 })
 
 describe('extraVolumeOf', () => {
-  it('sums weight x reps across a drop-set\'s own drops', () => {
-    const set = { type: 'dropset', w: 100, r: 5, drops: [{ w: 80, r: 5 }, { w: 60, r: 6 }] }
+  it("sums weight x reps across a drop-set's own drops", () => {
+    const set = {
+      type: 'dropset',
+      w: 100,
+      r: 5,
+      drops: [
+        { w: 80, r: 5 },
+        { w: 60, r: 6 },
+      ],
+    }
     expect(extraVolumeOf(set)).toBe(80 * 5 + 60 * 6)
   })
 
   it('is zero for rest-pause — its own r is already the total across every burst, so clusters are a breakdown, not extra volume', () => {
-    const set = { type: 'restpause', w: 60, r: 20, clusters: [{ r: 10, restSec: 15 }, { r: 5, restSec: 15 }, { r: 3, restSec: 15 }, { r: 1, restSec: 15 }, { r: 1, restSec: 15 } ] }
+    const set = {
+      type: 'restpause',
+      w: 60,
+      r: 20,
+      clusters: [
+        { r: 10, restSec: 15 },
+        { r: 5, restSec: 15 },
+        { r: 3, restSec: 15 },
+        { r: 1, restSec: 15 },
+        { r: 1, restSec: 15 },
+      ],
+    }
     expect(extraVolumeOf(set)).toBe(0)
   })
 
@@ -84,8 +128,8 @@ describe('extraVolumeOf', () => {
   })
 
   it('sums both sides drops for a per-side drop-set (issue #60)', () => {
-    let s = addSideDrop(makeSideSet({ w: 20, r: 16 }), 20)   // each side: one 16×8 drop
-    expect(extraVolumeOf(s)).toBe(16 * 8 * 2)                // L + R
+    let s = addSideDrop(makeSideSet({ w: 20, r: 16 }), 20) // each side: one 16×8 drop
+    expect(extraVolumeOf(s)).toBe(16 * 8 * 2) // L + R
     // an asymmetric edit is reflected
     s = setSideDropAt(s, 'R', 0, { w: 10, r: 6 })
     expect(extraVolumeOf(s)).toBe(16 * 8 + 10 * 6)
@@ -99,7 +143,10 @@ describe('addDrop / addCluster', () => {
     expect(next.type).toBe('dropset')
     expect(next.drops).toEqual([{ w: 80, r: 5 }])
     expect(set.drops).toBeUndefined() // pure — the original row is untouched
-    expect(addDrop(next, { w: 60, r: 4 }).drops).toEqual([{ w: 80, r: 5 }, { w: 60, r: 4 }])
+    expect(addDrop(next, { w: 60, r: 4 }).drops).toEqual([
+      { w: 80, r: 5 },
+      { w: 60, r: 4 },
+    ])
   })
 
   it('appends a burst and stamps the row as a rest-pause set', () => {
@@ -112,12 +159,28 @@ describe('addDrop / addCluster', () => {
 
 describe('removeDropAt / removeClusterAt', () => {
   it('removes one entry by index, leaving the rest in place', () => {
-    const set = { type: 'dropset', w: 100, r: 5, drops: [{ w: 80, r: 5 }, { w: 60, r: 5 }] }
+    const set = {
+      type: 'dropset',
+      w: 100,
+      r: 5,
+      drops: [
+        { w: 80, r: 5 },
+        { w: 60, r: 5 },
+      ],
+    }
     expect(removeDropAt(set, 0).drops).toEqual([{ w: 60, r: 5 }])
   })
 
   it('removes one burst by index', () => {
-    const set = { type: 'restpause', w: 60, r: 8, clusters: [{ r: 4, restSec: 15 }, { r: 3, restSec: 15 }] }
+    const set = {
+      type: 'restpause',
+      w: 60,
+      r: 8,
+      clusters: [
+        { r: 4, restSec: 15 },
+        { r: 3, restSec: 15 },
+      ],
+    }
     expect(removeClusterAt(set, 1).clusters).toEqual([{ r: 4, restSec: 15 }])
   })
 
@@ -133,13 +196,27 @@ describe('removeDropAt / removeClusterAt', () => {
 })
 
 describe('setDropAt / setClusterAt', () => {
-  it('patches one drop\'s fields, leaving the others untouched', () => {
-    const set = { type: 'dropset', w: 100, r: 5, drops: [{ w: 80, r: 5 }, { w: 60, r: 5 }] }
-    expect(setDropAt(set, 0, { w: 82.5 }).drops).toEqual([{ w: 82.5, r: 5 }, { w: 60, r: 5 }])
-    expect(setDropAt(set, 1, { r: 6 }).drops).toEqual([{ w: 80, r: 5 }, { w: 60, r: 6 }])
+  it("patches one drop's fields, leaving the others untouched", () => {
+    const set = {
+      type: 'dropset',
+      w: 100,
+      r: 5,
+      drops: [
+        { w: 80, r: 5 },
+        { w: 60, r: 5 },
+      ],
+    }
+    expect(setDropAt(set, 0, { w: 82.5 }).drops).toEqual([
+      { w: 82.5, r: 5 },
+      { w: 60, r: 5 },
+    ])
+    expect(setDropAt(set, 1, { r: 6 }).drops).toEqual([
+      { w: 80, r: 5 },
+      { w: 60, r: 6 },
+    ])
   })
 
-  it('patches one burst\'s reps', () => {
+  it("patches one burst's reps", () => {
     const set = { type: 'restpause', w: 60, r: 8, clusters: [{ r: 4, restSec: 15 }] }
     expect(setClusterAt(set, 0, { r: 5 }).clusters).toEqual([{ r: 5, restSec: 15 }])
   })
@@ -162,11 +239,11 @@ describe('nextDropWeight / nextBurstReps', () => {
     expect(nextDropWeight(0, 20)).toBe(0)
   })
 
-  it('lands on the exercise\'s weight step when given one, and always below the weight it drops from', () => {
-    expect(nextDropWeight(60, 20, 2.5)).toBe(47.5)    // 48 is not loadable in 2.5s
+  it("lands on the exercise's weight step when given one, and always below the weight it drops from", () => {
+    expect(nextDropWeight(60, 20, 2.5)).toBe(47.5) // 48 is not loadable in 2.5s
     expect(nextDropWeight(100, 20, 5)).toBe(80)
-    expect(nextDropWeight(80, 20, 5)).toBe(65)         // 64 → the nearest 5
-    expect(nextDropWeight(5, 5, 2.5)).toBe(2.5)        // rounding back up to 5 would be no drop
+    expect(nextDropWeight(80, 20, 5)).toBe(65) // 64 → the nearest 5
+    expect(nextDropWeight(5, 5, 2.5)).toBe(2.5) // rounding back up to 5 would be no drop
     expect(nextDropWeight(2.5, 10, 2.5)).toBe(0)
   })
 
@@ -203,13 +280,18 @@ describe('splitBurstReps', () => {
 })
 
 describe('modeForSet / modeForEntry stay reps-mode for drop-sets and rest-pause sets', () => {
-  it('infers reps mode from the row\'s own r field regardless of type', () => {
+  it("infers reps mode from the row's own r field regardless of type", () => {
     expect(modeForSet({ type: 'dropset', w: 100, r: 5 })).toBe('reps')
     expect(modeForSet({ type: 'restpause', w: 60, r: 8 })).toBe('reps')
   })
 
   it('an entry mixing straight and drop-set rows still reads as one reps-mode entry', () => {
-    const entry = { sets: [{ w: 100, r: 5 }, { type: 'dropset', w: 100, r: 5, drops: [{ w: 80, r: 5 }] }] }
+    const entry = {
+      sets: [
+        { w: 100, r: 5 },
+        { type: 'dropset', w: 100, r: 5, drops: [{ w: 80, r: 5 }] },
+      ],
+    }
     expect(modeForEntry(entry)).toBe('reps')
   })
 })
@@ -278,7 +360,7 @@ describe('setSideField', () => {
     const s = setSideField(base, 'R', 'w', 17.5)
     expect(s.sides.R.w).toBe(17.5)
     expect(s.sides.L.w).toBe(15)
-    expect(s.w).toBe(17.5)       // aggregate = heavier side
+    expect(s.w).toBe(17.5) // aggregate = heavier side
   })
 
   it('clears an effort field on null, mirroring how a straight row drops the key', () => {
@@ -302,12 +384,12 @@ describe('toggleSide', () => {
     expect(s.done).toBe(false)
     s = toggleSide(s, 'L')
     expect(s.sides.L.done).toBe(true)
-    expect(s.done).toBe(false)   // R still open
+    expect(s.done).toBe(false) // R still open
     s = toggleSide(s, 'R')
     expect(s.sides.R.done).toBe(true)
-    expect(s.done).toBe(true)    // both sides done → row done
+    expect(s.done).toBe(true) // both sides done → row done
     s = toggleSide(s, 'L')
-    expect(s.done).toBe(false)   // un-tick one side → row no longer done
+    expect(s.done).toBe(false) // un-tick one side → row no longer done
   })
 })
 
@@ -317,13 +399,13 @@ describe('toggleSide', () => {
 // extra volume sums both.
 describe('addSideDrop / removeSideDropAt / setSideDropAt', () => {
   it('adds a drop to both sides, each seeded from its own side weight and reps', () => {
-    let s = makeSideSet({ w: 20, r: 16 })              // sides: 20×8 each
-    s = setSideField(s, 'R', 'w', 18)                  // make the sides asymmetric first
-    s = addSideDrop(s, 20)                             // 20% lighter
+    let s = makeSideSet({ w: 20, r: 16 }) // sides: 20×8 each
+    s = setSideField(s, 'R', 'w', 18) // make the sides asymmetric first
+    s = addSideDrop(s, 20) // 20% lighter
     expect(s.sides.L.drops).toEqual([{ w: 16, r: 8 }]) // 20 → 16
     expect(s.sides.R.drops).toEqual([{ w: 14.5, r: 8 }]) // 18 → 14.4 → rounds to 14.5
-    expect(s.type).toBe('dropset')                     // aggregate mirrors the intensifier type
-    expect(s.drops).toBeUndefined()                    // drops live on the sides, not the row
+    expect(s.type).toBe('dropset') // aggregate mirrors the intensifier type
+    expect(s.drops).toBeUndefined() // drops live on the sides, not the row
   })
 
   it('edits one side drop independently, leaving the other side untouched', () => {
@@ -338,34 +420,34 @@ describe('addSideDrop / removeSideDropAt / setSideDropAt', () => {
     s = removeSideDropAt(s, 0)
     expect(s.sides.L.drops).toEqual([])
     expect(s.sides.R.drops).toEqual([])
-    expect(s.type).toBeUndefined()                     // no side is a drop-set anymore
+    expect(s.type).toBeUndefined() // no side is a drop-set anymore
   })
 })
 
 describe('addSideCluster / removeSideClusterAt / setSideClusterAt', () => {
   it('adds a burst to both sides and grows each side reps by its own added burst', () => {
-    let s = makeSideSet({ w: 20, r: 16 })              // 8 per side
-    s = addSideCluster(s, 15)                          // nextBurstReps(8) = 4
+    let s = makeSideSet({ w: 20, r: 16 }) // 8 per side
+    s = addSideCluster(s, 15) // nextBurstReps(8) = 4
     expect(s.sides.L.clusters).toEqual([{ r: 4, restSec: 15 }])
-    expect(s.sides.L.r).toBe(12)                       // 8 + 4
+    expect(s.sides.L.r).toBe(12) // 8 + 4
     expect(s.sides.R.r).toBe(12)
-    expect(s.r).toBe(24)                               // aggregate total across both sides
+    expect(s.r).toBe(24) // aggregate total across both sides
     expect(s.type).toBe('restpause')
   })
 
   it('editing one side burst keeps that side reps in step and leaves the other alone', () => {
     let s = addSideCluster(makeSideSet({ w: 20, r: 16 }), 15) // L/R: r 12, burst 4
-    s = setSideClusterAt(s, 'L', 0, 6)                 // +2 on L
+    s = setSideClusterAt(s, 'L', 0, 6) // +2 on L
     expect(s.sides.L.clusters[0].r).toBe(6)
-    expect(s.sides.L.r).toBe(14)                       // 12 + 2
-    expect(s.sides.R.r).toBe(12)                       // untouched
+    expect(s.sides.L.r).toBe(14) // 12 + 2
+    expect(s.sides.R.r).toBe(12) // untouched
   })
 
   it('removing a burst subtracts its reps from that side', () => {
     let s = addSideCluster(makeSideSet({ w: 20, r: 16 }), 15) // r 12 each
     s = removeSideClusterAt(s, 0)
     expect(s.sides.L.clusters).toEqual([])
-    expect(s.sides.L.r).toBe(8)                        // back to the base
+    expect(s.sides.L.r).toBe(8) // back to the base
     expect(s.type).toBeUndefined()
   })
 })

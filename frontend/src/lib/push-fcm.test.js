@@ -13,42 +13,52 @@ const fcm = vi.hoisted(() => {
     getToken: vi.fn(async () => 'fcm-registration-token'),
     subscribeToTopic: vi.fn(async () => {}),
     unsubscribeFromTopic: vi.fn(async () => {}),
-    deleteToken: vi.fn(async () => {})
+    deleteToken: vi.fn(async () => {}),
   }
 })
 const server = vi.hoisted(() => ({ calls: [] }))
 
 vi.mock('firebase/messaging', () => fcm)
 vi.mock('./firebase.js', () => ({
-  get firebaseConfigured() { return state.configured },
+  get firebaseConfigured() {
+    return state.configured
+  },
   app: { name: '[DEFAULT]' },
   auth: null,
-  db: null
+  db: null,
 }))
 vi.mock('./api.js', () => ({
   api: vi.fn(async (path, opts) => {
     server.calls.push([path, opts?.method || 'GET', opts?.body ? JSON.parse(opts.body) : null])
     if (path === '/api/push/public-key') return { key: 'BPqx2m6xQ6pQK5hQtMz6d3kM2s7gq4yHqQvWzZ1sK1c' }
     return { ok: true }
-  })
+  }),
 }))
 
 const KEY = 'BPqx2m6xQ6pQK5hQtMz6d3kM2s7gq4yHqQvWzZ1sK1c'
 const keyBytes = b64 => {
-  const padded = (b64 + '='.repeat((4 - b64.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/')
+  const padded = (b64 + '='.repeat((4 - (b64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/')
   return Uint8Array.from(atob(padded), c => c.charCodeAt(0)).buffer
 }
 let sub = null
 const makeSub = key => ({
-  endpoint: 'https://push.example/e1', options: { applicationServerKey: keyBytes(key) },
+  endpoint: 'https://push.example/e1',
+  options: { applicationServerKey: keyBytes(key) },
   toJSON: () => ({ endpoint: 'https://push.example/e1', keys: { p256dh: 'p', auth: 'a' } }),
-  unsubscribe: vi.fn(async () => { sub = null; return true })
+  unsubscribe: vi.fn(async () => {
+    sub = null
+    return true
+  }),
 })
 const reg = {
   pushManager: {
     getSubscription: vi.fn(async () => sub),
-    subscribe: vi.fn(async ({ applicationServerKey }) => { sub = makeSub(KEY); sub.options.applicationServerKey = applicationServerKey; return sub })
-  }
+    subscribe: vi.fn(async ({ applicationServerKey }) => {
+      sub = makeSub(KEY)
+      sub.options.applicationServerKey = applicationServerKey
+      return sub
+    }),
+  },
 }
 
 beforeEach(() => {

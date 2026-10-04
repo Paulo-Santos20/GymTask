@@ -14,14 +14,14 @@ const catalogueNames = {
   '0552': 'kettlebell two arm clean',
   '0648': 'power clean',
   '0067': 'barbell one arm snatch',
-  '3888': 'dumbbell one arm snatch',
+  3888: 'dumbbell one arm snatch',
   '0529': 'kettlebell double snatch',
   '0542': 'kettlebell one arm snatch',
   '0028': 'barbell clean and press',
   '0537': 'kettlebell one arm clean and jerk',
   '0527': 'kettlebell double jerk',
   '0538': 'kettlebell one arm jerk',
-  '0776': 'snatch pull'
+  '0776': 'snatch pull',
 }
 
 it('matches current catalogue names and classifies the audited lift family', () => {
@@ -36,9 +36,17 @@ it('matches current catalogue names and classifies the audited lift family', () 
 it('keeps every overlay mapping canonical, multi-primary, and weighted for the lower body', () => {
   for (const [id, mapping] of Object.entries(OLYMPIC_LIFT_METADATA)) {
     expect(mapping.primaries.length, id).toBeGreaterThan(1)
-    expect(mapping.primaries.every(muscle => MUSCLES.includes(muscle)), id).toBe(true)
-    expect(mapping.secondaries.every(muscle => MUSCLES.includes(muscle) && !mapping.primaries.includes(muscle)), id).toBe(true)
-    expect(new Set([...mapping.primaries, ...mapping.secondaries]).size, id).toBe(mapping.primaries.length + mapping.secondaries.length)
+    expect(
+      mapping.primaries.every(muscle => MUSCLES.includes(muscle)),
+      id,
+    ).toBe(true)
+    expect(
+      mapping.secondaries.every(muscle => MUSCLES.includes(muscle) && !mapping.primaries.includes(muscle)),
+      id,
+    ).toBe(true)
+    expect(new Set([...mapping.primaries, ...mapping.secondaries]).size, id).toBe(
+      mapping.primaries.length + mapping.secondaries.length,
+    )
     expect(musclesOf(EXIDX[id]), id).toMatchObject({ quadriceps: 1, gluteal: 1 })
   }
 })

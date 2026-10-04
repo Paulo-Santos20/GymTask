@@ -7,8 +7,14 @@ import { useStore } from './useStore.js'
 // "Off" has to hold at the timer itself, not at the four places that start one — the same
 // reason the rest-after-a-set rule is a shared condition rather than four copies.
 describe('rest timer set to Off', () => {
-  beforeEach(() => { vi.useFakeTimers(); useUI.setState({ timer: null }) })
-  afterEach(() => { useUI.getState().stopRest(); vi.useRealTimers() })
+  beforeEach(() => {
+    vi.useFakeTimers()
+    useUI.setState({ timer: null })
+  })
+  afterEach(() => {
+    useUI.getState().stopRest()
+    vi.useRealTimers()
+  })
 
   it('starts nothing', () => {
     useUI.getState().startRest(0)
@@ -65,16 +71,22 @@ describe('opt-in timer screen flash', () => {
     expect(useUI.getState().timerFlashId).toBe(1)
   })
 
-  const goHidden = () => { Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')) }
-  const goVisible = () => { Object.defineProperty(document, 'hidden', { value: false, configurable: true }); document.dispatchEvent(new Event('visibilitychange')) }
-  afterEach(() => goVisible())   // leave document.hidden the way every other test expects it
+  const goHidden = () => {
+    Object.defineProperty(document, 'hidden', { value: true, configurable: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+  }
+  const goVisible = () => {
+    Object.defineProperty(document, 'hidden', { value: false, configurable: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+  }
+  afterEach(() => goVisible()) // leave document.hidden the way every other test expects it
 
   it('does not flash a rest that expires while the app is hidden, even once reopened', () => {
     useStore.setState({ S: { ...useStore.getState().S, timerFlash: true } })
     useUI.getState().startRest(90)
     goHidden()
-    vi.setSystemTime(Date.now() + 91_000)   // deadline passes with no ticks — the app was actually closed/suspended
-    goVisible()                             // reopening re-fires visibilitychange, which is how the bug used to trigger
+    vi.setSystemTime(Date.now() + 91_000) // deadline passes with no ticks — the app was actually closed/suspended
+    goVisible() // reopening re-fires visibilitychange, which is how the bug used to trigger
     expect(useUI.getState().timerFlashId).toBe(0)
     expect(useUI.getState().timer).toBe(null)
   })

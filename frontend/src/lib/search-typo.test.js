@@ -2,8 +2,12 @@ import { expect, it } from 'vitest'
 import { EXDB, matchExercise, normalizeStr, searchExercises } from './exercises.js'
 
 const benchPress = {
-  n: 'dumbbell bench press', bp: 'chest', tg: 'pectorals', eq: 'dumbbell',
-  sm: ['triceps', 'deltoids'], desc: 'Classic chest exercise using a barbell on a flat bench.',
+  n: 'dumbbell bench press',
+  bp: 'chest',
+  tg: 'pectorals',
+  eq: 'dumbbell',
+  sm: ['triceps', 'deltoids'],
+  desc: 'Classic chest exercise using a barbell on a flat bench.',
 }
 
 it('allows one edit or adjacent transposition in long query tokens', () => {
@@ -14,7 +18,13 @@ it('allows one edit or adjacent transposition in long query tokens', () => {
 
 it('keeps short tokens and multiple edits out of fuzzy matching', () => {
   const squat = { n: 'barbell squat', bp: 'legs', eq: 'barbell' }
-  for (const [exercise, query] of [[squat, 'sqat'], [squat, 'roww'], [benchPress, 'dunbell'], [benchPress, 'dumbell unrelated'], [benchPress, 'bn ech']]) {
+  for (const [exercise, query] of [
+    [squat, 'sqat'],
+    [squat, 'roww'],
+    [benchPress, 'dunbell'],
+    [benchPress, 'dumbell unrelated'],
+    [benchPress, 'bn ech'],
+  ]) {
     expect(matchExercise(exercise, query), query).toBe(false)
   }
 })
@@ -28,7 +38,14 @@ it('keeps existing exact substring and all-token behavior', () => {
 // QA C26: a correctly spelled word one edit away from a body part / target / equipment word
 // used to pull in that whole body part ("wrist" ~ "waist" listed every abs exercise first).
 it('never fuzzy-matches body part, target, equipment or description words', () => {
-  const sitUp = { n: '3/4 sit-up', bp: 'waist', tg: 'abs', eq: 'body weight', sm: [], desc: 'Keep the lower back flat.' }
+  const sitUp = {
+    n: '3/4 sit-up',
+    bp: 'waist',
+    tg: 'abs',
+    eq: 'body weight',
+    sm: [],
+    desc: 'Keep the lower back flat.',
+  }
   for (const query of ['wrist', 'power', 'bodz weight']) {
     expect(matchExercise(sitUp, query), query).toBe(false)
   }
@@ -64,7 +81,10 @@ it('searchExercises over the real catalogue returns only exact hits for correctl
   for (const q of ['wrist', 'power', 'slide', 'thigh', 'squat', 'clean']) {
     const got = searchExercises(EXDB, q)
     expect(got.length, q).toBe(EXDB.filter(e => plain(e, q)).length)
-    expect(got.every(e => plain(e, q)), q).toBe(true)
+    expect(
+      got.every(e => plain(e, q)),
+      q,
+    ).toBe(true)
   }
   expect(searchExercises(EXDB, 'wrist')[0].n).toBe('band reverse wrist curl')
 })

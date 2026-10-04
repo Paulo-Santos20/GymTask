@@ -30,7 +30,10 @@ const ctxFor = () => {
 
 const wake = () => {
   const ctx = ctxFor()
-  if (ctx.state !== 'running') { const p = ctx.resume(); if (p && p.catch) p.catch(() => {}) }
+  if (ctx.state !== 'running') {
+    const p = ctx.resume()
+    if (p && p.catch) p.catch(() => {})
+  }
   return ctx
 }
 
@@ -43,7 +46,14 @@ const sleepAfter = endSec => {
   clearTimeout(idleTm)
   idleTm = setTimeout(() => {
     idleTm = null
-    try { if (audioCtx && audioCtx.state === 'running') { const p = audioCtx.suspend(); if (p && p.catch) p.catch(() => {}) } } catch (e) { /* */ }
+    try {
+      if (audioCtx && audioCtx.state === 'running') {
+        const p = audioCtx.suspend()
+        if (p && p.catch) p.catch(() => {})
+      }
+    } catch (e) {
+      /* */
+    }
   }, at - Date.now())
 }
 
@@ -51,23 +61,34 @@ export function beep(enabled, freq, dur, when) {
   if (!enabled) return
   try {
     const ctx = wake()
-    const o = ctx.createOscillator(), g = ctx.createGain()
-    o.connect(g); g.connect(ctx.destination)
-    o.frequency.value = freq || 880; o.type = 'sine'
+    const o = ctx.createOscillator(),
+      g = ctx.createGain()
+    o.connect(g)
+    g.connect(ctx.destination)
+    o.frequency.value = freq || 880
+    o.type = 'sine'
     const t0 = ctx.currentTime + (when || 0)
     g.gain.setValueAtTime(0.001, t0)
     g.gain.exponentialRampToValueAtTime(0.35, t0 + 0.02)
     g.gain.exponentialRampToValueAtTime(0.001, t0 + (dur || 0.18))
-    o.start(t0); o.stop(t0 + (dur || 0.18) + 0.05)
+    o.start(t0)
+    o.stop(t0 + (dur || 0.18) + 0.05)
     sleepAfter((when || 0) + (dur || 0.18) + 0.05)
-  } catch (e) { /* */ }
+  } catch (e) {
+    /* */
+  }
 }
 
 // Call from inside a tap. Gets the context created and running while the browser still counts
 // this as a user gesture; it goes back to sleep on its own. Nothing audible.
 export function unlock(enabled) {
   if (!enabled) return
-  try { wake(); sleepAfter(0) } catch (e) { /* */ }
+  try {
+    wake()
+    sleepAfter(0)
+  } catch (e) {
+    /* */
+  }
 }
 
 // Settings → "Play sounds when the phone is on silent". Offered only where it means something:
@@ -83,8 +104,17 @@ export const playOnSilentSupported = () => {
 }
 export function setPlayOnSilent(on) {
   if (!playOnSilentSupported()) return
-  try { navigator.audioSession.type = on ? 'playback' : 'auto' } catch (e) { /* */ }
+  try {
+    navigator.audioSession.type = on ? 'playback' : 'auto'
+  } catch (e) {
+    /* */
+  }
 }
 
-
-export function vibrate(p) { try { navigator.vibrate && navigator.vibrate(p) } catch (e) { /* */ } }
+export function vibrate(p) {
+  try {
+    navigator.vibrate && navigator.vibrate(p)
+  } catch (e) {
+    /* */
+  }
+}

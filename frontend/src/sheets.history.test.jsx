@@ -28,7 +28,12 @@ const DAY = 86400000
 const T0 = Date.UTC(2026, 2, 2, 9)
 const iso = i => new Date(T0 + i * DAY).toISOString().slice(0, 10)
 const session = (i, rows) => ({
-  id: 'w' + i, d: iso(i), start: T0 + i * DAY, end: T0 + i * DAY + 3600000, name: 'Push', vol: 0,
+  id: 'w' + i,
+  d: iso(i),
+  start: T0 + i * DAY,
+  end: T0 + i * DAY + 3600000,
+  name: 'Push',
+  vol: 0,
   entries: [{ id: EX, target: { mode: 'reps', bodyweight: false }, sets: rows }],
 })
 
@@ -40,7 +45,9 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  act(() => { mounted.splice(0).forEach(root => root.unmount()) })
+  act(() => {
+    mounted.splice(0).forEach(root => root.unmount())
+  })
 })
 
 describe('exercise history sheet', () => {
@@ -52,11 +59,23 @@ describe('exercise history sheet', () => {
   })
 
   it('lists sessions newest first with labelled sets, volume and one PR marker', () => {
-    useStore.setState(s => ({ S: { ...s.S, workouts: [
-      session(0, [{ w: 40, r: 8, done: true, phase: 'warmup' }, { w: 60, r: 5, done: true }, { w: 60, r: 5, done: true }]),
-      session(2, [{ w: 70, r: 5, done: true }]),
-      session(4, [{ w: 70, r: 3, done: true }, { w: 90, r: 1, done: false }]),
-    ] } }))
+    useStore.setState(s => ({
+      S: {
+        ...s.S,
+        workouts: [
+          session(0, [
+            { w: 40, r: 8, done: true, phase: 'warmup' },
+            { w: 60, r: 5, done: true },
+            { w: 60, r: 5, done: true },
+          ]),
+          session(2, [{ w: 70, r: 5, done: true }]),
+          session(4, [
+            { w: 70, r: 3, done: true },
+            { w: 90, r: 1, done: false },
+          ]),
+        ],
+      },
+    }))
     exerciseHistorySheet(EX)
     const host = renderTop()
     const rows = [...host.querySelectorAll('.list .item')]
@@ -83,7 +102,9 @@ describe('exercise history sheet', () => {
     const host = renderTop()
     const btn = [...host.querySelectorAll('button')].find(b => b.textContent === 'History')
     expect(btn).toBeTruthy()
-    act(() => { btn.click() })
+    act(() => {
+      btn.click()
+    })
     expect(useUI.getState().sheets).toHaveLength(2)
     const top = renderTop()
     expect(top.querySelectorAll('.list .item')).toHaveLength(1)

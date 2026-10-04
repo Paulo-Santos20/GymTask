@@ -5,10 +5,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // is missing or refuses the write (see coach-secrets.js).
 const secrets = await import('./coach-secrets.js')
 
-const within = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`hung for ${ms} ms`)), ms))])
+const within = (p, ms) =>
+  Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`hung for ${ms} ms`)), ms))])
 
 describe('coach-secrets', () => {
-  beforeEach(() => { try { localStorage.clear() } catch { /* no storage */ } })
+  beforeEach(() => {
+    try {
+      localStorage.clear()
+    } catch {
+      /* no storage */
+    }
+  })
 
   it('a round trip settles', async () => {
     await within(secrets.setApiKey('sk-live-1'), 1000)

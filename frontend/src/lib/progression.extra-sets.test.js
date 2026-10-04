@@ -39,14 +39,22 @@ describe('extra sets stay out of the progression read', () => {
   })
 
   it('leaves warm-ups out before counting, so a warm-up does not eat a planned slot', () => {
-    const warm = readSession(entry(plan, [{ w: 20, r: 10, done: true, phase: 'warmup' }, set(60, 8), set(60, 8), set(60, 8), set(90, 8)]))
+    const warm = readSession(
+      entry(plan, [{ w: 20, r: 10, done: true, phase: 'warmup' }, set(60, 8), set(60, 8), set(60, 8), set(90, 8)]),
+    )
     expect(warm.weight).toBe(60)
     expect(warm.ok).toBe(true)
   })
 
   it('applies the same rule to a timed hold', () => {
     const timed = { mode: 'time', sets: 2, sec: 30, weight: 0 }
-    const held = readSession(entry(timed, [{ sec: 30, done: true }, { sec: 30, done: true }, { sec: 12, done: true }]))
+    const held = readSession(
+      entry(timed, [
+        { sec: 30, done: true },
+        { sec: 30, done: true },
+        { sec: 12, done: true },
+      ]),
+    )
     expect(held.ok).toBe(true)
     expect(held.best).toBe(30)
   })

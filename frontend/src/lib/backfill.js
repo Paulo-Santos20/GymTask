@@ -10,7 +10,9 @@ export const workoutsOn = (S, iso) => (S.workouts || []).filter(w => w.d === iso
 // Epoch of `iso` at the given wall-clock time, in the browser's zone — the same zone
 // todayISO() and isoOf() use, so `d` and `start` agree the way they do for a live session.
 export const backfillStart = (iso, time = '18:00') => {
-  const [h, m] = String(time || '18:00').split(':').map(Number)
+  const [h, m] = String(time || '18:00')
+    .split(':')
+    .map(Number)
   const d = new Date(iso + 'T12:00:00')
   d.setHours(h || 0, m || 0, 0, 0)
   return d.getTime()
@@ -45,7 +47,8 @@ export function historyAsOf(S, { d, start = 0, replaceId = null, strict = false 
 export const sessionHistory = S => {
   const A = S?.active
   if (A?.backfill) return historyAsOf(S, { d: A.d, start: A.start, replaceId: A.backfill.replaceId })
-  if (A?.editingWorkoutId != null) return historyAsOf(S, { d: A.d, start: A.start, replaceId: A.editingWorkoutId, strict: true })
+  if (A?.editingWorkoutId != null)
+    return historyAsOf(S, { d: A.d, start: A.start, replaceId: A.editingWorkoutId, strict: true })
   return S
 }
 
@@ -78,14 +81,18 @@ export function completeBackfill(workouts, active, w, now = Date.now()) {
   let carried = false
   if (replaced) {
     mergeWorkoutMedia(w, replaced)
-    const old = (replaced.note || '').trim(), fresh = (w.note || '').trim()
+    const old = (replaced.note || '').trim(),
+      fresh = (w.note || '').trim()
     if (old && old !== fresh) {
-      w.note = fresh && !fresh.includes(old) ? `${old}\n${fresh}` : (fresh || old)
+      w.note = fresh && !fresh.includes(old) ? `${old}\n${fresh}` : fresh || old
       carried = w.note !== fresh
     }
   }
   if (carried || (Array.isArray(w.media) ? w.media.length : 0) > had) stampWorkout(w, now)
-  return insertChronological(workouts.filter(x => x.id !== replaceId), w)
+  return insertChronological(
+    workouts.filter(x => x.id !== replaceId),
+    w,
+  )
 }
 
 // "Mark all sets done" while logging a past workout (#284). A session written down after the
@@ -95,9 +102,11 @@ export function completeBackfill(workouts, active, w, now = Date.now()) {
 // last set would have stamped. Returns new entries; the caller stores them.
 export function markAllSetsDone(entries) {
   return (entries || []).map(entry => {
-    const sets = (entry.sets || []).map(s => (isSideSet(s)
-      ? syncSideAggregate({ ...s, sides: { L: { ...s.sides.L, done: true }, R: { ...s.sides.R, done: true } } })
-      : { ...s, done: true }))
+    const sets = (entry.sets || []).map(s =>
+      isSideSet(s)
+        ? syncSideAggregate({ ...s, sides: { L: { ...s.sides.L, done: true }, R: { ...s.sides.R, done: true } } })
+        : { ...s, done: true },
+    )
     const next = { ...entry, sets }
     next.topW = bestWeightForEntry(next) || null
     return next

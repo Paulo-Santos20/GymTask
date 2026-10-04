@@ -43,10 +43,18 @@ vi.mock('../store/useUI.js', () => {
 })
 vi.mock('../sheets.jsx', () => ({ askAddDeviceData: vi.fn() }))
 vi.mock('../lib/firebase.js', () => ({
-  get app() { return null },
-  get db() { return null },
-  get auth() { return mocks.auth },
-  get firebaseConfigured() { return mocks.configured },
+  get app() {
+    return null
+  },
+  get db() {
+    return null
+  },
+  get auth() {
+    return mocks.auth
+  },
+  get firebaseConfigured() {
+    return mocks.configured
+  },
 }))
 vi.mock('firebase/auth', () => ({
   createUserWithEmailAndPassword: mocks.signUp,
@@ -64,12 +72,10 @@ function render() {
   return host
 }
 
-const byText = (host, text) =>
-  [...host.querySelectorAll('button')].find(b => b.textContent.trim() === text)
+const byText = (host, text) => [...host.querySelectorAll('button')].find(b => b.textContent.trim() === text)
 const setInput = (input, value) => {
   act(() => {
-    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')
-      .set.call(input, value)
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(input, value)
     input.dispatchEvent(new Event('input', { bubbles: true }))
   })
 }
@@ -85,7 +91,11 @@ beforeEach(() => {
   mocks.configured = true
   document.body.innerHTML = ''
 })
-afterEach(() => { act(() => { mounted.splice(0).forEach(root => root.unmount()) }) })
+afterEach(() => {
+  act(() => {
+    mounted.splice(0).forEach(root => root.unmount())
+  })
+})
 
 describe('Login view', () => {
   it('renders the sign-in form for a configured project without calling Firebase', () => {
@@ -111,7 +121,9 @@ describe('Login view', () => {
     setInput(host.querySelector('input[type="email"]'), 'not-an-email')
     setInput(host.querySelector('input[type="password"]'), 'secret123')
 
-    await act(async () => { byText(host, 'Sign in').click() })
+    await act(async () => {
+      byText(host, 'Sign in').click()
+    })
 
     expect(mocks.toast).toHaveBeenCalledWith('Invalid e-mail address')
     // the call carried the mock auth instance — the real SDK never ran
@@ -128,11 +140,15 @@ describe('Login view', () => {
     setInput(host.querySelector('input[type="email"]'), 'ana@example.com')
     setInput(host.querySelector('input[type="password"]'), 'secret123')
 
-    await act(async () => { byText(host, 'Sign in').click() })
+    await act(async () => {
+      byText(host, 'Sign in').click()
+    })
 
     expect(mocks.signIn).toHaveBeenCalledWith(mocks.auth, 'ana@example.com', 'secret123')
     expect(mocks.setUser).toHaveBeenCalledWith({
-      id: 'u7', name: 'ana', email: 'ana@example.com',
+      id: 'u7',
+      name: 'ana',
+      email: 'ana@example.com',
     })
     expect(mocks.adoptProfile).toHaveBeenCalledTimes(1)
     expect(mocks.toast).toHaveBeenCalledWith('Welcome back, ana')
@@ -141,7 +157,9 @@ describe('Login view', () => {
   it('refuses a password reset with no e-mail without calling Firebase', async () => {
     const host = render()
 
-    await act(async () => { byText(host, 'Forgot my password?').click() })
+    await act(async () => {
+      byText(host, 'Forgot my password?').click()
+    })
 
     expect(mocks.toast).toHaveBeenCalledWith('Enter your e-mail')
     expect(mocks.sendReset).not.toHaveBeenCalled()

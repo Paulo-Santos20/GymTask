@@ -40,18 +40,27 @@ async function mountWithOpener() {
   document.body.append(opener)
   opener.focus()
   expect(document.activeElement).toBe(opener)
-  await act(async () => { root.render(React.createElement(Modals)) })
+  await act(async () => {
+    root.render(React.createElement(Modals))
+  })
 }
 
 // Mirrors how a view opens a sheet: a render prop whose first element is the title heading,
 // followed by a focusable control the dialog hands focus to.
 async function open(title, kind = 'center') {
   await act(async () => {
-    useUI.getState().openSheet(() => React.createElement(
-      React.Fragment, null,
-      React.createElement('h3', null, title),
-      React.createElement('button', null, 'Confirm'),
-    ), { kind })
+    useUI
+      .getState()
+      .openSheet(
+        () =>
+          React.createElement(
+            React.Fragment,
+            null,
+            React.createElement('h3', null, title),
+            React.createElement('button', null, 'Confirm'),
+          ),
+        { kind },
+      )
   })
 }
 
@@ -69,7 +78,10 @@ describe('Modals dialog semantics', () => {
   })
 
   afterEach(async () => {
-    if (root) await act(async () => { root.unmount() })
+    if (root)
+      await act(async () => {
+        root.unmount()
+      })
     root = null
     container = null
     if (dom) dom.close()

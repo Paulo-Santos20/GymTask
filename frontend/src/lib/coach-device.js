@@ -15,10 +15,18 @@ export const COACH_MODES = ['off', 'server', 'byok']
 const DEFAULTS = { mode: 'off', provider: null, model: null, baseUrl: null, handle: null, daily: null, pending: null }
 
 const read = () => {
-  try { return JSON.parse(localStorage.getItem(KEY)) } catch (e) { return null }
+  try {
+    return JSON.parse(localStorage.getItem(KEY))
+  } catch (e) {
+    return null
+  }
 }
 const write = data => {
-  try { localStorage.setItem(KEY, JSON.stringify(data)) } catch (e) { /* storage full/blocked — the in-memory copy stands */ }
+  try {
+    localStorage.setItem(KEY, JSON.stringify(data))
+  } catch (e) {
+    /* storage full/blocked — the in-memory copy stands */
+  }
 }
 
 let cache = null
@@ -36,7 +44,10 @@ export async function saveCoachDevice(patch) {
   return next
 }
 /** The part of it a UI may show: never the pending proposal, never the handle. */
-export const coachDeviceSettings = d => d ? { mode: d.mode, provider: d.provider, model: d.model, baseUrl: d.baseUrl } : null
+export const coachDeviceSettings = d =>
+  d ? { mode: d.mode, provider: d.provider, model: d.model, baseUrl: d.baseUrl } : null
 
 // Test seam.
-export function _resetCoachDevice() { cache = null }
+export function _resetCoachDevice() {
+  cache = null
+}

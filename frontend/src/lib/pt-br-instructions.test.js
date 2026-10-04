@@ -6,7 +6,9 @@ import { INSTR_LANGS } from './i18n-core.js'
 
 describe('Brazilian Portuguese exercise instructions', () => {
   const exercises = new Map(EXDB.map(exercise => [exercise.id, exercise]))
-  const source = JSON.parse(readFileSync(new URL('../../../scripts/instruction-sources/pt-BR.json', import.meta.url), 'utf8'))
+  const source = JSON.parse(
+    readFileSync(new URL('../../../scripts/instruction-sources/pt-BR.json', import.meta.url), 'utf8'),
+  )
 
   test('matches the curated source and covers the complete exercise corpus', () => {
     expect(Object.keys(ptBR)).toHaveLength(EXDB.length)
@@ -31,9 +33,15 @@ describe('Brazilian Portuguese exercise instructions', () => {
       steps.forEach((step, index) => {
         expect(step.trim(), `${id} step ${index + 1}`).not.toBe('')
         expect(step, `${id} step ${index + 1}`).not.toBe(exercise.st[index])
-        expect(step, `${id} step ${index + 1}`).not.toMatch(/(?:^|[^\p{L}])(?:the|your|with|from|towards?|repeat|desired|starting|slowly|hold|while|then|back|straight|ground|feet|hands|body|legs|arms|knees|shoulders)(?=$|[^\p{L}])/iu)
-        expect(step, `${id} step ${index + 1}`).not.toMatch(/(?:^|[^\p{L}])(?:ginásio|anca|abdómen|gémeos|ecrã|core|banda|piso|omoplata|peso de mão|barra de elevações|pegada por cima|pegada invertida|pegada inversa|bola suíça)(?=$|[^\p{L}])/iu)
-        expect(step, `${id} step ${index + 1}`).not.toMatch(/flexion\p{L}*\s+(?:a\s+|o\s+|os\s+|um\s+|uma\s+)?(?:barra|pesos?|halter(?:es)?|mão)(?=$|[^\p{L}])/iu)
+        expect(step, `${id} step ${index + 1}`).not.toMatch(
+          /(?:^|[^\p{L}])(?:the|your|with|from|towards?|repeat|desired|starting|slowly|hold|while|then|back|straight|ground|feet|hands|body|legs|arms|knees|shoulders)(?=$|[^\p{L}])/iu,
+        )
+        expect(step, `${id} step ${index + 1}`).not.toMatch(
+          /(?:^|[^\p{L}])(?:ginásio|anca|abdómen|gémeos|ecrã|core|banda|piso|omoplata|peso de mão|barra de elevações|pegada por cima|pegada invertida|pegada inversa|bola suíça)(?=$|[^\p{L}])/iu,
+        )
+        expect(step, `${id} step ${index + 1}`).not.toMatch(
+          /flexion\p{L}*\s+(?:a\s+|o\s+|os\s+|um\s+|uma\s+)?(?:barra|pesos?|halter(?:es)?|mão)(?=$|[^\p{L}])/iu,
+        )
       })
     }
   })
@@ -49,7 +57,22 @@ describe('Brazilian Portuguese exercise instructions', () => {
   })
 
   test('uses wrist extension for reverse wrist curls', () => {
-    const reverseWristCurlIds = ['0079', '0082', '0104', '0210', '0224', '0358', '0367', '0368', '0385', '0771', '0994', '1441']
-    reverseWristCurlIds.forEach(id => expect(ptBR[id].join(' '), id).toMatch(/estend\p{L}*(?: lentamente)? (?:o |os )?punhos?/iu))
+    const reverseWristCurlIds = [
+      '0079',
+      '0082',
+      '0104',
+      '0210',
+      '0224',
+      '0358',
+      '0367',
+      '0368',
+      '0385',
+      '0771',
+      '0994',
+      '1441',
+    ]
+    reverseWristCurlIds.forEach(id =>
+      expect(ptBR[id].join(' '), id).toMatch(/estend\p{L}*(?: lentamente)? (?:o |os )?punhos?/iu),
+    )
   })
 })

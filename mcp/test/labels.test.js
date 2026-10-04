@@ -13,7 +13,17 @@ import { describe, test, expect } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { fmt, exLine, muscleName, policyName, friendlyDate, friendlyDuration, ratio, muscleOrder, setLabel } from '../src/labels.js'
+import {
+  fmt,
+  exLine,
+  muscleName,
+  policyName,
+  friendlyDate,
+  friendlyDuration,
+  ratio,
+  muscleOrder,
+  setLabel,
+} from '../src/labels.js'
 
 /* ---------- fmt ---------- */
 
@@ -43,7 +53,7 @@ describe('exLine', () => {
 
   test('timed entries render mm:ss and default the hold the way the plan does', () => {
     expect(exLine({ mode: 'time', sets: 3, sec: 60, weight: 20 }, 'kg')).toBe('3 × 1:00 · 20 kg')
-    expect(exLine({ mode: 'time', sets: 1 }, 'kg')).toBe('1 × 0:45')  // sec defaults to 45
+    expect(exLine({ mode: 'time', sets: 1 }, 'kg')).toBe('1 × 0:45') // sec defaults to 45
   })
 
   test('cardio entries render pace, defaulting to 20 min @ 8 km/h', () => {
@@ -64,7 +74,7 @@ describe('muscleName / policyName', () => {
   test('muscleName maps known slugs and echoes unknown ones', () => {
     expect(muscleName('quadriceps')).toBe('Quads')
     expect(muscleName('chest')).toBe('Chest')
-    expect(muscleName('nope')).toBe('nope')  // a slug outside the map still reads as itself
+    expect(muscleName('nope')).toBe('nope') // a slug outside the map still reads as itself
   })
 
   test('policyName maps every saveable policy and echoes unknown ones', () => {
@@ -85,7 +95,7 @@ describe('friendlyDate / friendlyDuration', () => {
   })
 
   test('durations switch to "H h M m" past the hour; zero never renders as "0 min"', () => {
-    expect(friendlyDuration(4260000)).toBe('1h 11m')  // 71 minutes
+    expect(friendlyDuration(4260000)).toBe('1h 11m') // 71 minutes
     expect(friendlyDuration(1800000)).toBe('30 min')
     expect(friendlyDuration(0)).toBeNull()
     expect(friendlyDuration(null)).toBeNull()
@@ -107,7 +117,7 @@ describe('ratio / muscleOrder / setLabel', () => {
     expect(order[0]).toBe('trapezius')
     expect(order.at(-1)).toBe('tibialis')
     order.push('mutated')
-    expect(muscleOrder()).toHaveLength(18)  // the copy cannot corrupt the module's own list
+    expect(muscleOrder()).toHaveLength(18) // the copy cannot corrupt the module's own list
   })
 
   test('setLabel — the re-export tools.js builds set rows with — renders every mode', () => {

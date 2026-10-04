@@ -25,11 +25,20 @@ const type = (el, value) => {
   Object.getOwnPropertyDescriptor(el.constructor.prototype, 'value').set.call(el, value)
   el.dispatchEvent(new Event('input', { bubbles: true }))
 }
-const unmountAll = () => act(() => { mounted.splice(0).forEach(r => r.unmount()) })
+const unmountAll = () =>
+  act(() => {
+    mounted.splice(0).forEach(r => r.unmount())
+  })
 
 const workout = () => ({
-  id: 'w1', d: '2026-08-25', start: 1, end: 2, name: 'Push', vol: 100,
-  entries: [{ id: 'bench', sets: [{ w: 100, r: 5, done: true }] }], prs: [],
+  id: 'w1',
+  d: '2026-08-25',
+  start: 1,
+  end: 2,
+  name: 'Push',
+  vol: 100,
+  entries: [{ id: 'bench', sets: [{ w: 100, r: 5, done: true }] }],
+  prs: [],
 })
 
 describe('session note', () => {
@@ -42,11 +51,18 @@ describe('session note', () => {
 
   it('can be written during the workout and survives finishing', () => {
     useStore.setState(s => ({
-      S: { ...s.S, active: { id: 'w1', d: '2026-08-25', start: 1, name: 'Push', entries: [{ id: 'bench', sets: [] }] } },
+      S: {
+        ...s.S,
+        active: { id: 'w1', d: '2026-08-25', start: 1, name: 'Push', entries: [{ id: 'bench', sets: [] }] },
+      },
     }))
     const host = render(() => sessionNoteSheet())
-    act(() => { type(host.querySelector('textarea'), 'slept badly, still hit it') })
-    act(() => { [...host.querySelectorAll('button')].find(b => /save/i.test(b.textContent)).click() })
+    act(() => {
+      type(host.querySelector('textarea'), 'slept badly, still hit it')
+    })
+    act(() => {
+      ;[...host.querySelectorAll('button')].find(b => /save/i.test(b.textContent)).click()
+    })
 
     const A = useStore.getState().S.active
     expect(A.note).toBe('slept badly, still hit it')
@@ -57,7 +73,9 @@ describe('session note', () => {
   it('is kept when the history sheet is dismissed without blurring the field', () => {
     useStore.setState(s => ({ S: { ...s.S, workouts: [workout()] } }))
     const host = render(() => workoutDetailSheet(useStore.getState().S.workouts[0]))
-    act(() => { type(host.querySelector('textarea'), 'good session') })
+    act(() => {
+      type(host.querySelector('textarea'), 'good session')
+    })
     // Escape / Android back / swipe all unmount without a blur.
     unmountAll()
     expect(useStore.getState().S.workouts[0].note).toBe('good session')
@@ -66,7 +84,9 @@ describe('session note', () => {
   it('clearing it removes the note rather than storing an empty string', () => {
     useStore.setState(s => ({ S: { ...s.S, workouts: [{ ...workout(), note: 'old' }] } }))
     const host = render(() => workoutDetailSheet(useStore.getState().S.workouts[0]))
-    act(() => { type(host.querySelector('textarea'), '   ') })
+    act(() => {
+      type(host.querySelector('textarea'), '   ')
+    })
     unmountAll()
     expect(useStore.getState().S.workouts[0].note).toBeUndefined()
   })

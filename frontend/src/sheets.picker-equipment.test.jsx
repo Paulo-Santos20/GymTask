@@ -24,8 +24,7 @@ function renderTop() {
 
 // The two chip strips render in order: body parts first, then equipment. Grab a chip by its
 // visible label out of the whole picker.
-const chipByText = (host, text) =>
-  [...host.querySelectorAll('.chips .chip')].find(b => b.textContent.trim() === text)
+const chipByText = (host, text) => [...host.querySelectorAll('.chips .chip')].find(b => b.textContent.trim() === text)
 const isOn = el => el.className.split(/\s+/).includes('on')
 
 beforeEach(() => {
@@ -36,7 +35,9 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  act(() => { mounted.splice(0).forEach(root => root.unmount()) })
+  act(() => {
+    mounted.splice(0).forEach(root => root.unmount())
+  })
 })
 
 describe('exercise picker equipment filter', () => {

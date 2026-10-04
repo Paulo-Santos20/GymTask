@@ -9,9 +9,7 @@ const hasWork = (entries, idx) => !!entries[idx]?.sets?.some(set => !set.done)
 export function nextUnfinishedUnit(entries, units, fromIdx) {
   if (!Array.isArray(entries) || !Array.isArray(units) || units.length === 0) return null
   const current = units.findIndex(unit => unit.includes(fromIdx))
-  const ordered = current < 0
-    ? units
-    : [...units.slice(current + 1), ...units.slice(0, current)]
+  const ordered = current < 0 ? units : [...units.slice(current + 1), ...units.slice(0, current)]
   return ordered.find(unit => unit.some(idx => hasWork(entries, idx))) || null
 }
 

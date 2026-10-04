@@ -19,39 +19,36 @@
  * adapter contract with { spawnError, stderr: "no API key configured for grok" }, the
  * pipeline classifies that as a `missing` failure, and the admin card shows the reason.
  */
-import { httpAdapter } from './http.js';
-import { chatCompletionsSpec } from './openai.js';
+import { httpAdapter } from './http.js'
+import { chatCompletionsSpec } from './openai.js'
 
 /** The model when neither the instance config nor XAI_MODEL says otherwise. */
-export const DEFAULT_XAI_MODEL = 'grok-3-mini';
+export const DEFAULT_XAI_MODEL = 'grok-3-mini'
 
 /* `max_tokens`, not `max_completion_tokens`: the field xAI's API documents.
  * temperature 0: a plan diff wants determinism — the same stance compatible.js takes
  * (greedy decoding is also what a constrained decoder handles fastest).
  * If xAI ever rejects the JSON-mode flag, httpAdapter retries once without it, exactly as
  * it does for every other OpenAI-shaped endpoint. */
-export const grokSpec = chatCompletionsSpec('grok', { maxTokensField: 'max_tokens', temperature: 0 });
+export const grokSpec = chatCompletionsSpec('grok', { maxTokensField: 'max_tokens', temperature: 0 })
 
-const base = httpAdapter(grokSpec);
+const base = httpAdapter(grokSpec)
 
 // This module also runs in the phone's WebView (coach-local imports core directly), where
 // `process` does not exist — guard the read instead of throwing a ReferenceError at call time.
-const procEnv = () => (typeof process !== 'undefined' && process.env ? process.env : {});
+const procEnv = () => (typeof process !== 'undefined' && process.env ? process.env : {})
 
 /** The credential under the name this provider declares, falling back to the process env. */
 const grokEnv = env => {
-  const merged = { ...(env || {}) };
-  const fromProc = procEnv();
-  if (!merged.XAI_API_KEY && fromProc.XAI_API_KEY) merged.XAI_API_KEY = fromProc.XAI_API_KEY;
-  return merged;
-};
+  const merged = { ...(env || {}) }
+  const fromProc = procEnv()
+  if (!merged.XAI_API_KEY && fromProc.XAI_API_KEY) merged.XAI_API_KEY = fromProc.XAI_API_KEY
+  return merged
+}
 
 /** Instance-config model > XAI_MODEL env > whatever the caller resolved (defaultModel). */
 const modelFor = opts =>
-  (opts.cfg && opts.cfg.models && opts.cfg.models.grok) ||
-  (procEnv().XAI_MODEL || null) ||
-  opts.model ||
-  null;
+  (opts.cfg && opts.cfg.models && opts.cfg.models.grok) || procEnv().XAI_MODEL || null || opts.model || null
 
 /* Same interface as every other adapter (check/models/invoke — see ../adapters/index.js);
  * the three entry points are wrapped only to merge the environment in before httpAdapter's
@@ -61,7 +58,7 @@ const grok = {
   ...base,
   check: (cfg, env, opts) => base.check(cfg, grokEnv(env), opts),
   models: (cfg, env, opts) => base.models(cfg, grokEnv(env), opts),
-  invoke: opts => base.invoke({ ...opts, env: grokEnv(opts.env), model: modelFor(opts) })
-};
+  invoke: opts => base.invoke({ ...opts, env: grokEnv(opts.env), model: modelFor(opts) }),
+}
 
-export default grok;
+export default grok

@@ -7,7 +7,9 @@ import './index.css'
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode><App /></StrictMode>
+  <StrictMode>
+    <App />
+  </StrictMode>,
 )
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {

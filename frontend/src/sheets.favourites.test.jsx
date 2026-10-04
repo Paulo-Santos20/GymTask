@@ -34,7 +34,9 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  act(() => { mounted.splice(0).forEach(root => root.unmount()) })
+  act(() => {
+    mounted.splice(0).forEach(root => root.unmount())
+  })
 })
 
 describe('exercise detail star', () => {
@@ -54,7 +56,11 @@ describe('exercise detail star', () => {
   })
 
   it('tolerates a profile written before the field existed', () => {
-    useStore.setState(s => { const next = { ...s.S }; delete next.favEx; return { S: next } })
+    useStore.setState(s => {
+      const next = { ...s.S }
+      delete next.favEx
+      return { S: next }
+    })
     exerciseDetailSheet(EXDB[0])
     const host = renderTop()
     act(() => starOf(host).click())
@@ -64,7 +70,7 @@ describe('exercise detail star', () => {
 
 describe('exercise picker', () => {
   it('lists favourites first and marks them, keeping the rest in catalogue order', () => {
-    const plain = names((exercisePicker(vi.fn()), renderTop())).slice(1)   // drop "Create your own"
+    const plain = names((exercisePicker(vi.fn()), renderTop())).slice(1) // drop "Create your own"
     useUI.setState({ sheets: [] })
     const fav = [plain[7], plain[3]]
     const favIds = fav.map(n => EXDB.find(e => e.n === n).id)

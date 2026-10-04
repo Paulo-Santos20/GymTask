@@ -11,23 +11,23 @@
  * take whichever fetch they are given. */
 // undici's own fetch alongside its Agent, so the dispatcher option is honoured by the same
 // undici version on every Node the image or a dev box happens to run.
-import { fetch as undiciFetch, Agent } from 'undici';
+import { fetch as undiciFetch, Agent } from 'undici'
 
-const GRACE_MS = 15000;
+const GRACE_MS = 15000
 
-let agent = null;
+let agent = null
 /** The dispatcher, built once for the job timeout in force. */
 export function dispatcherFor(timeoutMs) {
-  const budget = Math.max(60000, +timeoutMs || 0) + GRACE_MS;
+  const budget = Math.max(60000, +timeoutMs || 0) + GRACE_MS
   if (!agent || agent._coachBudget !== budget) {
-    agent = new Agent({ headersTimeout: budget, bodyTimeout: budget, connectTimeout: 30000 });
-    agent._coachBudget = budget;
+    agent = new Agent({ headersTimeout: budget, bodyTimeout: budget, connectTimeout: 30000 })
+    agent._coachBudget = budget
   }
-  return agent;
+  return agent
 }
 
 /** fetch(url, init) that will wait `timeoutMs` for the provider; AbortController still wins. */
 export function fetchFor(timeoutMs) {
-  const dispatcher = dispatcherFor(timeoutMs);
-  return (url, init = {}) => undiciFetch(url, { ...init, dispatcher });
+  const dispatcher = dispatcherFor(timeoutMs)
+  return (url, init = {}) => undiciFetch(url, { ...init, dispatcher })
 }

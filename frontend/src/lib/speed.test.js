@@ -6,7 +6,7 @@ import { setLabel, exLine } from './history.js'
 import { planPrintHTML } from './plan-share.js'
 import { setWeightDecimals } from './format.js'
 
-const BIKE = '2138'   // stationary bike, cardio
+const BIKE = '2138' // stationary bike, cardio
 
 afterEach(() => setWeightDecimals(1))
 
@@ -90,10 +90,12 @@ describe('speed in labels', () => {
     expect(exLine({ id: BIKE, sets: 2, min: 20, speed: 16.09 }, 'kg')).toBe('2 × 20 min @ 16,1 km/h')
   })
 
-  it('prints a plan in the profile\'s speed unit', () => {
+  it("prints a plan in the profile's speed unit", () => {
     const routines = [{ id: 'c', name: 'Cardio', ex: [{ id: BIKE, sets: 1, min: 25, speed: 16.09 }] }]
     expect(planPrintHTML({ unit: 'lb', week: {}, routines }, '')).toContain('25 min @ 10 mph')
     expect(planPrintHTML({ unit: 'kg', week: {}, routines }, '')).toContain('25 min @ 16,1 km/h')
-    expect(planPrintHTML({ unit: 'kg', speedUnit: 'mph', week: {}, routines }, '', { routineId: 'c' })).toContain('25 min @ 10 mph')
+    expect(planPrintHTML({ unit: 'kg', speedUnit: 'mph', week: {}, routines }, '', { routineId: 'c' })).toContain(
+      '25 min @ 10 mph',
+    )
   })
 })

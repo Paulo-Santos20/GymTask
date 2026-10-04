@@ -7,10 +7,14 @@ import { bestWeightFor, bestWeightForEntry } from './history.js'
 import { readSession, nextPrescription } from './progression.js'
 import { bestSetOf, e1rmSeries, is1RMRecord } from './onerm.js'
 
-const ASSISTED = '0017'          // assisted pull-up, leverage machine
-const PLAIN = '0025'             // barbell bench press
+const ASSISTED = '0017' // assisted pull-up, leverage machine
+const PLAIN = '0025' // barbell bench press
 const set = (w, r, done = true) => ({ w, r, done })
-const workout = (d, id, sets) => ({ d, start: Date.parse(d + 'T10:00:00Z'), entries: [{ id, target: { mode: 'reps', sets: 1, reps: 8, weight: sets[0].w }, sets }] })
+const workout = (d, id, sets) => ({
+  d,
+  start: Date.parse(d + 'T10:00:00Z'),
+  entries: [{ id, target: { mode: 'reps', sets: 1, reps: 8, weight: sets[0].w }, sets }],
+})
 
 describe('which exercises count as assisted', () => {
   it('takes the leverage machine whose name says assisted, and nothing else', () => {
@@ -33,13 +37,16 @@ describe('which exercises count as assisted', () => {
     expect(betterWeight(PLAIN, 30, 20)).toBe(30)
     expect(beatsWeight(ASSISTED, 20, 30)).toBe(true)
     expect(beatsWeight(ASSISTED, 40, 30)).toBe(false)
-    expect(beatsWeight(ASSISTED, 30, 0)).toBe(true)   // nothing logged yet
-    expect(beatsWeight(ASSISTED, 0, 30)).toBe(false)  // no load logged is not a record
+    expect(beatsWeight(ASSISTED, 30, 0)).toBe(true) // nothing logged yet
+    expect(beatsWeight(ASSISTED, 0, 30)).toBe(false) // no load logged is not a record
   })
 })
 
 describe('the record is the lightest assistance', () => {
-  const S = { unit: 'kg', workouts: [workout('2026-09-01', ASSISTED, [set(30, 8)]), workout('2026-09-08', ASSISTED, [set(20, 8)])] }
+  const S = {
+    unit: 'kg',
+    workouts: [workout('2026-09-01', ASSISTED, [set(30, 8)]), workout('2026-09-08', ASSISTED, [set(20, 8)])],
+  }
 
   it('reports the smallest load as the best, across history and within a session', () => {
     expect(bestWeightFor(S, ASSISTED)).toBe(20)
@@ -54,7 +61,12 @@ describe('the record is the lightest assistance', () => {
 
 describe('progression asks for less help', () => {
   const cfg = { id: ASSISTED, sets: 1, reps: 8, weight: 30, prog: 'linear', inc: 5 }
-  const hist = w => ({ unit: 'kg', workouts: [{ d: '2026-09-08', start: 1, entries: [{ id: ASSISTED, target: { ...cfg, weight: w }, sets: [set(w, 8)] }] }] })
+  const hist = w => ({
+    unit: 'kg',
+    workouts: [
+      { d: '2026-09-08', start: 1, entries: [{ id: ASSISTED, target: { ...cfg, weight: w }, sets: [set(w, 8)] }] },
+    ],
+  })
 
   it('takes assistance away after a clean session', () => {
     const p = nextPrescription(hist(30), cfg)
@@ -69,13 +81,20 @@ describe('progression asks for less help', () => {
   })
 
   it('reads the lightest completed set as the session load', () => {
-    const read = readSession({ id: ASSISTED, target: { mode: 'reps', sets: 2, reps: 8 }, sets: [set(30, 8), set(20, 8)] })
+    const read = readSession({
+      id: ASSISTED,
+      target: { mode: 'reps', sets: 2, reps: 8 },
+      sets: [set(30, 8), set(20, 8)],
+    })
     expect(read.weight).toBe(20)
   })
 
   it('still adds weight on an ordinary lift', () => {
     const plain = { id: PLAIN, sets: 1, reps: 8, weight: 60, prog: 'linear', inc: 5 }
-    const S = { unit: 'kg', workouts: [{ d: '2026-09-08', start: 1, entries: [{ id: PLAIN, target: plain, sets: [set(60, 8)] }] }] }
+    const S = {
+      unit: 'kg',
+      workouts: [{ d: '2026-09-08', start: 1, entries: [{ id: PLAIN, target: plain, sets: [set(60, 8)] }] }],
+    }
     expect(nextPrescription(S, plain).weight).toBe(65)
   })
 })
@@ -95,8 +114,14 @@ describe('no one-rep max for an assistance machine', () => {
 describe('a sync does not hand the help back', () => {
   it('keeps the smaller assistance and the larger ordinary load', async () => {
     const { mergeStates } = await import('./sync-merge.js')
-    const phone = { _ts: 2000, exWeights: { [ASSISTED]: { w: 20, d: '2026-09-08' }, [PLAIN]: { w: 100, d: '2026-09-08' } } }
-    const server = { _ts: 1000, exWeights: { [ASSISTED]: { w: 30, d: '2026-09-01' }, [PLAIN]: { w: 90, d: '2026-09-01' } } }
+    const phone = {
+      _ts: 2000,
+      exWeights: { [ASSISTED]: { w: 20, d: '2026-09-08' }, [PLAIN]: { w: 100, d: '2026-09-08' } },
+    }
+    const server = {
+      _ts: 1000,
+      exWeights: { [ASSISTED]: { w: 30, d: '2026-09-01' }, [PLAIN]: { w: 90, d: '2026-09-01' } },
+    }
     expect(mergeStates(phone, server).exWeights[ASSISTED].w).toBe(20)
     expect(mergeStates(phone, server).exWeights[PLAIN].w).toBe(100)
     // and the other way round, so it does not depend on which copy is newer

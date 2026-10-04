@@ -7,10 +7,20 @@ import { useNutritionStore } from './nutritionStore.js'
 import { getTargets, DEFAULT_PROFILE } from '../lib/tdee.js'
 
 const entry = (id, extra = {}) => ({
-  id, meal: 'almoco', kcal: 100, protein: 10, carbs: 10, fat: 5, ...extra,
+  id,
+  meal: 'almoco',
+  kcal: 100,
+  protein: 10,
+  carbs: 10,
+  fat: 5,
+  ...extra,
 })
 
-const ids = date => useNutritionStore.getState().entriesFor(date).map(e => e.id)
+const ids = date =>
+  useNutritionStore
+    .getState()
+    .entriesFor(date)
+    .map(e => e.id)
 
 const add = (date, ...entries) => entries.forEach(e => useNutritionStore.getState().addEntry(date, e))
 
@@ -64,7 +74,7 @@ describe('nutritionStore meal log', () => {
     add('2026-10-03', entry('a'))
     useNutritionStore.getState().removeEntry('2026-10-03', 'a')
     useNutritionStore.getState().undoRemove()
-    useNutritionStore.getState().undoRemove()   // second undo: slot already cleared
+    useNutritionStore.getState().undoRemove() // second undo: slot already cleared
     expect(ids('2026-10-03')).toEqual(['a'])
   })
 
@@ -79,13 +89,13 @@ describe('nutritionStore meal log', () => {
 
 describe('nutritionStore totals and profile', () => {
   it('totalsFor sums the day and rounds each macro to whole numbers', () => {
-    add('2026-10-03',
+    add(
+      '2026-10-03',
       entry('a', { kcal: 150.6, protein: 10.4, carbs: 20.5, fat: 5.4 }),
-      entry('b', { kcal: 149.6, protein: 12.6, carbs: 10.4, fat: 1.7 }))
-    expect(useNutritionStore.getState().totalsFor('2026-10-03'))
-      .toEqual({ kcal: 300, protein: 23, carbs: 31, fat: 7 })
-    expect(useNutritionStore.getState().totalsFor('2026-01-01'))
-      .toEqual({ kcal: 0, protein: 0, carbs: 0, fat: 0 })
+      entry('b', { kcal: 149.6, protein: 12.6, carbs: 10.4, fat: 1.7 }),
+    )
+    expect(useNutritionStore.getState().totalsFor('2026-10-03')).toEqual({ kcal: 300, protein: 23, carbs: 31, fat: 7 })
+    expect(useNutritionStore.getState().totalsFor('2026-01-01')).toEqual({ kcal: 0, protein: 0, carbs: 0, fat: 0 })
   })
 
   it('setProfile recomputes the targets from the patched profile', () => {
@@ -93,9 +103,9 @@ describe('nutritionStore totals and profile', () => {
     useNutritionStore.getState().setProfile({ peso: 90 })
     const s = useNutritionStore.getState()
     expect(s.profile.peso).toBe(90)
-    expect(s.profile.altura).toBe(DEFAULT_PROFILE.altura)   // patch merges, not replaces
+    expect(s.profile.altura).toBe(DEFAULT_PROFILE.altura) // patch merges, not replaces
     expect(s.targets.kcal).not.toBe(before.kcal)
     expect(s.targets).toEqual(getTargets({ ...DEFAULT_PROFILE, peso: 90 }))
-    expect(s.targets.protein).toBe(Math.round(90 * 1.8))    // manter goal: 1.8 g/kg
+    expect(s.targets.protein).toBe(Math.round(90 * 1.8)) // manter goal: 1.8 g/kg
   })
 })

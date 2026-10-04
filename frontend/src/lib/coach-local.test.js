@@ -8,7 +8,15 @@ import { todayISO } from './format.js'
 // The device entry (localStorage via lib/coach-device.js) and the secret store are in-memory
 // here; the global fetch stub is the wire every provider call goes out on.
 const secret = { key: 'sk-test-1' }
-vi.mock('./coach-secrets.js', () => ({ getApiKey: async () => secret.key, setApiKey: async v => { secret.key = v }, clearApiKey: async () => { secret.key = null } }))
+vi.mock('./coach-secrets.js', () => ({
+  getApiKey: async () => secret.key,
+  setApiKey: async v => {
+    secret.key = v
+  },
+  clearApiKey: async () => {
+    secret.key = null
+  },
+}))
 const wire = { calls: [], answer: null }
 vi.stubGlobal('fetch', async (url, init) => {
   wire.calls.push({ url, init, body: JSON.parse(init.body) })
@@ -21,18 +29,59 @@ const { _resetCoachDevice, loadCoachDevice, saveCoachDevice } = await import('./
 const { applyChangeSet, markStale, planHash } = await import('./coach.js')
 const { EXERCISES } = await import('../../../api/coach/core/library-data.js')
 
-const EX = EXERCISES[0].id, EX2 = EXERCISES[1].id
+const EX = EXERCISES[0].id,
+  EX2 = EXERCISES[1].id
 const state = () => ({
-  unit: 'kg', lang: 'en',
-  routines: [{ id: 'r1', name: 'A', ex: [{ id: EX, sets: 3, reps: 8, mode: 'reps' }, { id: EX2, sets: 3, reps: 10, mode: 'reps' }] }],
-  week: { 1: 'r1' }, dayPlan: {}, customEx: [], bodyweight: [], workouts: [
-    { d: '2026-08-20', start: 1, end: 3600001, entries: [{ id: EX, target: { sets: 3, reps: 8 }, sets: [{ done: true, w: 40, r: 8 }, { done: true, w: 40, r: 8 }, { done: true, w: 40, r: 8 }] }] }
+  unit: 'kg',
+  lang: 'en',
+  routines: [
+    {
+      id: 'r1',
+      name: 'A',
+      ex: [
+        { id: EX, sets: 3, reps: 8, mode: 'reps' },
+        { id: EX2, sets: 3, reps: 10, mode: 'reps' },
+      ],
+    },
   ],
-  coach: { consent: { agreedAt: '2026-08-01T00:00:00Z', version: 1 }, profile: null, cadence: 'off', lastReview: null, log: [], snapshots: [] }
+  week: { 1: 'r1' },
+  dayPlan: {},
+  customEx: [],
+  bodyweight: [],
+  workouts: [
+    {
+      d: '2026-08-20',
+      start: 1,
+      end: 3600001,
+      entries: [
+        {
+          id: EX,
+          target: { sets: 3, reps: 8 },
+          sets: [
+            { done: true, w: 40, r: 8 },
+            { done: true, w: 40, r: 8 },
+            { done: true, w: 40, r: 8 },
+          ],
+        },
+      ],
+    },
+  ],
+  coach: {
+    consent: { agreedAt: '2026-08-01T00:00:00Z', version: 1 },
+    profile: null,
+    cadence: 'off',
+    lastReview: null,
+    log: [],
+    snapshots: [],
+  },
 })
 const chat = content => ({ status: 200, body: { choices: [{ finish_reason: 'stop', message: { content } }] } })
-const review = { coach_contract: 1, summary: 'One tweak.', evidence: { from: '2026-08-01', to: '2026-08-20', sessions: 1 },
-  changes: [{ id: 'c1', type: 'sets', target: { routineId: 'r1', exId: EX }, after: 4, why: 'every set was clean' }] }
+const review = {
+  coach_contract: 1,
+  summary: 'One tweak.',
+  evidence: { from: '2026-08-01', to: '2026-08-20', sessions: 1 },
+  changes: [{ id: 'c1', type: 'sets', target: { routineId: 'r1', exId: EX }, after: 4, why: 'every set was clean' }],
+}
 
 async function settle() {
   for (let i = 0; i < 200; i++) {
@@ -45,11 +94,21 @@ async function settle() {
 
 describe('the Coach on a phone with its own key', () => {
   beforeEach(async () => {
-    _resetCoachDevice(); local._resetLocal()
+    _resetCoachDevice()
+    local._resetLocal()
     // _resetCoachDevice only drops the in-memory cache, so the day's counter and any proposal
     // left by the previous test are still in localStorage — each test starts from a clean device.
-    await saveCoachDevice({ mode: 'byok', provider: 'openai', model: 'gpt-t', baseUrl: null, daily: null, pending: null })
-    wire.calls = []; wire.answer = chat(JSON.stringify(review)); secret.key = 'sk-test-1'
+    await saveCoachDevice({
+      mode: 'byok',
+      provider: 'openai',
+      model: 'gpt-t',
+      baseUrl: null,
+      daily: null,
+      pending: null,
+    })
+    wire.calls = []
+    wire.answer = chat(JSON.stringify(review))
+    secret.key = 'sk-test-1'
   })
 
   it('runs a review through the real pipeline and produces a proposal the apply engine accepts', async () => {
@@ -60,7 +119,7 @@ describe('the Coach on a phone with its own key', () => {
     expect(s.pending.kind).toBe('review')
     expect(s.pending.planHash).toBe(planHash(S))
     expect(s.pending.changes).toHaveLength(1)
-    expect(s.pending.changes[0].before).toBe(3)   // computed server-side… which is here
+    expect(s.pending.changes[0].before).toBe(3) // computed server-side… which is here
     // What went on the wire: OpenAI's shape, the key as a bearer, the payload in the user turn.
     expect(wire.calls).toHaveLength(1)
     expect(wire.calls[0].url).toBe('https://api.openai.com/v1/chat/completions')
@@ -76,14 +135,16 @@ describe('the Coach on a phone with its own key', () => {
   })
 
   it('spends the single repair round when the first answer is unusable, then gives up', async () => {
-    wire.answer = n => n === 1 ? chat('{"coach_contract":1,"changes":[{"id":"x","type":"teleport"}]}') : chat(JSON.stringify(review))
+    wire.answer = n =>
+      n === 1 ? chat('{"coach_contract":1,"changes":[{"id":"x","type":"teleport"}]}') : chat(JSON.stringify(review))
     await local.localReview(state())
     const s = await settle()
     expect(wire.calls).toHaveLength(2)
-    expect(wire.calls[1].body.messages[1].content).toContain('teleport')   // the errors went back verbatim
+    expect(wire.calls[1].body.messages[1].content).toContain('teleport') // the errors went back verbatim
     expect(s.pending.changes).toHaveLength(1)
 
-    local._resetLocal(); wire.calls = []
+    local._resetLocal()
+    wire.calls = []
     await saveCoachDevice({ pending: null })
     wire.answer = chat('not json at all')
     await local.localReview(state())
@@ -91,19 +152,26 @@ describe('the Coach on a phone with its own key', () => {
     expect(wire.calls).toHaveLength(2)
     expect(f.pending).toBeNull()
     expect(f.lastError.errorClass).toBe('unusable')
-    expect(f.lastError.detail).toMatch(/JSON|object/i)   // the validator's reason reaches the phone — there is no admin card
+    expect(f.lastError.detail).toMatch(/JSON|object/i) // the validator's reason reaches the phone — there is no admin card
   })
 
   it('a provider refusal carries the provider’s own words, so the person holding the key can act on it', async () => {
     // A 4xx the adapter does not retry (429 would wait out two retries first); the wording is OpenAI's.
-    wire.answer = { status: 404, body: { error: { message: 'The model `gpt-4o-mini-tts` does not exist or you do not have access to it.' } } }
+    wire.answer = {
+      status: 404,
+      body: { error: { message: 'The model `gpt-4o-mini-tts` does not exist or you do not have access to it.' } },
+    }
     const seen = []
     local.setNotifier(ev => seen.push(ev))
     await local.localReview(state())
     const s = await settle()
     expect(s.lastError.errorClass).toBe('provider')
     expect(s.lastError.detail).toMatch(/^404 The model `gpt-4o-mini-tts` does not exist/)
-    expect(seen.at(-1)).toMatchObject({ kind: 'failed', errorClass: 'provider', detail: expect.stringMatching(/does not exist/) })
+    expect(seen.at(-1)).toMatchObject({
+      kind: 'failed',
+      errorClass: 'provider',
+      detail: expect.stringMatching(/does not exist/),
+    })
     local.setNotifier(null)
   })
 
@@ -132,13 +200,16 @@ describe('the Coach on a phone with its own key', () => {
     const payload = wire.calls[0].body.messages[1].content
     expect(payload).toContain(`"profile":"${first}"`)
     expect(payload).not.toContain('Duarte')
-    local._resetLocal(); await saveCoachDevice({ pending: null })
-    await local.localReview(state()); await settle()
+    local._resetLocal()
+    await saveCoachDevice({ pending: null })
+    await local.localReview(state())
+    await settle()
     expect((await loadCoachDevice()).handle).toBe(first)
   })
 
   it('refuses without consent, refuses while busy, and stops at the daily cap', async () => {
-    const noConsent = state(); noConsent.coach.consent = null
+    const noConsent = state()
+    noConsent.coach.consent = null
     await expect(local.localReview(noConsent)).rejects.toMatchObject({ code: 'consent' })
 
     await local.localReview(state())
@@ -156,17 +227,46 @@ describe('the Coach on a phone with its own key', () => {
     expect((await loadCoachDevice()).pending).toBeTruthy()
     await saveCoachDevice({ pending: { ...(await loadCoachDevice()).pending, expiresAt: Date.now() - 1 } })
     expect((await local.localStatus()).pending).toBeNull()
-    await local.localReview(state()); await settle()
+    await local.localReview(state())
+    await settle()
     await local.localResolve()
     expect((await loadCoachDevice()).pending).toBeNull()
   })
 
   it('creates a plan from an intake, and refines it against the previous bundle', async () => {
-    const plan = { coach_contract: 1, opengym_plan: 1, name: 'P', summary: 's', basedOn: 'b', week: { 1: 'r1', 3: 'r2', 5: 'r1' },
+    const plan = {
+      coach_contract: 1,
+      opengym_plan: 1,
+      name: 'P',
+      summary: 's',
+      basedOn: 'b',
+      week: { 1: 'r1', 3: 'r2', 5: 'r1' },
       routines: [
-        { id: 'r1', name: 'A', emoji: '💪', why: 'w', ex: [{ id: EX, sets: 3, mode: 'reps', reps: 8, why: 'w' }, { id: EX2, sets: 3, mode: 'reps', reps: 10, why: 'w' }, { id: EXERCISES[2].id, sets: 3, mode: 'reps', reps: 10, why: 'w' }] },
-        { id: 'r2', name: 'B', emoji: '🏋️', why: 'w', ex: [{ id: EXERCISES[3].id, sets: 3, mode: 'reps', reps: 8, why: 'w' }, { id: EXERCISES[4].id, sets: 3, mode: 'reps', reps: 10, why: 'w' }, { id: EXERCISES[5].id, sets: 3, mode: 'reps', reps: 10, why: 'w' }] }
-      ], customEx: [] }
+        {
+          id: 'r1',
+          name: 'A',
+          emoji: '💪',
+          why: 'w',
+          ex: [
+            { id: EX, sets: 3, mode: 'reps', reps: 8, why: 'w' },
+            { id: EX2, sets: 3, mode: 'reps', reps: 10, why: 'w' },
+            { id: EXERCISES[2].id, sets: 3, mode: 'reps', reps: 10, why: 'w' },
+          ],
+        },
+        {
+          id: 'r2',
+          name: 'B',
+          emoji: '🏋️',
+          why: 'w',
+          ex: [
+            { id: EXERCISES[3].id, sets: 3, mode: 'reps', reps: 8, why: 'w' },
+            { id: EXERCISES[4].id, sets: 3, mode: 'reps', reps: 10, why: 'w' },
+            { id: EXERCISES[5].id, sets: 3, mode: 'reps', reps: 10, why: 'w' },
+          ],
+        },
+      ],
+      customEx: [],
+    }
     wire.answer = chat(JSON.stringify(plan))
     const S = { ...state(), routines: [], week: {} }
     await local.localPlan(S, { goal: 'muscle', daysPerWeek: 3 })

@@ -96,13 +96,21 @@ export function moveWorkout(workouts, ref, iso, time, now = Date.now()) {
   const current = list.find(w => sameWorkout(w, ref))
   if (!current) return null
   const moved = stampWorkout(retimeWorkout(current, iso, time), now)
-  const filed = insertChronological(list.filter(w => w !== current), moved)
-  return rebuildPrHistory(filed, (current.entries || []).map(e => e.id), moved)
+  const filed = insertChronological(
+    list.filter(w => w !== current),
+    moved,
+  )
+  return rebuildPrHistory(
+    filed,
+    (current.entries || []).map(e => e.id),
+    moved,
+  )
 }
 
 // How long a saved session ran, in whole minutes — what the duration row starts from. At least a
 // minute, the way a logged past session is at least one (backfillEnd).
-export const durationMinOf = w => Math.max(1, Math.round(Math.max(0, (w?.end ?? w?.start ?? 0) - (w?.start ?? 0)) / 60000))
+export const durationMinOf = w =>
+  Math.max(1, Math.round(Math.max(0, (w?.end ?? w?.start ?? 0) - (w?.start ?? 0)) / 60000))
 
 // The history after a session's length is corrected — the workout nobody ended until they got
 // home, and that now reads three hours. The start stays where it was and the end follows it;
@@ -113,7 +121,8 @@ export function setWorkoutDuration(workouts, ref, minutes, now = Date.now()) {
   const list = Array.isArray(workouts) ? workouts : []
   const current = list.find(w => sameWorkout(w, ref))
   const min = Math.max(1, Math.round(Number(minutes) || 0))
-  if (!current || !Number.isFinite(current.start) || (current.end != null && min === durationMinOf(current))) return null
+  if (!current || !Number.isFinite(current.start) || (current.end != null && min === durationMinOf(current)))
+    return null
   // A record from before ids is keyed by its day and start, and neither moves here.
   const edited = stampWorkout({ ...current, end: current.start + min * 60000 }, now)
   return list.map(w => (w === current ? edited : w))

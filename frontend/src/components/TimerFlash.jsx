@@ -12,7 +12,11 @@ export default function TimerFlash() {
     const original = de.dataset.theme
     const opposite = original === 'light' ? 'dark' : 'light'
     const steps = [opposite, original, opposite, original]
-    const timers = steps.map((theme, i) => setTimeout(() => { de.dataset.theme = theme }, i * 600))
+    const timers = steps.map((theme, i) =>
+      setTimeout(() => {
+        de.dataset.theme = theme
+      }, i * 600),
+    )
     return () => {
       timers.forEach(clearTimeout)
       de.dataset.theme = original

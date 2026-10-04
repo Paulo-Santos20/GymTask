@@ -11,13 +11,19 @@ let _state = undefined
 let _db = undefined
 let _uid = null
 let _watcher = null
-let _loadedMtime = 0    // mtimeMs we last read at — used to catch watcher omissions
+let _loadedMtime = 0 // mtimeMs we last read at — used to catch watcher omissions
 
 function readJsonOrNull(file) {
-  try { return JSON.parse(fs.readFileSync(file, 'utf8')) } catch { return null }
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'))
+  } catch {
+    return null
+  }
 }
 
-function reloadDb() { _db = readJsonOrNull(path.join(DATA_DIR, 'db.json')) || { users: [], creds: [], subs: [], invites: [] } }
+function reloadDb() {
+  _db = readJsonOrNull(path.join(DATA_DIR, 'db.json')) || { users: [], creds: [], subs: [], invites: [] }
+}
 
 function stateFile(uid) {
   return path.join(DATA_DIR, 'state-' + uid.replace(/[^a-zA-Z0-9_-]/g, '') + '.json')
@@ -29,27 +35,30 @@ function stateFile(uid) {
 function resolveUid() {
   const envUid = (process.env.OPENGYM_UID || '').trim()
   if (envUid) {
-    if (!/^[a-zA-Z0-9_-]+$/.test(envUid)) throw new Error(`OPENGYM_UID contains characters that aren't safe in a filename: ${JSON.stringify(envUid)}`)
+    if (!/^[a-zA-Z0-9_-]+$/.test(envUid))
+      throw new Error(`OPENGYM_UID contains characters that aren't safe in a filename: ${JSON.stringify(envUid)}`)
     return envUid
   }
-  const files = fs.readdirSync(DATA_DIR)
+  const files = fs
+    .readdirSync(DATA_DIR)
     .filter(f => /^state-[a-zA-Z0-9_-]+\.json$/.test(f))
     .map(f => f.replace(/^state-/, '').replace(/\.json$/, ''))
   if (files.length === 1) return files[0]
   if (files.length === 0) {
     reloadDb()
     if (_db.users.length === 1) return _db.users[0].id
-    if (_db.users.length === 0) throw new Error(`no GymTask users found in ${path.join(DATA_DIR, 'db.json')} — sign in at least once on a device`)
+    if (_db.users.length === 0)
+      throw new Error(`no GymTask users found in ${path.join(DATA_DIR, 'db.json')} — sign in at least once on a device`)
     // Multiple users in db.json but no state files yet — list their ids, not the (empty)
     // files list. Hit when accounts exist but none has signed in on a device.
     throw new Error(
       `multiple GymTask users found — set OPENGYM_UID to one of: ${_db.users.map(u => u.id).join(', ')}\n` +
-      `  (look them up in ${path.join(DATA_DIR, 'db.json')} under "users"[].id)`
+        `  (look them up in ${path.join(DATA_DIR, 'db.json')} under "users"[].id)`,
     )
   }
   throw new Error(
     `multiple GymTask users found — set OPENGYM_UID to one of: ${files.join(', ')}\n` +
-    `  (look them up in ${path.join(DATA_DIR, 'db.json')} under "users"[].id)`
+      `  (look them up in ${path.join(DATA_DIR, 'db.json')} under "users"[].id)`,
   )
 }
 
@@ -63,7 +72,9 @@ export function init() {
   if (fs.existsSync(file)) {
     _state = readJsonOrNull(file)
     if (_state) _state = Object.assign({}, defaultsShape(), _state)
-    try { _loadedMtime = fs.statSync(file).mtimeMs } catch {}
+    try {
+      _loadedMtime = fs.statSync(file).mtimeMs
+    } catch {}
   }
   if (_watcher) _watcher.close()
   // fs.watch is best-effort: the api server's atomic write at PUT /api/data is the source of
@@ -81,7 +92,9 @@ export function init() {
     // merely closes the pipe would leak a process per session. Watching is unaffected: the
     // stdio transport is what keeps the loop alive while a client is actually attached.
     _watcher.unref()
-  } catch { /* fs.watch unsupported on this platform; tools will re-read on mtime change */ }
+  } catch {
+    /* fs.watch unsupported on this platform; tools will re-read on mtime change */
+  }
 }
 
 // Returns the state object, or null for a fresh account that never signed in on a device.
@@ -91,7 +104,9 @@ export function getState() {
   // Re-read if the file's mtime changed since our last load — covers watcher omissions and
   // platforms with no fs.watch.
   let mtime
-  try { mtime = fs.statSync(file).mtimeMs } catch {
+  try {
+    mtime = fs.statSync(file).mtimeMs
+  } catch {
     return _state === undefined ? null : _state
   }
   if (_state === undefined || mtime !== _loadedMtime) {
@@ -102,7 +117,7 @@ export function getState() {
       _state = Object.assign({}, defaultsShape(), fresh)
       _loadedMtime = mtime
     } else if (_state === undefined) {
-      _state = null  // no state file at all — never signed in on a device
+      _state = null // no state file at all — never signed in on a device
     }
   }
   return _state
@@ -122,16 +137,31 @@ export function _seedStateForTests(state) {
   _uid = 'test-uid'
   _db = { users: [{ id: _uid, name: 'Test', created: '2026-07-26T00:00:00.000Z' }], creds: [], subs: [], invites: [] }
   _state = state
-  _loadedMtime = Number.MAX_SAFE_INTEGER   // never re-read from disk in a test
-  if (_watcher) { _watcher.close(); _watcher = null }
+  _loadedMtime = Number.MAX_SAFE_INTEGER // never re-read from disk in a test
+  if (_watcher) {
+    _watcher.close()
+    _watcher = null
+  }
 }
 
 function defaultsShape() {
   return {
-    unit: 'kg', restSec: 90, sound: true, lang: 'en',
-    theme: 'dark', accent: 'lime', body: 'male', targetW: null,
-    bodyweight: [], routines: [], week: {}, dayPlan: {},
-    exWeights: {}, workouts: [], customEx: [], gifSize: 'full',
-    reminder: { on: false, time: '08:00', tz: null }
+    unit: 'kg',
+    restSec: 90,
+    sound: true,
+    lang: 'en',
+    theme: 'dark',
+    accent: 'lime',
+    body: 'male',
+    targetW: null,
+    bodyweight: [],
+    routines: [],
+    week: {},
+    dayPlan: {},
+    exWeights: {},
+    workouts: [],
+    customEx: [],
+    gifSize: 'full',
+    reminder: { on: false, time: '08:00', tz: null },
   }
 }

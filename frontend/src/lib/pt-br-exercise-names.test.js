@@ -2,12 +2,12 @@ import { afterEach, describe, expect, test } from 'vitest'
 import { readFileSync } from 'node:fs'
 import ptBR from '../exercise-names/pt-BR.js'
 import { EXDB } from './exercises-data.js'
-import {
-  EXERCISE_NAME_LANGS, _setLangState, exerciseNameFor, exerciseNameSearchText
-} from './i18n-core.js'
+import { EXERCISE_NAME_LANGS, _setLangState, exerciseNameFor, exerciseNameSearchText } from './i18n-core.js'
 
 describe('Brazilian Portuguese exercise names', () => {
-  const source = JSON.parse(readFileSync(new URL('../../../scripts/exercise-name-sources/pt-BR.json', import.meta.url), 'utf8'))
+  const source = JSON.parse(
+    readFileSync(new URL('../../../scripts/exercise-name-sources/pt-BR.json', import.meta.url), 'utf8'),
+  )
   afterEach(() => _setLangState('en', {}, null, null))
 
   test('matches the curated source and covers the complete built-in catalogue', () => {
@@ -19,7 +19,9 @@ describe('Brazilian Portuguese exercise names', () => {
   test('contains a non-empty translation for every known exercise', () => {
     for (const exercise of EXDB) {
       expect(ptBR[exercise.id]?.trim(), exercise.id).toBeTruthy()
-      expect(ptBR[exercise.id], exercise.id).not.toMatch(/(?:^|[^\p{L}])(?:abdómen|anca|gémeos|ecrã|ginásio|banda|piso|omoplata|pegada inversa|pegada invertida)(?=$|[^\p{L}])/iu)
+      expect(ptBR[exercise.id], exercise.id).not.toMatch(
+        /(?:^|[^\p{L}])(?:abdómen|anca|gémeos|ecrã|ginásio|banda|piso|omoplata|pegada inversa|pegada invertida)(?=$|[^\p{L}])/iu,
+      )
     }
   })
 

@@ -42,7 +42,7 @@ describe('body part from an exercise name', () => {
 
   it('still reads a bare grip exercise as forearms, and the rest as before', () => {
     expect(bp('Grip Trainer')).toBe('lower arms')
-    expect(bp('Back Squat')).toBe('back')   // unchanged: "back" is matched before "squat"
+    expect(bp('Back Squat')).toBe('back') // unchanged: "back" is matched before "squat"
     expect(bp('Standing Calf Raise')).toBe('lower legs')
     expect(bp('Something Unheard Of')).toBe(null)
   })

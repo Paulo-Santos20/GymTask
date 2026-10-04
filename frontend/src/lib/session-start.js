@@ -33,7 +33,11 @@ export function buildPlannedEntry(st, cfg, routine, { noProg = false } = {}) {
   // default for its optional load.
   const step = modeOf(cfg) === 'reps' ? weightIncrement(cfg, st.unit) : defaultIncrement(cfg.id, st.unit)
   const planReps = !startsFromLast(st)
-  const rows = applyPrescription(buildSets(st, cfg, { step, rid: routine?.id, useTarget: plan.kind === 'off', planReps }), plan, step)
+  const rows = applyPrescription(
+    buildSets(st, cfg, { step, rid: routine?.id, useTarget: plan.kind === 'off', planReps }),
+    plan,
+    step,
+  )
   const sets = applyIntensifierPlan(rows, cfg, dropGrid(st, cfg))
   const target = { ...cfg }
   if (plan.weight != null) target.weight = plan.weight
@@ -43,8 +47,12 @@ export function buildPlannedEntry(st, cfg, routine, { noProg = false } = {}) {
   // Rows that opened at last session's reps rather than the plan's ("Your last session", and no
   // policy that decided reps), so the workout card can say where the number came from. Written
   // only when true, and never saved with the finished workout.
-  const carried = !planReps && plan.kind !== 'off' && plan.reps == null && modeOf(cfg) === 'reps'
-    && rows.some(s => !isWarmupRow(s) && s.r !== cfg.reps)
+  const carried =
+    !planReps &&
+    plan.kind !== 'off' &&
+    plan.reps == null &&
+    modeOf(cfg) === 'reps' &&
+    rows.some(s => !isWarmupRow(s) && s.r !== cfg.reps)
   // `planned` is what the routine asked for, kept apart from the target the prescription moved,
   // so the next session can tell an edited plan from a progressed one (nextPrescription).
   return { target, plan, sets, planned: plannedOf(cfg), ...(carried ? { carried: true } : {}) }
@@ -84,7 +92,8 @@ export function plannedConfigOf(entry) {
  * today's 102.5 to the routine's own 60, and its Undo then let those 60 count as progress. So only
  * an entry whose routine is itself kept out is built that way.
  */
-export const builtOutOfProgression = (entry, routine) => entry?.noProg === true && routine?.excludeFromProgression === true
+export const builtOutOfProgression = (entry, routine) =>
+  entry?.noProg === true && routine?.excludeFromProgression === true
 
 // Returns a bare array of session entries. "Excluded from progression" is per-entry now
 // (`entry.noProg`, written only when true) rather than a wrapper flag — a rehab routine merged

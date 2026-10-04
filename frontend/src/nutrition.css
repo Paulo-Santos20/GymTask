@@ -2,63 +2,240 @@
    profile that feeds them. Everything sits on index.css tokens; nothing is redefined. */
 
 /* ---------- date navigation ---------- */
-.nut-nav{display:flex;align-items:center;gap:6px}
-.nut-nav-d{flex:1;text-align:center;font-size:16px;font-weight:600;letter-spacing:-.012em;min-width:0}
+.nut-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.nut-nav-d {
+  flex: 1;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  min-width: 0;
+}
 
 /* ---------- daily summary ---------- */
-.nut-sum-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-.nut-sum-l{font-size:13px;color:var(--label-2);letter-spacing:-.004em}
-.nut-kcal{display:flex;align-items:baseline;gap:6px;margin-top:3px}
-.nut-kcal b{font-size:32px;font-weight:700;letter-spacing:-.03em;line-height:1.05;font-variant-numeric:tabular-nums}
-.nut-kcal span{font-size:15px;color:var(--label-2);font-variant-numeric:tabular-nums}
-.nut-rem{
-  font-size:13px;font-weight:600;white-space:nowrap;margin-top:4px;padding:5px 11px;border-radius:99px;
-  color:var(--green);background:color-mix(in srgb,var(--green) 15%,transparent)
+.nut-sum-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
-.nut-rem.over{color:var(--red);background:color-mix(in srgb,var(--red) 15%,transparent)}
-.nut-bars{display:grid;gap:11px;margin-top:16px}
-.nut-bar-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:13.5px;margin-bottom:6px}
-.nut-bar-h .dim{font-variant-numeric:tabular-nums}
-.nut-bar-t{height:7px;border-radius:99px;background:var(--surface-3);overflow:hidden}
-.nut-bar-t i{display:block;height:100%;border-radius:99px;transition:width var(--med) var(--ease)}
+.nut-sum-l {
+  font-size: 13px;
+  color: var(--label-2);
+  letter-spacing: -0.004em;
+}
+.nut-kcal {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 3px;
+}
+.nut-kcal b {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.nut-kcal span {
+  font-size: 15px;
+  color: var(--label-2);
+  font-variant-numeric: tabular-nums;
+}
+.nut-rem {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  margin-top: 4px;
+  padding: 5px 11px;
+  border-radius: 99px;
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 15%, transparent);
+}
+.nut-rem.over {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 15%, transparent);
+}
+.nut-bars {
+  display: grid;
+  gap: 11px;
+  margin-top: 16px;
+}
+.nut-bar-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13.5px;
+  margin-bottom: 6px;
+}
+.nut-bar-h .dim {
+  font-variant-numeric: tabular-nums;
+}
+.nut-bar-t {
+  height: 7px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.nut-bar-t i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  transition: width var(--med) var(--ease);
+}
 
 /* ---------- undo strip after a delete ---------- */
-.nut-undo{
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  background:var(--acc-soft);color:var(--acc);border-radius:var(--r-lg);
-  padding:7px 8px 7px 15px;font-size:14.5px;font-weight:500;letter-spacing:-.006em;margin-bottom:14px
+.nut-undo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--acc-soft);
+  color: var(--acc);
+  border-radius: var(--r-lg);
+  padding: 7px 8px 7px 15px;
+  font-size: 14.5px;
+  font-weight: 500;
+  letter-spacing: -0.006em;
+  margin-bottom: 14px;
 }
 
 /* ---------- logged entries ---------- */
-.nut-ek{margin-left:auto;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
-.nut-ek i{font-style:normal;font-size:11px;font-weight:400;color:var(--label-3);margin-left:3px}
-.nut-del{width:34px;height:34px;font-size:16px;flex:none}
-.nut-none{padding:8px 20px 16px}
+.nut-ek {
+  margin-left: auto;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.nut-ek i {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--label-3);
+  margin-left: 3px;
+}
+.nut-del {
+  width: 34px;
+  height: 34px;
+  font-size: 16px;
+  flex: none;
+}
+.nut-none {
+  padding: 8px 20px 16px;
+}
 
 /* ---------- add-food flow ---------- */
-.nut-add{margin:-8px 0 20px}
-.nut-add-h{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px;margin-bottom:10px}
-.nut-add-h b{font-size:17px;font-weight:600;letter-spacing:-.014em}
-.nut-add .searchf{margin-bottom:2px}
-.nut-add .sect{margin-top:16px;margin-bottom:14px}
-.nut-st{text-align:center;font-size:14.5px;color:var(--label-2);padding:18px 10px;line-height:1.4}
-.nut-st.err{color:var(--red)}
-.nut-u{font-style:normal;font-size:11px;font-weight:400;color:var(--label-3);margin-left:3px}
+.nut-add {
+  margin: -8px 0 20px;
+}
+.nut-add-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 40px;
+  margin-bottom: 10px;
+}
+.nut-add-h b {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.014em;
+}
+.nut-add .searchf {
+  margin-bottom: 2px;
+}
+.nut-add .sect {
+  margin-top: 16px;
+  margin-bottom: 14px;
+}
+.nut-st {
+  text-align: center;
+  font-size: 14.5px;
+  color: var(--label-2);
+  padding: 18px 10px;
+  line-height: 1.4;
+}
+.nut-st.err {
+  color: var(--red);
+}
+.nut-u {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--label-3);
+  margin-left: 3px;
+}
 
 /* ---------- portion picker ---------- */
-.nut-pick-h{display:flex;align-items:center;gap:4px;min-width:0;margin-bottom:14px}
-.nut-pick-h b{font-size:17px;font-weight:600;letter-spacing:-.014em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.nut-pick-m{
-  display:flex;flex-wrap:wrap;gap:8px 16px;background:var(--surface-2);border-radius:var(--r);
-  padding:11px 14px;margin:14px 0;font-size:13.5px;color:var(--label-2);font-variant-numeric:tabular-nums
+.nut-pick-h {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin-bottom: 14px;
 }
-.nut-pick-m b{color:var(--label);font-weight:600}
-.nut-pick-k b{font-size:18px;letter-spacing:-.02em}
-.nut-pick .btn{width:100%}
+.nut-pick-h b {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.014em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nut-pick-m {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  background: var(--surface-2);
+  border-radius: var(--r);
+  padding: 11px 14px;
+  margin: 14px 0;
+  font-size: 13.5px;
+  color: var(--label-2);
+  font-variant-numeric: tabular-nums;
+}
+.nut-pick-m b {
+  color: var(--label);
+  font-weight: 600;
+}
+.nut-pick-k b {
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+.nut-pick .btn {
+  width: 100%;
+}
 
 /* ---------- profile ---------- */
-.nut-pad{padding:10px 14px 4px}
-.nut-prof{display:grid;gap:12px}
-.nut-lbl{font-size:13px;color:var(--label-2);text-align:center;margin:18px 0 9px}
-.nut-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
-.nut-note{font-size:12.5px;line-height:1.45;color:var(--label-3);padding:14px 14px 16px;margin:0}
+.nut-pad {
+  padding: 10px 14px 4px;
+}
+.nut-prof {
+  display: grid;
+  gap: 12px;
+}
+.nut-lbl {
+  font-size: 13px;
+  color: var(--label-2);
+  text-align: center;
+  margin: 18px 0 9px;
+}
+.nut-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.nut-note {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--label-3);
+  padding: 14px 14px 16px;
+  margin: 0;
+}

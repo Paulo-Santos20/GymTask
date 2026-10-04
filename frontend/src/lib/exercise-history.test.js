@@ -8,7 +8,10 @@ const iso = i => new Date(T0 + i * DAY).toISOString().slice(0, 10)
 
 // One workout on day `i` with a single bench entry made of the given rows.
 const session = (i, rows, extra = {}) => ({
-  id: 'w' + i, d: iso(i), start: T0 + i * DAY, entries: [{ id: 'bench', target: { mode: 'reps' }, sets: rows, ...extra }],
+  id: 'w' + i,
+  d: iso(i),
+  start: T0 + i * DAY,
+  entries: [{ id: 'bench', target: { mode: 'reps' }, sets: rows, ...extra }],
 })
 const work = (w, r, done = true) => ({ w, r, done })
 const warm = (w, r) => ({ w, r, done: true, phase: 'warmup' })
@@ -32,7 +35,10 @@ describe('exerciseHistory', () => {
     expect(h.sessions[0].sets).toHaveLength(2)
     expect(h.sessions[1]).toMatchObject({ value: 60, volume: 600 })
     // the chart stays chronological
-    expect(h.points.map(p => [p.d, p.y])).toEqual([[iso(0), 60], [iso(2), 65]])
+    expect(h.points.map(p => [p.d, p.y])).toEqual([
+      [iso(0), 60],
+      [iso(2), 65],
+    ])
   })
 
   it('leaves warm-ups and unfinished rows out of every number', () => {
@@ -45,9 +51,14 @@ describe('exerciseHistory', () => {
   })
 
   it('marks the PR on the session that first reached the best weight, once', () => {
-    const S = { workouts: [
-      session(0, [work(60, 5)]), session(1, [work(70, 5)]), session(2, [work(65, 5)]), session(3, [work(70, 3)]),
-    ] }
+    const S = {
+      workouts: [
+        session(0, [work(60, 5)]),
+        session(1, [work(70, 5)]),
+        session(2, [work(65, 5)]),
+        session(3, [work(70, 3)]),
+      ],
+    }
     const h = exerciseHistory(S, 'bench')
     expect(h.best).toBe(70)
     expect(h.prId).toBe('w1')
@@ -86,8 +97,36 @@ describe('exerciseHistory', () => {
   })
 
   it('plots the longest hold for timed work and the minutes for cardio', () => {
-    const hold = i => ({ id: 'h' + i, d: iso(i), start: T0 + i * DAY, entries: [{ id: 'plank', target: { mode: 'time' }, sets: [{ sec: 40 + i * 10, done: true }, { sec: 30, done: true }] }] })
-    const run = i => ({ id: 'r' + i, d: iso(i), start: T0 + i * DAY, entries: [{ id: 'run', target: { mode: 'cardio' }, sets: [{ min: 20, speed: 10, done: true }, { min: 5, speed: 12, done: true }] }] })
+    const hold = i => ({
+      id: 'h' + i,
+      d: iso(i),
+      start: T0 + i * DAY,
+      entries: [
+        {
+          id: 'plank',
+          target: { mode: 'time' },
+          sets: [
+            { sec: 40 + i * 10, done: true },
+            { sec: 30, done: true },
+          ],
+        },
+      ],
+    })
+    const run = i => ({
+      id: 'r' + i,
+      d: iso(i),
+      start: T0 + i * DAY,
+      entries: [
+        {
+          id: 'run',
+          target: { mode: 'cardio' },
+          sets: [
+            { min: 20, speed: 10, done: true },
+            { min: 5, speed: 12, done: true },
+          ],
+        },
+      ],
+    })
     const S = { workouts: [hold(0), hold(1), run(0)] }
     const plank = exerciseHistory(S, 'plank')
     expect(plank).toMatchObject({ mode: 'time', metric: 'sec', best: 50, prId: 'h1' })
@@ -100,13 +139,23 @@ describe('exerciseHistory', () => {
   })
 
   it('gives a session logged in another mode no point, but keeps it in the list', () => {
-    const S = { workouts: [
-      { id: 'a', d: iso(0), start: T0, entries: [{ id: 'x', target: { mode: 'time' }, sets: [{ sec: 30, done: true }] }] },
-      { id: 'b', d: iso(1), start: T0 + DAY, entries: [{ id: 'x', target: { mode: 'reps' }, sets: [work(20, 10)] }] },
-    ] }
+    const S = {
+      workouts: [
+        {
+          id: 'a',
+          d: iso(0),
+          start: T0,
+          entries: [{ id: 'x', target: { mode: 'time' }, sets: [{ sec: 30, done: true }] }],
+        },
+        { id: 'b', d: iso(1), start: T0 + DAY, entries: [{ id: 'x', target: { mode: 'reps' }, sets: [work(20, 10)] }] },
+      ],
+    }
     const h = exerciseHistory(S, 'x')
     expect(h.mode).toBe('reps')
     expect(h.points).toHaveLength(1)
-    expect(h.sessions.map(s => [s.id, s.value])).toEqual([['b', 20], ['a', null]])
+    expect(h.sessions.map(s => [s.id, s.value])).toEqual([
+      ['b', 20],
+      ['a', null],
+    ])
   })
 })

@@ -32,8 +32,8 @@ describe('weekOrder', () => {
 
 describe('weekDayOffset', () => {
   it('is the column a weekday sits in', () => {
-    expect(weekDayOffset(1, MONDAY)).toBe(0)    // Monday, Monday-first
-    expect(weekDayOffset(0, MONDAY)).toBe(6)    // Sunday closes a Monday-first week
+    expect(weekDayOffset(1, MONDAY)).toBe(0) // Monday, Monday-first
+    expect(weekDayOffset(0, MONDAY)).toBe(6) // Sunday closes a Monday-first week
     expect(weekDayOffset(0, SUNDAY)).toBe(0)
     expect(weekDayOffset(1, SUNDAY)).toBe(1)
   })
@@ -87,7 +87,8 @@ describe('the week streak counts the profile’s own weeks', () => {
 
   it('splits a Sun/Mon pair into two weeks for a Monday profile, one for a Sunday profile', () => {
     const sun = sundayBack()
-    const mon = new Date(sun); mon.setDate(sun.getDate() + 1)
+    const mon = new Date(sun)
+    mon.setDate(sun.getDate() + 1)
     const workouts = [{ d: isoOf(sun) }, { d: isoOf(mon) }]
     expect(weekKey(isoOf(sun), MONDAY)).not.toBe(weekKey(isoOf(mon), MONDAY))
     expect(weekKey(isoOf(sun), SUNDAY)).toBe(weekKey(isoOf(mon), SUNDAY))
@@ -101,7 +102,7 @@ describe('the week streak counts the profile’s own weeks', () => {
 })
 
 describe('“this week” ranges follow the setting', () => {
-  const workouts = [{ d: '2026-08-16' }, { d: WED }]   // Sunday, then Wednesday
+  const workouts = [{ d: '2026-08-16' }, { d: WED }] // Sunday, then Wednesday
 
   it('muscle balance: the 7-day window is a week, not the last seven days', () => {
     const mon = muscleBalanceWindow(workouts, 7, Date.now(), WED, MONDAY)
@@ -118,7 +119,11 @@ describe('“this week” ranges follow the setting', () => {
     // Four rated sets: two on the Sunday, two on the Wednesday. Monday-first that is two
     // points (one per week, each with its two rated sets); Sunday-first it is one point.
     const set = r => ({ done: true, w: 60, r: 8, rir: r })
-    const workout = d => ({ d, start: new Date(d + 'T10:00:00').getTime(), entries: [{ id: '0025', sets: [set(2), set(3)] }] })
+    const workout = d => ({
+      d,
+      start: new Date(d + 'T10:00:00').getTime(),
+      entries: [{ id: '0025', sets: [set(2), set(3)] }],
+    })
     const S = { effort: 'rir', workouts: [workout('2026-08-16'), workout(WED)] }
 
     const mon = effortWeeks({ ...S, weekStart: MONDAY }, 0)

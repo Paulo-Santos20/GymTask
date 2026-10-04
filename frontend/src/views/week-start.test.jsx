@@ -19,8 +19,13 @@ const mocks = vi.hoisted(() => {
       mut(next)
       state.S = next
     },
-    replaceState: vi.fn(), setUser: vi.fn(), pullState: vi.fn(), pushState: vi.fn(),
-    signOut: vi.fn(), signOutAll: vi.fn(), resetDemo: vi.fn(),
+    replaceState: vi.fn(),
+    setUser: vi.fn(),
+    pullState: vi.fn(),
+    pushState: vi.fn(),
+    signOut: vi.fn(),
+    signOutAll: vi.fn(),
+    resetDemo: vi.fn(),
   })
   return state
 })
@@ -37,14 +42,25 @@ vi.mock('../store/useUI.js', () => {
 })
 vi.mock('react-router-dom', () => ({ useNavigate: () => () => {} }))
 vi.mock('../lib/api.js', () => ({
-  api: vi.fn(), IS_ANDROID: false,
+  api: vi.fn(),
+  IS_ANDROID: false,
 }))
-vi.mock('../lib/push.js', () => ({ pushSupported: () => false, enablePush: vi.fn(), disablePush: vi.fn(), sendTestPush: vi.fn() }))
+vi.mock('../lib/push.js', () => ({
+  pushSupported: () => false,
+  enablePush: vi.fn(),
+  disablePush: vi.fn(),
+  sendTestPush: vi.fn(),
+}))
 vi.mock('../lib/wakelock.js', () => ({ wakeLockSupported: () => false }))
 vi.mock('../sheets.jsx', () => ({
-  starterPlanSheet: vi.fn(), confirmSheet: vi.fn(), importFromApp: vi.fn(),
-  importFromHevy: vi.fn(), equipmentProfileSheet: vi.fn(),
-  dayAssignSheet: vi.fn(), dayAddRoutineSheet: vi.fn(), planToolsSheet: vi.fn(),
+  starterPlanSheet: vi.fn(),
+  confirmSheet: vi.fn(),
+  importFromApp: vi.fn(),
+  importFromHevy: vi.fn(),
+  equipmentProfileSheet: vi.fn(),
+  dayAssignSheet: vi.fn(),
+  dayAddRoutineSheet: vi.fn(),
+  planToolsSheet: vi.fn(),
 }))
 
 globalThis.__APP_VERSION__ ??= 'test'
@@ -52,8 +68,17 @@ globalThis.__APP_VERSION__ ??= 'test'
 let host, root
 beforeEach(() => {
   mocks.S = {
-    unit: 'kg', restSec: 90, restPauseSec: 15, sound: false, effort: 'none',
-    gifSize: 'full', workouts: [], routines: [], exWeights: {}, week: {}, dayPlan: {},
+    unit: 'kg',
+    restSec: 90,
+    restPauseSec: 15,
+    sound: false,
+    effort: 'none',
+    gifSize: 'full',
+    workouts: [],
+    routines: [],
+    exWeights: {},
+    week: {},
+    dayPlan: {},
   }
   host = document.createElement('div')
   document.body.appendChild(host)
@@ -73,11 +98,15 @@ describe('Settings â€” week starts on', () => {
   it('offers Monday and Sunday and writes the getDay() index', () => {
     mount()
     expect(segButton('Monday').getAttribute('aria-pressed')).toBe('true')
-    act(() => { segButton('Sunday').click() })
+    act(() => {
+      segButton('Sunday').click()
+    })
     expect(mocks.S.weekStart).toBe(0)
     mount()
     expect(segButton('Sunday').getAttribute('aria-pressed')).toBe('true')
-    act(() => { segButton('Monday').click() })
+    act(() => {
+      segButton('Monday').click()
+    })
     expect(mocks.S.weekStart).toBe(1)
   })
 
@@ -94,20 +123,34 @@ describe('Plan â€” the week schedule follows the setting', () => {
 
   it('runs Monday to Sunday by default', () => {
     mount()
-    expect(dayRows().slice(0, 7)).toEqual(
-      ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
+    expect(dayRows().slice(0, 7)).toEqual([
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ])
   })
 
   it('runs Sunday to Saturday for a Sunday profile', () => {
     mocks.S.weekStart = 0
     mount()
-    expect(dayRows().slice(0, 7)).toEqual(
-      ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'])
+    expect(dayRows().slice(0, 7)).toEqual([
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+    ])
   })
 
   it('keeps a routine attached to its day, not to its position in the list', () => {
     mocks.S.routines = [{ id: 'r1', name: 'Push', emoji: null, ex: [] }]
-    mocks.S.week = { 0: 'r1' }        // Sunday
+    mocks.S.week = { 0: 'r1' } // Sunday
     mocks.S.weekStart = 0
     mount()
     const rows = [...host.querySelectorAll('.item')]
@@ -119,7 +162,8 @@ describe('Plan â€” the week schedule follows the setting', () => {
 
 describe('Plan â€” inline per-day routine management (combine routines)', () => {
   const mount = () => act(() => root.render(<Plan />))
-  const dayContainer = name => [...host.querySelectorAll('.item')].find(el => el.querySelector('.tt')?.textContent === name)
+  const dayContainer = name =>
+    [...host.querySelectorAll('.item')].find(el => el.querySelector('.tt')?.textContent === name)
 
   beforeEach(() => {
     mocks.S.routines = [
@@ -141,10 +185,14 @@ describe('Plan â€” inline per-day routine management (combine routines)', (
     mocks.S.week = { 1: ['r1', 'r2'] }
     mount()
     const removeButtons = () => [...dayContainer('Monday').querySelectorAll("button[aria-label='Remove']")]
-    act(() => { removeButtons()[1].dispatchEvent(new Event('click', { bubbles: true })) })
+    act(() => {
+      removeButtons()[1].dispatchEvent(new Event('click', { bubbles: true }))
+    })
     expect(mocks.S.week[1]).toEqual(['r1'])
     mount()
-    act(() => { removeButtons()[0].dispatchEvent(new Event('click', { bubbles: true })) })
+    act(() => {
+      removeButtons()[0].dispatchEvent(new Event('click', { bubbles: true }))
+    })
     expect(mocks.S.week).not.toHaveProperty('1')
   })
 

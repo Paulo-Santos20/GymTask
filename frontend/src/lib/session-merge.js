@@ -21,13 +21,12 @@ import { buildSessionEntries } from './session-start.js'
  */
 export function buildCombinedEntries(st, routineIds) {
   const seen = new Set()
-  const routines = [].concat(routineIds ?? [])
+  const routines = []
+    .concat(routineIds ?? [])
     .filter(id => id && !seen.has(id) && seen.add(id))
     .map(id => (st.routines || []).find(r => r.id === id))
     .filter(Boolean)
-  const entries = routines.flatMap(r =>
-    buildSessionEntries(st, r).map(e => ({ ...e, rid: r.id }))
-  )
+  const entries = routines.flatMap(r => buildSessionEntries(st, r).map(e => ({ ...e, rid: r.id })))
   return { entries, routineIds: routines.map(r => r.id), routines }
 }
 

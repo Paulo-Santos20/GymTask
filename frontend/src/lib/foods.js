@@ -252,7 +252,11 @@ export const FOODS = RAW.map(([name, kcal, protein, carbs, fat]) => ({
 
 // Accent/case folding for search: NFD-split and drop the combining marks, then lowercase.
 // "FEIJÃO", "Feijao" and "feijao" all collapse to "feijao".
-export const normalizeText = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+export const normalizeText = s =>
+  String(s ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
 
 // Substring search over the local table, accent- and case-insensitive. Multi-word queries
 // must all match ("arroz integral" skips "Arroz branco"); prefix matches rank above

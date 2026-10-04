@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import {
-  LANGS, INSTR_LANGS, EXERCISE_NAME_LANGS, DATE_LOCALES,
-  dateLocale, getLang, t, _setLangState
+  LANGS,
+  INSTR_LANGS,
+  EXERCISE_NAME_LANGS,
+  DATE_LOCALES,
+  dateLocale,
+  getLang,
+  t,
+  _setLangState,
 } from './i18n-core.js'
 import ptBR from '../locales/pt-BR.js'
 

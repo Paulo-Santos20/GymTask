@@ -24,7 +24,10 @@ const type = (el, value) => {
   el.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
-const unmountAll = () => act(() => { mounted.splice(0).forEach(r => r.unmount()) })
+const unmountAll = () =>
+  act(() => {
+    mounted.splice(0).forEach(r => r.unmount())
+  })
 
 describe('rename workout', () => {
   beforeEach(() => {
@@ -50,13 +53,19 @@ describe('rename workout', () => {
     expect(saveBtn.disabled).toBe(false)
 
     // Type blank whitespace
-    act(() => { type(input, '   ') })
+    act(() => {
+      type(input, '   ')
+    })
     expect(saveBtn.disabled).toBe(true)
 
     // Type a new title and save
-    act(() => { type(input, 'Heavy Squats & Core') })
+    act(() => {
+      type(input, 'Heavy Squats & Core')
+    })
     expect(saveBtn.disabled).toBe(false)
-    act(() => { saveBtn.click() })
+    act(() => {
+      saveBtn.click()
+    })
 
     const active = useStore.getState().S.active
     expect(active.name).toBe('Heavy Squats & Core')
@@ -78,7 +87,9 @@ describe('rename workout', () => {
     const host = render(() => renameWorkoutSheet())
     const input = host.querySelector('input')
 
-    act(() => { type(input, 'Upper Power') })
+    act(() => {
+      type(input, 'Upper Power')
+    })
     act(() => {
       input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     })
@@ -112,7 +123,9 @@ describe('rename workout', () => {
     // Click on Routine 2
     const items = [...host.querySelectorAll('.item')].filter(el => !el.classList.contains('disabled'))
     expect(items.length).toBeGreaterThan(0)
-    act(() => { items[0].click() })
+    act(() => {
+      items[0].click()
+    })
 
     const active = useStore.getState().S.active
     // The name should remain 'My Special Workout' instead of being overwritten with 'Routine 1 + Routine 2'
