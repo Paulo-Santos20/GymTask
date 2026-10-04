@@ -20,6 +20,7 @@ import {
   logEntry,
   lightBundle,
   changeValues,
+  nutritionSnapshot,
   CHANGE_TYPES,
   SNAPSHOT_MAX,
   LOG_MAX,
@@ -877,5 +878,49 @@ describe('what the log keeps, so a decision never makes a proposal vanish', () =
     expect(b.basedOn).toBeUndefined()
     expect(Object.keys(b.routines[0].ex[0])).not.toContain('secret')
     expect(lightBundle(null)).toBeNull()
+  })
+})
+
+/* The meal plan is built from the recorded TDEE, and the recorded TDEE lives in the nutrition
+   store, not in the synced state — so this is the shape that crosses the wire for RF6. */
+describe('nutrition snapshot', () => {
+  const TARGETS = { tdee: 2450, kcal: 2450, protein: 165, carbs: 250, fat: 75 }
+  const entry = (kcal, protein, carbs, fat) => ({
+    id: 'e1',
+    meal: 'cafe',
+    name: 'Oats',
+    grams: 100,
+    kcal,
+    protein,
+    carbs,
+    fat,
+  })
+
+  it('picks the five numbers the plan is built from and drops the rest of the targets', () => {
+    const snap = nutritionSnapshot({ targets: { ...TARGETS, bmr: 1700, note: 'x' }, log: {} }, '2026-10-04')
+    expect(snap.targets).toEqual(TARGETS)
+    expect(snap.recent).toEqual([])
+  })
+
+  it('sums the logged days of the last week, oldest first, and skips the days with nothing in them', () => {
+    const log = {
+      '2026-10-04': [entry(600, 40, 60, 15), entry(200, 10, 20, 5)],
+      '2026-10-01': [entry(1000, 50, 100, 30)],
+      '2026-09-20': [entry(9999, 99, 99, 99)], // ten days back: outside the window
+    }
+    const snap = nutritionSnapshot({ targets: TARGETS, log }, '2026-10-04')
+    expect(snap.recent).toEqual([
+      { d: '2026-10-01', kcal: 1000, protein: 50, carbs: 100, fat: 30 },
+      { d: '2026-10-04', kcal: 800, protein: 50, carbs: 80, fat: 20 },
+    ])
+  })
+
+  it('rounds to whole numbers and survives a store that has never been touched', () => {
+    const snap = nutritionSnapshot(
+      { targets: { tdee: 2450.6, kcal: 2450.4, protein: 165.5, carbs: 250.2, fat: 75.5 }, log: {} },
+      '2026-10-04',
+    )
+    expect(snap.targets).toEqual({ tdee: 2451, kcal: 2450, protein: 166, carbs: 250, fat: 76 })
+    expect(nutritionSnapshot(undefined)).toEqual({ targets: {}, recent: [] })
   })
 })

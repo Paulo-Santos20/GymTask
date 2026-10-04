@@ -551,3 +551,31 @@ test('an HTTPS provider is not refused for lacking a privilege drop, and runs en
     server.close()
   }
 })
+
+/* ---------- mealplan ---------- */
+test('a well-formed answer that is not a meal plan is refused by the validator, and nothing partial is left behind', async () => {
+  const uid = 'u-mealplan-ghost'
+  writeState(DIR, uid, sampleState())
+  // Parses, claims the right contract, is a change-set rather than a meal plan — the exact
+  // accident the validator exists for. The slot list is closed, so it cannot be quietly bent.
+  process.env.FIXTURE_MODE = 'unknown-exercise'
+  jobs.enqueue(uid, { kind: 'mealplan', nutrition: { targets: { tdee: 2450, kcal: 2450 } } })
+  const s = await settle(uid)
+  delete process.env.FIXTURE_MODE
+
+  assert.equal(lastOutcome(uid).outcome, 'failed')
+  assert.equal(lastOutcome(uid).errorClass, 'unusable')
+  assert.equal(s.pending, null, 'nothing partial is ever left behind')
+})
+
+test('malformed model JSON for a mealplan job fails cleanly and applies nothing', async () => {
+  const uid = 'u-mealplan-garbage'
+  writeState(DIR, uid, sampleState())
+  process.env.FIXTURE_MODE = 'invalid'
+  jobs.enqueue(uid, { kind: 'mealplan', nutrition: { targets: { tdee: 2450, kcal: 2450 } } })
+  const s = await settle(uid)
+  delete process.env.FIXTURE_MODE
+
+  assert.equal(lastOutcome(uid).outcome, 'failed')
+  assert.equal(s.pending, null)
+})

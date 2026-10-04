@@ -462,6 +462,41 @@ export function profileLines(p) {
   return lines
 }
 
+/* ============================ the nutrition snapshot ============================ */
+
+// The meal plan is built from what the lifter actually eats, and that lives only in the
+// nutrition store — not in S, so it never rides into a backup or a sync. The client
+// snapshots it here (whole numbers, one row per logged day, oldest first) and the server
+// allowlists it field by field (api/coach/core/payload.js, nutritionBlock).
+const SNAP_TARGETS = ['tdee', 'kcal', 'protein', 'carbs', 'fat']
+export const NUTRITION_WINDOW_DAYS = 7
+
+export function nutritionSnapshot(nutri, today = todayISO()) {
+  const src = (nutri && nutri.targets) || {}
+  const targets = {}
+  for (const k of SNAP_TARGETS) if (Number.isFinite(src[k])) targets[k] = Math.round(src[k])
+  const recent = []
+  const log = (nutri && nutri.log) || {}
+  const base = Date.parse(today + 'T00:00:00Z')
+  if (Number.isFinite(base)) {
+    for (let i = NUTRITION_WINDOW_DAYS - 1; i >= 0; i--) {
+      const d = new Date(base - i * 86400000).toISOString().slice(0, 10)
+      const entries = log[d]
+      if (!Array.isArray(entries) || !entries.length) continue
+      const sum = { kcal: 0, protein: 0, carbs: 0, fat: 0 }
+      for (const e of entries) for (const k in sum) sum[k] += Number(e && e[k]) || 0
+      recent.push({
+        d,
+        kcal: Math.round(sum.kcal),
+        protein: Math.round(sum.protein),
+        carbs: Math.round(sum.carbs),
+        fat: Math.round(sum.fat),
+      })
+    }
+  }
+  return { targets, recent }
+}
+
 /* ============================ applying a created plan ============================ */
 
 /**

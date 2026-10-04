@@ -16,8 +16,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
+import { useNutritionStore } from '../store/nutritionStore.js'
 import { t } from '../lib/i18n.js'
-import { fmtDate, fmtNum, DAYS } from '../lib/format.js'
+import { fmtDate, fmtNum, DAYS, todayISO, uid } from '../lib/format.js'
 import { exLine } from '../lib/history.js'
 import { DEMO } from '../lib/demo.js'
 import {
@@ -46,6 +47,7 @@ import {
   useCoachStatus,
   requestReview,
   requestDebrief,
+  requestMealPlan,
   requestPlan,
   refinePlan,
   resolvePending,
@@ -162,6 +164,7 @@ export default function CoachChat() {
       lastWorkout?.name ? t('How did my {0} session go?', lastWorkout.name) : t('How did my last workout go?'),
     )
   const askNewPlan = () => ask(() => requestPlan(coach.profile), t('Build me a fresh plan from my answers.'))
+  const askMealPlan = () => ask(() => requestMealPlan(), t('Plan my day of eating'))
   const askImprove = r =>
     ask(
       () =>
@@ -220,6 +223,19 @@ export default function CoachChat() {
               onClick={() => {
                 close()
                 askReview()
+              }}
+            />
+          )}
+          {idle && (
+            <Row
+              icon="flame"
+              iconTint="var(--orange)"
+              title={t('Plan my day of eating')}
+              subtitle={t('Meals from your targets and what you log')}
+              accessory="chevron"
+              onClick={() => {
+                close()
+                askMealPlan()
               }}
             />
           )}
@@ -388,6 +404,8 @@ export default function CoachChat() {
             <PlanCard p={pending} S={S} update={update} toast={toast} nav={nav} refresh={refresh} />
           ) : pending.kind === 'debrief' ? (
             <DebriefCard p={pending} S={S} update={update} toast={toast} refresh={refresh} />
+          ) : pending.kind === 'mealplan' ? (
+            <MealPlanCard p={pending} update={update} toast={toast} refresh={refresh} />
           ) : (
             <ReviewCard p={pending} S={S} update={update} toast={toast} refresh={refresh} />
           ))}
@@ -522,7 +540,9 @@ function Typing({ S, kind, coachLocal, config, text }) {
       ? t('Building your plan…')
       : kind === 'debrief'
         ? t('Looking at that session…')
-        : t('Reading your training…')
+        : kind === 'mealplan'
+          ? t('Planning your day…')
+          : t('Reading your training…')
   return (
     <div className="msg coach">
       {/* Streamed tokens land here as they arrive; before the first one (or when the stream
@@ -680,6 +700,127 @@ const RoutineBlock = ({ r, unit }) => (
     ))}
   </div>
 )
+
+/* ---------------------------------- a meal plan ---------------------------------- */
+
+// One label per diary section — the same source keys Nutrition.jsx writes under.
+const MEAL_KEYS = { cafe: 'Breakfast', almoco: 'Lunch', lanche: 'Snack', jantar: 'Dinner' }
+
+function MealPlanCard({ p, update, toast, refresh }) {
+  const [picked, setPicked] = useState(() => new Set((p.meals || []).map(m => m.slot)))
+  const toggle = slot =>
+    setPicked(s => {
+      const n = new Set(s)
+      n.has(slot) ? n.delete(slot) : n.add(slot)
+      return n
+    })
+  const chosen = (p.meals || []).filter(m => picked.has(m.slot))
+  const mealKcal = m => m.items.reduce((n, it) => n + (Number(it.kcal) || 0), 0)
+
+  const add = () => {
+    if (!chosen.length) return discard()
+    try {
+      const date = todayISO()
+      let n = 0
+      update(s => {
+        const { addEntry, clearRemoved } = useNutritionStore.getState()
+        for (const m of chosen)
+          for (const it of m.items) {
+            addEntry(date, {
+              id: uid(),
+              meal: m.slot,
+              name: it.name,
+              source: 'coach',
+              grams: it.grams ?? 100,
+              kcal: Math.round(it.kcal),
+              protein: Math.round(it.protein),
+              carbs: Math.round(it.carbs),
+              fat: Math.round(it.fat),
+            })
+            n++
+          }
+        clearRemoved()
+        appendChat(s, {
+          role: 'coach',
+          kind: 'applied',
+          text: t('Added {0} foods to your diary for today.', n),
+        })
+      })
+      resolvePending({ accepted: ['mealplan'] }).catch(() => {})
+      toast(t('Added {0} foods to your diary for today.', n))
+      refresh()
+    } catch (e) {
+      toast(e.message || t('Could not add those foods'))
+    }
+  }
+  const discard = () =>
+    confirmSheet({
+      title: t('Discard this meal plan?'),
+      message: t('Nothing is written to your diary, and you can ask again anytime.'),
+      confirmText: t('Discard'),
+      danger: true,
+      onConfirm: () => {
+        update(s => {
+          appendChat(s, {
+            role: 'coach',
+            kind: 'dismissed',
+            text: t('Discarded. Ask again whenever you want a fresh day.'),
+          })
+        })
+        resolvePending({ dismissed: true }).catch(() => {})
+        refresh()
+      },
+    })
+
+  const totals = p.totals || { kcal: 0 }
+  const target = p.target || {}
+
+  return (
+    <div className="msg coach" style={{ maxWidth: '100%', width: '100%' }}>
+      <div className="pcard">
+        <div className="pcard-hd">
+          <div className="pcard-eyebrow">{t('Meal plan')}</div>
+          <h2 className="pcard-h">{t('Today’s meals')}</h2>
+          {!!p.summary && <p className="pcard-sum">{p.summary}</p>}
+          <p className="pcard-sum" style={{ fontSize: 13 }}>
+            {fmtNum(totals.kcal)}
+            {target.kcal ? ` / ${fmtNum(target.kcal)}` : ''} kcal
+          </p>
+        </div>
+
+        {(p.meals || []).map(m => (
+          <div key={m.slot} className="pcard-rt">
+            <div className="pcard-rt-h">
+              <b>{t(MEAL_KEYS[m.slot] || m.slot)}</b>
+              <span>{fmtNum(mealKcal(m))} kcal</span>
+              <Check checked={picked.has(m.slot)} onChange={() => toggle(m.slot)} />
+            </div>
+            {m.items.map((it, i) => (
+              <div key={i} className="pcard-ex">
+                <div className="pcard-ex-r">
+                  <span className="pcard-ex-n">{it.name}</span>
+                  <span className="pcard-ex-l">
+                    {fmtNum(it.grams)} g · {fmtNum(it.kcal)} kcal · {fmtNum(it.protein)} g
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+
+        <div className="pcard-note">
+          {t('The Coach is not a doctor or a physiotherapist. If something hurts, ask a professional.')}
+        </div>
+        <div className="pcard-ft">
+          <Button variant="primary" icon="check" onClick={add}>
+            {t('Add to my diary')}
+          </Button>
+          <Button onClick={discard}>{t('Discard')}</Button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 /* ---------------------------------- a review ---------------------------------- */
 

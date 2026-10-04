@@ -1668,4 +1668,19 @@ export default {
   Adherence: 'Aderência',
   'Weight, intake and volume': 'Peso, ingestão e volume',
   Intake: 'Ingestão',
+  // --- coach: the meal plan card (RF6) ---
+  'Plan my day of eating': 'Planejar o meu dia de refeições',
+  'Meals from your targets and what you log': 'Refeições a partir das suas metas e do que você registra',
+  'Planning your day…': 'Planejando seu dia…',
+  'Meal plan': 'Plano de refeições',
+  'Today’s meals': 'Refeições de hoje',
+  'Add to my diary': 'Adicionar ao meu diário',
+  'Added {0} foods to your diary for today.': '{0} alimentos adicionados ao seu diário de hoje.',
+  'Discard this meal plan?': 'Descartar este plano de refeições?',
+  'Nothing is written to your diary, and you can ask again anytime.':
+    'Nada é escrito no seu diário, e você pode pedir de novo quando quiser.',
+  'Discarded. Ask again whenever you want a fresh day.': 'Descartado. Peça de novo quando quiser um dia novo.',
+  'Could not add those foods': 'Não foi possível adicionar esses alimentos',
+  'Four meals across the day — {0} kcal, {1} g of protein, built from your recorded targets.':
+    'Quatro refeições ao longo do dia — {0} kcal, {1} g de proteína, a partir das suas metas.',
 }

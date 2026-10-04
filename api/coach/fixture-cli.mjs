@@ -153,6 +153,30 @@ if (kind === 'debrief') {
   })
 }
 
+// mealplan: four meals over the targets the payload was handed. The calorie number is echoed
+// in the summary so a test can tell a body field that rode all the way to the model from one
+// that stopped at the route.
+if (kind === 'mealplan') {
+  const kcal = P.nutrition?.targets?.kcal ?? P.nutrition?.targets?.tdee
+  out({
+    coach_contract: 1,
+    summary: `Four meals totalling ${kcal ?? 'unknown'} kcal, spread across the day.`,
+    totals: { kcal: 2300, protein: 159, carbs: 240, fat: 73 },
+    meals: [
+      { slot: 'cafe', items: [{ name: 'Oats with whey', grams: 320, kcal: 420, protein: 32, carbs: 55, fat: 9 }] },
+      {
+        slot: 'almoco',
+        items: [
+          { name: 'Chicken, rice, salad', grams: 520, kcal: 700, protein: 55, carbs: 80, fat: 15 },
+          { name: 'Olive oil', grams: 14, kcal: 120, protein: 0, carbs: 0, fat: 14 },
+        ],
+      },
+      { slot: 'lanche', items: [{ name: 'Greek yoghurt and banana', grams: 280, kcal: 280, protein: 22, carbs: 35, fat: 5 }] },
+      { slot: 'jantar', items: [{ name: 'Salmon, potatoes, greens', grams: 780, kcal: 780, protein: 50, carbs: 70, fat: 30 }] },
+    ],
+  })
+}
+
 // review
 const routine = (P.plan?.routines || [])[0]
 const first = routine?.ex?.[0]

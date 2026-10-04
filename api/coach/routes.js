@@ -152,6 +152,21 @@ export function coachRoutes({ json, readBody, readSession }) {
       }
     },
 
+    /* A day of eating from the recorded TDEE. The nutrition snapshot rides in the body —
+       it lives only in the phone's local store, so the client sends it and payload.build
+       allowlists it field by field. */
+    'POST /api/coach/mealplan': async (req, res) => {
+      const user = guard(req, res)
+      if (!user) return
+      const body = await readBody(req)
+      try {
+        const job = jobs.enqueue(user.id, { kind: 'mealplan', nutrition: body.nutrition || null })
+        json(res, 202, { job })
+      } catch (e) {
+        failEnqueue(res, e)
+      }
+    },
+
     /* How this profile sits against everyone else on the instance who opted in: medians only,
        at least three people, and nothing for a profile that does not share itself. */
     'GET /api/coach/cohort': async (req, res) => {

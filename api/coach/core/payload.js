@@ -454,11 +454,43 @@ function recentBlock(S) {
     })
 }
 
+/* ---------- the mealplan nutrition block ---------- */
+
+// How many logged days a meal plan is built from. Small on purpose: a fortnight is enough
+// pattern for the model, and the block's whole serialized form has to stay inside a few
+// thousand characters (it rides on every mealplan payload as plain JSON).
+export const MEALPLAN_DAYS = 14
+const TARGET_KEYS = ['tdee', 'kcal', 'protein', 'carbs', 'fat']
+const DAY_KEYS = ['kcal', 'protein', 'carbs', 'fat']
+
+// Allowlist, not pass-through: the body carries whatever the client put in it, so only the
+// numbers the prompt asks for are read back out. A field nobody names here never leaves.
+function nutritionBlock(n) {
+  if (!n || typeof n !== 'object') return null
+  const t = n.targets && typeof n.targets === 'object' ? n.targets : {}
+  const targets = {}
+  for (const k of TARGET_KEYS) if (Number.isFinite(t[k])) targets[k] = t[k]
+  const recent = []
+  for (const d of (Array.isArray(n.recent) ? n.recent : []).slice(0, MEALPLAN_DAYS)) {
+    if (!d || typeof d !== 'object' || typeof d.d !== 'string') continue
+    const day = { d: d.d.slice(0, 10) }
+    let has = false
+    for (const k of DAY_KEYS)
+      if (Number.isFinite(d[k])) {
+        day[k] = d[k]
+        has = true
+      }
+    if (has) recent.push(day)
+  }
+  if (!Object.keys(targets).length && !recent.length) return null
+  return { targets, recent }
+}
+
 /**
  * Build a job payload.
  *
  * @param {object} S      the profile's synced state
- * @param {object} opts   { handle, kind, intake?, note?, refine?, previous?, workoutId?, cohort? }
+ * @param {object} opts   { handle, kind, intake?, note?, refine?, previous?, workoutId?, cohort?, nutrition? }
  *
  * `handle` is the opaque per-profile pseudonym the payload carries instead of a uid. It is
  * supplied rather than derived because the two runtimes mint it differently: the server keys
@@ -471,7 +503,14 @@ export function build(S, opts = {}) {
   const profile = opts.intake || coach.profile || null
   const p = {
     coach_contract: CONTRACT,
-    task: opts.kind === 'review' ? 'review' : opts.kind === 'debrief' ? 'debrief' : 'create',
+    task:
+      opts.kind === 'review'
+        ? 'review'
+        : opts.kind === 'debrief'
+          ? 'debrief'
+          : opts.kind === 'mealplan'
+            ? 'mealplan'
+            : 'create',
     meta: {
       profile: opts.handle,
       lang: S.lang || 'en',
@@ -549,6 +588,12 @@ export function build(S, opts = {}) {
     if (opts.cohort) p.cohort = opts.cohort
     // A review names mostly what is already trained; 60 candidates is plenty for a swap.
     p.library = librarySlice(S, profile?.equipment, { keep: trainedIds(S, workouts), max: 60 })
+  } else if (opts.kind === 'mealplan') {
+    // Nutrition lives only in the phone's local store, so the client sends the snapshot in
+    // the request body and this is the one place it is allowlisted: five target numbers, the
+    // last MEALPLAN_DAYS logged days as a date plus four macros, nothing else.
+    const nutrition = nutritionBlock(opts.nutrition)
+    if (nutrition) p.nutrition = nutrition
   } else {
     p.library = librarySlice(S, profile?.equipment, { keep: trainedIds(S, S.workouts || []) })
     // Creation for a returning user: what they have actually handled, so proposed baselines

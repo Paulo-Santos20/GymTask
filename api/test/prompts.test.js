@@ -54,3 +54,10 @@ test('buildPrompt picks the task by kind and refine, and only adds the repair bl
   assert.ok(repaired.includes('- first\n- second'))
   assert.ok(!repaired.includes('{{PREVIOUS}}') && !repaired.includes('{{ERRORS}}'))
 })
+
+test('buildPrompt assembles the mealplan task from its own text, not from create or review', () => {
+  const meal = buildPrompt('mealplan', { coach_contract: 1, nutrition: { targets: { kcal: 2450 } } }, null)
+  assert.ok(meal.startsWith(PROMPTS.common), 'the shared rules ride on every kind')
+  assert.ok(meal.includes(PROMPTS.mealplan), 'the mealplan text rides')
+  assert.ok(!meal.includes(PROMPTS.create) && !meal.includes(PROMPTS.review), 'no plan/review text leaks in')
+})

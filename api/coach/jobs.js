@@ -342,6 +342,9 @@ export function enqueue(uid, opts) {
     intake: opts.intake || null,
     note: opts.note || null,
     refine: opts.refine || null,
+    // Mealplan only: the nutrition snapshot from the phone's local store, allowlisted by
+    // payload.build when the job runs. Every other kind stores null.
+    nutrition: opts.nutrition || null,
     state: 'queued',
     startedAt: Date.now(),
   }
@@ -460,6 +463,7 @@ async function execute(job) {
     refine: job.refine,
     previous: pendingCreate?.bundle || null,
     workoutId: job.workoutId,
+    nutrition: job.nutrition,
     // The room's medians ride along on a review or a debrief when the admin allows it and
     // this person opted in; null otherwise, and the payload then carries no `cohort` at all.
     cohort: job.kind === 'review' || job.kind === 'debrief' ? cohortForPayload(job.uid) : null,
@@ -509,6 +513,9 @@ async function execute(job) {
       iteration: job.refine ? (pendingCreate?.iteration || 1) + 1 : 1,
       // A debrief names the session it read, so the card can show it after the fact.
       ...(job.kind === 'debrief' ? { workout: payloadLib.workoutMeta(S, job.workoutId) } : {}),
+      // A meal plan carries the targets it was aimed at, so the card can show the day
+      // against them without the client keeping its own copy.
+      ...(job.kind === 'mealplan' && payload.nutrition ? { target: payload.nutrition.targets } : {}),
       ...attempt.result,
     }
     return finish(job, { outcome: 'ready', pending })

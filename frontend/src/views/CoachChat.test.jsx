@@ -5,6 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import CoachChat from './CoachChat.jsx'
 import { effectiveRoutine } from '../lib/history.js'
 import { todayISO } from '../lib/format.js'
+import { useNutritionStore } from '../store/nutritionStore.js'
+import { resolvePending } from '../lib/coach-api.js'
+import { confirmSheet } from '../sheets.jsx'
 
 // The chat is where a plan is imported. These pin that the Import button applies the pending
 // plan through the store, writes the decision into the thread, and leaves today startable.
@@ -58,6 +61,7 @@ vi.mock('../lib/coach-api.js', () => ({
   refinePlan: vi.fn(() => Promise.resolve({})),
   requestReview: vi.fn(() => Promise.resolve({})),
   requestDebrief: vi.fn(() => Promise.resolve({})),
+  requestMealPlan: vi.fn(() => Promise.resolve({})),
   cohortStats: vi.fn(() => Promise.resolve({ ok: false, enabled: true, sharing: false })),
   setCohortShare: vi.fn(() => Promise.resolve({ ok: true, sharing: true })),
   JOB_ERRORS: { internal: 'x' },
@@ -312,5 +316,84 @@ describe('the Coach chat', () => {
     expect(byText(/^Compare$/)).toBeFalsy()
     await mount(null, null, { community: true })
     expect(byText(/^Compare$/)).toBeTruthy()
+  })
+})
+
+describe('the meal plan card', () => {
+  const meals = [
+    { slot: 'cafe', items: [{ name: 'Oats with whey', grams: 120, kcal: 420, protein: 32, carbs: 55, fat: 9 }] },
+    {
+      slot: 'almoco',
+      items: [
+        { name: 'Chicken, rice, salad', grams: 450, kcal: 700, protein: 55, carbs: 80, fat: 15 },
+        { name: 'Olive oil', grams: 14, kcal: 120, protein: 0, carbs: 0, fat: 14 },
+      ],
+    },
+    { slot: 'lanche', items: [{ name: 'Greek yoghurt and banana', grams: 250, kcal: 280, protein: 22, carbs: 35, fat: 5 }] },
+    { slot: 'jantar', items: [{ name: 'Salmon, potatoes, greens', grams: 500, kcal: 780, protein: 50, carbs: 70, fat: 30 }] },
+  ]
+  const pending = () => ({
+    id: 'm1',
+    kind: 'mealplan',
+    summary: 'Four meals, 2 300 kcal, against your 2 450 target.',
+    target: { tdee: 2450, kcal: 2450, protein: 165, carbs: 250, fat: 75 },
+    totals: { kcal: 2300, protein: 159, carbs: 240, fat: 73 },
+    meals,
+  })
+  const checkboxes = () => [...container.querySelectorAll('[role="checkbox"]')]
+
+  beforeEach(() => {
+    useNutritionStore.setState({ log: {}, lastRemoved: null })
+  })
+
+  it('shows every meal with its foods, reviewable before anything is written', async () => {
+    await mount(pending())
+    expect(checkboxes().length).toBe(4, 'one review toggle per diary section')
+    expect(checkboxes().every(c => c.getAttribute('aria-checked') === 'true')).toBe(true)
+    expect(container.textContent).toContain('Oats with whey')
+    expect(container.textContent).toContain('Salmon, potatoes, greens')
+    expect(container.textContent).toContain('2 300')
+    expect(container.textContent).toContain('2 450')
+  })
+
+  it('writes every meal into the diary through the existing entry shape, and says so in the thread', async () => {
+    await mount(pending())
+    await click(byText(/to my diary|to the diary/i))
+    const day = useNutritionStore.getState().log[todayISO()]
+    expect(day).toHaveLength(5, 'all four meals, five foods')
+    expect(day[0]).toMatchObject({
+      meal: 'cafe',
+      name: 'Oats with whey',
+      source: 'coach',
+      grams: 120,
+      kcal: 420,
+      protein: 32,
+      carbs: 55,
+      fat: 9,
+    })
+    expect(day[0].id).toBeTruthy()
+    expect(day.map(e => e.meal)).toEqual(['cafe', 'almoco', 'almoco', 'lanche', 'jantar'])
+    expect(mocks.S.coach.chat.at(-1).kind).toBe('applied')
+    expect(resolvePending).toHaveBeenCalledWith({ accepted: ['mealplan'] })
+  })
+
+  it('writes only the meals still checked, so one section can be left out', async () => {
+    await mount(pending())
+    await click(checkboxes()[3]) // decline dinner
+    await click(byText(/to my diary|to the diary/i))
+    const day = useNutritionStore.getState().log[todayISO()]
+    expect(day).toHaveLength(4)
+    expect(day.every(e => e.meal !== 'jantar')).toBe(true)
+  })
+
+  it('discarding resolves the proposal and writes nothing to the diary', async () => {
+    await mount(pending())
+    await click(byText(/[Dd]iscard/))
+    expect(confirmSheet).toHaveBeenCalled() // a discard always asks first
+    // The sheet is a mock in this harness: run the confirmation it would have offered.
+    act(() => confirmSheet.mock.calls.at(-1)[0].onConfirm())
+    expect(resolvePending).toHaveBeenCalledWith({ dismissed: true })
+    expect(useNutritionStore.getState().log).toEqual({})
+    expect(mocks.S.coach.chat.at(-1).kind).toBe('dismissed')
   })
 })

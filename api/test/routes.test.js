@@ -100,3 +100,38 @@ test('a debrief is enqueued as its own kind, and the cohort routes gate on the c
   while (jobs.status('admin-1').job && Date.now() < until) await new Promise(res => setTimeout(res, 25))
   assert.equal(jobs.status('admin-1').last.errorClass, 'noworkout')
 })
+
+/* ---------- mealplan ---------- */
+test('a meal plan is enqueued with the nutrition block from the body and lands as a reviewable proposal', async () => {
+  fresh()
+  const jobs = await import('../coach/jobs.js')
+  const { writeState, sampleState } = await import('./helpers.mjs')
+  const { forcePrivilegeVerdict } = await import('../coach/adapters/spawn.js')
+  forcePrivilegeVerdict({ ok: true, dropped: false, why: 'pinned by the test suite' })
+  writeState(process.env.DATA_DIR, 'admin-1', sampleState())
+  const { call } = harness()
+
+  const nutrition = {
+    targets: { tdee: 2450, kcal: 2450, protein: 165, carbs: 250, fat: 75 },
+    recent: [{ d: '2026-10-03', kcal: 2310, protein: 152, carbs: 241, fat: 68 }],
+  }
+  const r = await call('POST /api/coach/mealplan', { nutrition })
+  assert.equal(r.status, 202)
+
+  const until = Date.now() + 15000
+  while (jobs.status('admin-1').job && Date.now() < until) await new Promise(res => setTimeout(res, 25))
+  const s = jobs.status('admin-1')
+
+  assert.equal(s.pending.kind, 'mealplan')
+  assert.equal(s.pending.meals.length, 4, 'one meal per diary section')
+  assert.deepEqual(
+    s.pending.meals.map(m => m.slot),
+    ['cafe', 'almoco', 'lanche', 'jantar'],
+  )
+  assert.ok(s.pending.meals.every(m => m.items.length), 'every meal carries its foods')
+  assert.ok(s.pending.totals.kcal > 0, 'the totals were computed from the items')
+  // The fixture echoes the calorie target it was handed: this asserts the body field actually
+  // rode through the route, the queue and the payload all the way to the model.
+  assert.ok(s.pending.summary.includes('2450'), `summary "${s.pending.summary}" never saw the recorded TDEE`)
+  jobs.resolvePending('admin-1', { dismissed: true })
+})

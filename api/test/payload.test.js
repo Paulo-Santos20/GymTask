@@ -565,3 +565,86 @@ test('the last few chat lines travel as conversation — user text and Coach ver
   const none = payload.build(sampleState(), { handle: handleFor('u1'), kind: 'review' })
   assert.equal(none.conversation, undefined)
 })
+
+/* ------------------------- mealplan: diet from the recorded TDEE -------------------------
+
+   The food log and the macro targets live in the client's nutrition store — the synced state
+   has no notion of either — so a mealplan is the one kind whose extra data arrives with the
+   request. It must be carried through, allowlisted field by field, and it must stay small: the
+   block rides on every mealplan call from a phone. */
+const NUTRITION = {
+  targets: { tdee: 2450, kcal: 2450, protein: 165, carbs: 250, fat: 75 },
+  recent: [
+    { d: '2026-10-03', kcal: 2310, protein: 152, carbs: 241, fat: 68 },
+    { d: '2026-10-02', kcal: 2585, protein: 161, carbs: 279, fat: 77 },
+  ],
+}
+
+test('a mealplan payload is the recorded TDEE, the targets and the recent intake — and nothing else', () => {
+  const S = recentState(12)
+  S.coach.chat = [{ role: 'user', kind: 'text', text: 'keep it vegetarian' }]
+  const p = payload.build(S, { handle: handleFor('u1'), kind: 'mealplan', nutrition: NUTRITION })
+
+  assert.equal(p.task, 'mealplan', 'the task names the kind the prompt and validator branch on')
+  assert.deepEqual(p.nutrition.targets, NUTRITION.targets, 'the TDEE and macro targets arrive whole')
+  assert.deepEqual(p.nutrition.recent, NUTRITION.recent, 'the logged days arrive whole')
+  assert.ok(Array.isArray(p.conversation) && p.conversation.length, 'the chat context rides along')
+
+  // The training-only blocks stay home: a meal plan is not built from a session window.
+  assert.equal('recent' in p, false, 'no training-recent block')
+  assert.equal('window' in p, false, 'no session window')
+  assert.equal('library' in p, false, 'no exercise library')
+
+  // …and it is mealplan-only: every other kind is untouched by the new block.
+  for (const kind of ['review', 'create', 'debrief']) {
+    const q = payload.build(S, { handle: handleFor('u1'), kind, nutrition: NUTRITION })
+    assert.equal('nutrition' in q, false, 'a nutrition block never rides on ' + kind)
+  }
+})
+
+test('the nutrition block is allowlisted and clamped — a client cannot ride anything along', () => {
+  const S = recentState(12)
+  const long = Array.from({ length: 30 }, (_, i) => ({
+    d: '2026-09-' + String((i % 28) + 1).padStart(2, '0'),
+    kcal: 2000,
+    protein: 140,
+    carbs: 220,
+    fat: 65,
+    note: 'a field nobody asked for',
+  }))
+  const p = payload.build(S, {
+    handle: handleFor('u1'),
+    kind: 'mealplan',
+    nutrition: {
+      targets: { tdee: 2450, kcal: 2450, protein: 165, carbs: 250, fat: 75, email: 'a@b.c' },
+      recent: long,
+      token: 'secret',
+      profile: { email: 'a@b.c' },
+    },
+  })
+  assert.deepEqual(Object.keys(p.nutrition).sort(), ['recent', 'targets'], 'only the two blocks')
+  assert.deepEqual(Object.keys(p.nutrition.targets).sort(), ['carbs', 'fat', 'kcal', 'protein', 'tdee'])
+  assert.equal(p.nutrition.recent.length, payload.MEALPLAN_DAYS, 'clamped to the day budget')
+  assert.deepEqual(
+    Object.keys(p.nutrition.recent[0]).sort(),
+    ['carbs', 'd', 'fat', 'kcal', 'protein'],
+    'a logged day is a date and four numbers',
+  )
+  const json = JSON.stringify(p)
+  assert.ok(!json.includes('secret') && !json.includes('a@b.c'), 'junk never rides')
+
+  // No nutrition handed in → no block: the prompt then says the targets are unknown.
+  const bare = payload.build(S, { handle: handleFor('u1'), kind: 'mealplan' })
+  assert.equal('nutrition' in bare, false)
+})
+
+test('the nutrition block stays inside its 4 000-character budget on a sixty-session fixture', () => {
+  const S = recentState(60)
+  const p = payload.build(S, {
+    handle: handleFor('u1'),
+    kind: 'mealplan',
+    nutrition: NUTRITION,
+  })
+  const json = JSON.stringify(p.nutrition)
+  assert.ok(json.length <= 4000, `nutrition block serialized to ${json.length} chars (budget 4000)`)
+})

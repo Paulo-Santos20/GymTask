@@ -9,7 +9,9 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { api, appBase } from './api.js'
 import { DEMO } from './demo.js'
 import { t } from './i18n.js'
+import { nutritionSnapshot } from './coach.js'
 import { useStore } from '../store/useStore.js'
+import { useNutritionStore } from '../store/nutritionStore.js'
 import { useUI } from '../store/useUI.js'
 
 const POLL_MS = 3000 // a job is running: often enough to feel live
@@ -294,6 +296,17 @@ export const requestDebrief = async workoutId =>
     : LOCAL()
       ? (await local()).localDebrief(S(), workoutId)
       : server('/api/coach/debrief', { method: 'POST', body: JSON.stringify({ workoutId: workoutId || null }), sse: true })
+// A day of eating from the recorded TDEE: the nutrition snapshot lives only in the phone's
+// local store, so the client snapshots it (lib/coach.js) and sends it with the request —
+// the server allowlists it field by field rather than trusting the shape.
+export const requestMealPlan = async () => {
+  const nutrition = nutritionSnapshot(useNutritionStore.getState())
+  return DEMO
+    ? (await demo()).demoMealPlan(S(), nutrition)
+    : LOCAL()
+      ? (await local()).localMealPlan(S(), nutrition)
+      : server('/api/coach/mealplan', { method: 'POST', body: JSON.stringify({ nutrition }), sse: true })
+}
 // The room: anonymous medians across the profiles on this instance that opted in. Only a
 // server has a room; a phone with its own key and the demo both answer locally.
 export const cohortStats = async () =>
