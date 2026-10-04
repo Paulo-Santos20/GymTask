@@ -1,7 +1,9 @@
-/* The `/api/admin/*` routes coach/routes.js still exports must be unreachable over HTTP: server.js
-   drops them at mount time, so every one of them answers 404 while the non-admin coach routes
-   beside them stay registered. The route set comes from the module itself, so a newly added admin
-   route is covered without touching this file. Real server.js in a child. */
+/* The `/api/admin/*` surface must be unreachable over HTTP while the non-admin coach routes
+   beside them stay registered — todo 7's regression, tightened by todo 29: the handlers are now
+   deleted from coach/routes.js entirely, not merely dropped at mount time. The export assertion
+   proves they are gone from the module (a reintroduced admin key fails right there); the fixed
+   path list below still proves the server answers 404 for every one of them. Real server.js in
+   a child. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
@@ -20,6 +22,17 @@ const { coachRoutes } = await import('../coach/routes.js');
 
 // The dispatch keys are 'METHOD /path' — the path is everything after the first space.
 const pathOf = key => key.slice(key.indexOf(' ') + 1);
+
+// Every path the upstream admin panel used to own. Fixed, because the module no longer exports
+// them — deriving the list from the exports would assert nothing at all.
+const ADMIN_PATHS = [
+  ['GET', '/api/admin/coach'],
+  ['POST', '/api/admin/coach/config'],
+  ['POST', '/api/admin/coach/test'],
+  ['POST', '/api/admin/coach/models'],
+  ['POST', '/api/admin/coach/connect'],
+  ['POST', '/api/admin/coach/disconnect']
+];
 
 const freePort = () => new Promise(r => {
   const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => r(p)); });
@@ -47,18 +60,18 @@ async function startServer(t) {
   return h;
 }
 
-test('every /api/admin/* route the coach exports is a 404, while the non-admin coach routes still answer', async t => {
+test('the admin handlers are gone from coach/routes.js and every /api/admin/* path answers 404, while the non-admin coach routes still answer', async t => {
   const exported = Object.keys(coachRoutes({
-    json: () => {}, readBody: async () => ({}), readSession: () => null, requireAdmin: () => false
+    json: () => {}, readBody: async () => ({}), readSession: () => null
   }));
-  const admin = exported.filter(k => pathOf(k).startsWith('/api/admin/'));
-  assert.ok(admin.length > 0, `no /api/admin/* keys exported — this test would pass vacuously (${exported.length} keys)`);
+  const exportedAdmin = exported.filter(k => pathOf(k).startsWith('/api/admin/'));
+  assert.deepEqual(exportedAdmin, [],
+    `coach/routes.js exports admin handlers again — they were deleted as unreachable (${exported.length} keys)`);
 
   const h = await startServer(t);
-  for (const key of admin) {
-    const [method, p] = [key.slice(0, key.indexOf(' ')), pathOf(key)];
+  for (const [method, p] of ADMIN_PATHS) {
     const res = await fetch(`${h.api}${p}`, { method });
-    assert.equal(res.status, 404, `${key} should be unreachable at mount time, got ${res.status}\n${h.log}`);
+    assert.equal(res.status, 404, `${method} ${p} should be unreachable, got ${res.status}\n${h.log}`);
   }
 
   // The routes beside them are still mounted: a known coach path is routed (401 = handler ran),

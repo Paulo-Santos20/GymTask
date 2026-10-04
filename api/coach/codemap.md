@@ -45,8 +45,9 @@ provider processes in `adapters/`; this directory is the server-only orchestrati
   land nowhere) and keeps only today's spend counter.
 - **Boot** (server.js:799-812): `recoverOnBoot()` fails jobs that died with the process,
   `setProposalHook()` turns a `ready` proposal into a Web Push, `startCadence()`/`startWarmup()`
-  run the schedules. `/api/admin/*` handlers still exist in `routes.js` but are filtered out by
-  `server.js` — the admin panel is gone.
+  run the schedules. The `/api/admin/*` handlers are deleted from `routes.js`; `server.js`
+  keeps a mount-time filter that would exclude any reintroduced admin key — the admin panel
+  is gone.
 
 ## Flow
 

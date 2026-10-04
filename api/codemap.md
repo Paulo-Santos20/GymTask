@@ -21,8 +21,8 @@ per registered route) is the source of truth for what this folder serves.
   `GET /api/health|config|me|data|data/rev|push/public-key|push/status`,
   `POST /api/logout|logout/all|data|push/subscribe|push/unsubscribe|push/test|
   push/rest-timer|push/rest-timer/cancel|activity` — plus `...coachRoutes(...)`, whose
-  `/api/admin/*` keys are filtered out at spread time (server.js:793): the admin panel is gone
-  and `requireAdmin` is no longer passed. Unknown key → 404; `HttpError` → its status; anything
+  `/api/admin/*` keys are excluded at spread time (server.js:818) as defense-in-depth: the
+  handlers are deleted from `routes.js` and the admin panel is gone. Unknown key → 404; `HttpError` → its status; anything
   else → logged 500. No framework, no router, no middleware stack.
 - **Storage** (`DATA_DIR`, default `/data`): `db.json` (users, creds, subs),
   `state-<uid>.json` (the whole app document, uid sanitised to `[A-Za-z0-9_-]`), `secret`
