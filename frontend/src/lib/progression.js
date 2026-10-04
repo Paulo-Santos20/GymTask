@@ -62,6 +62,18 @@ export function deloadFactorOf(cfg) {
   return isValidDeloadFactor(cfg?.deloadFactor) ? Number(cfg.deloadFactor) : DELOAD_FACTOR
 }
 
+// RF2 periodization hooks. Both are opt-in: absent, zero or invalid the engine keeps its
+// pre-RF2 behaviour byte for byte. The exercise's own value wins; the routine's is the
+// fallback when the exercise carries none (an explicit 0 on the exercise means off).
+export function deloadEveryOf(cfg, routine) {
+  const n = Number(cfg?.deloadEvery ?? routine?.deloadEvery)
+  return Number.isInteger(n) && n >= 2 ? n : 0
+}
+export function deloadAfterOf(cfg, routine, policy) {
+  const n = Number(cfg?.deloadAfter ?? routine?.deloadAfter)
+  return Number.isInteger(n) && n >= 1 ? n : DELOAD_AFTER[policy] || 3
+}
+
 // Epley uses the reps performed by one side for unilateral work. Callers pass the stored total
 // reps and this helper makes the split explicit rather than allowing a total to inflate the 1RM.
 export function epley1RM(weight, reps) {
@@ -453,7 +465,7 @@ export function nextPrescription(S, cfg, routine) {
   }
 
   const stalls = stallCount(sessions, policy)
-  const deloadAt = DELOAD_AFTER[policy] || 3
+  const deloadAt = deloadAfterOf(cfg, routine, policy)
 
   if (mode === 'time') {
     if (last.ok) {
@@ -546,6 +558,25 @@ export function nextPrescription(S, cfg, routine) {
       ...(cfg.weight > 0 ? { weight: cfg.weight } : {}),
       why: ['No weight logged last time — enter what you lift and progression takes it from there.'],
     }
+
+  // Planned cadence (RF2): an opt-in block of N sessions ends in a deload whether or not it
+  // was clean — periodization on a calendar, not only on failure. Runs after the time and
+  // bodyweight paths (they have their own shape) and takes the block end over each policy's
+  // own next step, so a Greyskull double jump or a double-progression top-out waits a session.
+  const block = deloadEveryOf(cfg, routine)
+  if (block > 0 && sessions.length % block === 0 && last.ok) {
+    const dw = assisted ? easier(w) : deloadTo(w, inc, deloadFactorOf(cfg))
+    const range = policy === 'double' ? normalizeRepRange(cfg.reps || last.goal || 10, cfg.repsMin, repStep(cfg)) : null
+    return {
+      policy,
+      kind: 'deload',
+      weight: dw,
+      ...(range ? { reps: range.repsMin } : {}),
+      why: assisted
+        ? ['Planned deload every {0} sessions — {1} {2} more help while you build back up.', block, dw, unit]
+        : ['Planned deload every {0} sessions — down to {1} {2} and build back up.', block, dw, unit],
+    }
+  }
 
   // Epley deloads apply only to externally loaded rep work. Keep the prescribed target from the
   // session that stalled (falling back field-by-field to the current config), while the logged

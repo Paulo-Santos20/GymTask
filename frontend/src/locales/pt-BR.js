@@ -286,6 +286,10 @@ export const PT_BR_OVERRIDES = {
     'Repetições não concluídas em {0} sessões seguidas — volte para {1} {2} e progrida novamente.',
   'Missed reps — reset to {0} {1} and work back up.':
     'Repetições não concluídas — volte para {0} {1} e progrida novamente.',
+  'Planned deload every {0} sessions — down to {1} {2} and build back up.':
+    'Carga reduzida planejada a cada {0} sessões — desça para {1} {2} e volte a progredir.',
+  'Planned deload every {0} sessions — {1} {2} more help while you build back up.':
+    'Carga reduzida planejada a cada {0} sessões — {1} {2} de ajuda a mais enquanto você se recupera.',
   'Missed reps last time — same weight again ({0} of {1} to go).':
     'Você não concluiu as repetições na última vez — mantenha o mesmo peso (faltam {0} de {1}).',
   '{0} sets bring an {1} with them — switch on Effort per set in Settings to see it.':

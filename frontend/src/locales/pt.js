@@ -802,6 +802,10 @@ export default {
   'Missed reps {0} sessions running — reset to {1} {2} and work back up.':
     'Repetições falhadas em {0} sessões seguidas — volta a {1} {2} e sobe outra vez.',
   'Missed reps — reset to {0} {1} and work back up.': 'Falhaste repetições — volta a {0} {1} e sobe outra vez.',
+  'Planned deload every {0} sessions — down to {1} {2} and build back up.':
+    'Descarga planeada a cada {0} sessões — desce para {1} {2} e volta a subir.',
+  'Planned deload every {0} sessions — {1} {2} more help while you build back up.':
+    'Descarga planeada a cada {0} sessões — {1} {2} de ajuda a mais enquanto recuperas.',
   'Missed reps last time — same weight again ({0} of {1} to go).':
     'Falhaste repetições da última vez — o mesmo peso outra vez (faltam {0} de {1}).',
   'Bodyweight — every rep last time, so go for {0} this time.':
