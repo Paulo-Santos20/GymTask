@@ -38,7 +38,9 @@ function render() {
 }
 
 const daySeq = (start, n) =>
-  Array.from({ length: n }, (_, i) => new Date(Date.parse(start + 'T00:00:00Z') + i * 86400000).toISOString().slice(0, 10))
+  Array.from({ length: n }, (_, i) =>
+    new Date(Date.parse(start + 'T00:00:00Z') + i * 86400000).toISOString().slice(0, 10),
+  )
 
 // n paired days: weigh-in + food entries per date, −0.1 kg/day trend on a 2500 kcal
 // intake → adaptive maintenance of 3270 kcal (same fixture math as tdee-adaptive.test.js).
