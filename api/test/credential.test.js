@@ -99,7 +99,12 @@ test('a profile credential lives in its own file, not in synced state', () => {
   assert.match(file, /coach-auth-alice\.json$/);
   assert.ok(!file.includes('state-'), 'must not ride along in the state blob the client syncs');
 
-  assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+  // Newline-independent, and platform-honest: Windows has no POSIX mode bits — libuv reports
+  // any writable file as 0666 no matter what was requested — so 0600 is only assertable where
+  // the OS implements it. What must hold everywhere is that the file is owner-writable.
+  const mode = fs.statSync(file).mode & 0o777;
+  if (process.platform === 'win32') assert.equal(mode & 0o200, 0o200, 'the credential file stays writable by its owner');
+  else assert.equal(mode, 0o600, 'a credential file is private to its owner');
 });
 
 test('a profile id cannot escape the data directory', () => {
