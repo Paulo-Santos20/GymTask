@@ -13,7 +13,7 @@ import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 
 const POLL_MS = 3000        // a job is running: often enough to feel live
-const IDLE_MS = 60000       // a Coach screen is open but nothing is running
+export const IDLE_MS = 15 * 60000   // a Coach screen is open but nothing is running — the audit's 15-min cadence window
 
 // The demo build has no backend, so it answers these locally with a canned proposal built
 // from its own seeded profile (lib/coach-demo.js). Everything downstream — validation,
@@ -101,8 +101,8 @@ export function useCoachStatus(active = true) {
       const s = await coachStatus()
       setState({ ...s, loading: false })
       // A refresh that finds a job in flight — the one the caller just started — must not leave
-      // the loop asleep on its idle cadence: without this the card shows up to a minute after
-      // the job ended, sitting on "thinking…" the whole time.
+      // the loop asleep on its idle cadence: without this the card shows up to fifteen minutes
+      // after the job ended, sitting on "thinking…" the whole time.
       if (s?.job && loop.current) { clearTimeout(timer.current); timer.current = setTimeout(loop.current, POLL_MS) }
       return s
     } catch {

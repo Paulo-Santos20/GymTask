@@ -10,8 +10,11 @@
 //     it needs an app key that must never ship in the bundle. Unset = the source is
 //     silently skipped, so the app builds and runs with no external keys.
 //
-// Every source fails soft: a timeout, a 429 from the DEMO_KEY pool or an offline device
-// just yields [] — searchExternal still returns whatever the other sources produced.
+// Every source fails soft against the others: a timeout, a 429 from the DEMO_KEY pool or an
+// offline device lets searchExternal return whatever the surviving sources produced. When
+// EVERY source fails there are no survivors — searchExternal then rejects with a
+// distinguishable error, so the caller (Nutrition.jsx) shows its explicit error state
+// instead of an empty result the UI would render as "no matches" (plan todo 28, audit #13).
 
 const TIMEOUT_MS = 7000
 
@@ -126,18 +129,18 @@ export async function searchNutritionix(query) {
 // Run every available source in parallel, each in its own try/catch (a failing source
 // must not sink the others), then de-duplicate by accent-folded name — the same product
 // usually exists in both USDA and OFF. Order: local rank isn't involved here; USDA first
-// (most authoritative per-100 g), then OFF, then Nutritionix.
+// (most authoritative per-100 g), then OFF, then Nutritionix. If every source threw the
+// rejection propagates — never a silent [].
 export async function searchExternal(query) {
   const q = String(query || '').trim()
   if (!q) return []
-  const run = async fn => {
-    try { return await fn(q) } catch { return [] }
-  }
-  const groups = await Promise.all([
-    run(searchUSDA),
-    run(searchOFF),
-    ...(nutritionixProxy() ? [run(searchNutritionix)] : []),
-  ])
+  const sources = [['usda', searchUSDA], ['off', searchOFF]]
+  if (nutritionixProxy()) sources.push(['nutritionix', searchNutritionix])
+  const failed = []
+  const groups = await Promise.all(sources.map(async ([name, fn]) => {
+    try { return await fn(q) } catch { failed.push(name); return [] }
+  }))
+  if (failed.length === sources.length) throw new Error('All external food sources failed: ' + failed.join(', '))
   const seen = new Set()
   const out = []
   for (const item of groups.flat()) {
