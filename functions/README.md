@@ -1,6 +1,6 @@
 # GymTask Cloud Functions
 
-Firebase Cloud Functions for GymTask. CommonJS (`index.js`, no `"type"` field), firebase-functions v6 + firebase-admin v12, Node 22 (see `engines`).
+Firebase Cloud Functions for GymTask. CommonJS (`index.js`, no `"type"` field), firebase-functions v7 + firebase-admin v14, Node 22 (see `engines`).
 
 | Export | Type | What it does |
 | --- | --- | --- |
@@ -29,6 +29,8 @@ firebase deploy --only functions
 | `XAI_MODEL` | `coach` | No — defaults to `grok-3-mini` |
 | `NUTRITIONIX_APP_ID` / `NUTRITIONIX_APP_KEY` | `nutritionProxy` | Yes for `nutritionProxy` (400 naming the variable) |
 | `DAILY_REMINDER_ENABLED` | `pushDailyReminder` | No — **default on when unset**; set `0`/`false`/`off`/`no` to skip the run. Deploying the function is the opt-in |
+| `ALLOWED_ORIGINS` | `coach`, `nutritionProxy` | No — comma-separated CORS origin allowlist that overrides the defaults (`https://gymtask-jtu8.vercel.app`, `http://localhost:5173`, `http://localhost:4173`); non-listed origins get no `Access-Control-Allow-Origin` |
+| `RATE_LIMIT_MAX` / `RATE_LIMIT_WINDOW_MS` | `coach`, `nutritionProxy` | No — per-IP fixed-window limit, defaults `30` requests / `60000` ms (in-memory per warm instance); never applied to OPTIONS preflights or `pushDailyReminder` |
 
 No credential is needed for FCM itself: `admin.initializeApp()` on Cloud Functions uses the runtime's default credentials.
 
