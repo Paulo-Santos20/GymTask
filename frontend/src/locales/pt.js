@@ -1462,6 +1462,11 @@ export default {
   'Add note': 'Adicionar nota',
   'Edit note': 'Editar nota',
   'Progression settings': 'Definições de progressão',
+  // --- don't count for progression: the exercise's ⋯ menu and the whole session (header ⋮) ---
+  'Don’t count for progression': 'Não contar para a progressão',
+  'This exercise, this session only': 'Só este exercício, só nesta sessão',
+  'Every exercise in this workout': 'Todos os exercícios deste treino',
+  'Not counted for progression': 'Não conta para a progressão',
   'Set {0}': 'Série {0}',
   'Drop set': 'Drop set',
   'Rest-pause burst': 'Rajada rest-pause',

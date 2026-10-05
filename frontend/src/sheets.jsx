@@ -134,7 +134,8 @@ import { nextUnfinishedUnit } from './lib/supersetFlow.js'
 import { swapActiveExercise } from './lib/active-exercise-swap.js'
 import { useSheetKeyboard, useRevealActiveChip, tappable } from './lib/use-sheet-keyboard.js'
 import { isFav, toggleFav, sortFavouritesFirst } from './lib/favourites.js'
-import { buildSessionEntries, buildPlannedEntry } from './lib/session-start.js'
+import { buildSessionEntries, buildPlannedEntry, builtOutOfProgression } from './lib/session-start.js'
+import { joinSessionNoProg } from './lib/session-noprog.js'
 import { buildCombinedEntries, deriveSessionName } from './lib/session-merge.js'
 import { workoutsOn, backfillStart, backfillEnd, completeBackfill, sessionHistory } from './lib/backfill.js'
 import { speedUnitOf, speedLabel, toSpeed, fromSpeed } from './lib/speed.js'
@@ -2095,8 +2096,18 @@ export function swapActiveWorkoutExercise(index) {
           plan: null,
           sets: applyIntensifierPlan(buildSets(past, full, { step, preferLast: true }), full),
         }
-      : buildPlannedEntry(past, full, slotRoutine)
-    const replacement = { id: ex.id, ...built, ...(current.rid ? { rid: current.rid } : {}) }
+      : buildPlannedEntry(past, full, slotRoutine, { noProg: builtOutOfProgression(current, slotRoutine) })
+    const replacement = {
+      id: ex.id,
+      ...built,
+      ...(current.rid ? { rid: current.rid } : {}),
+      // A slot kept out of progression stays out once swapped. Replaced in place the entry keeps
+      // it anyway; inserted beside logged sets, the replacement would otherwise count as a
+      // regular session of the new exercise. Only a deload or rehab slot is built without a
+      // prescription (above): one kept out by hand keeps the marker and its Undo on the card,
+      // and an Undo must leave numbers that are right to count.
+      ...(current.noProg === true ? { noProg: true } : {}),
+    }
 
     const apply = options => {
       // A timed callback closes over entry/set indexes. Invalidate it, and the current rest,
@@ -3999,7 +4010,9 @@ function AddRoutineToSession({ close }) {
     const entries = buildSessionEntries(st, r).map(e => ({ ...e, rid: r.id }))
     update(s => {
       if (!s.active) return
-      s.active.entries.push(...entries)
+      // A session kept out of progression as a whole (the header ⋮) keeps the routine's
+      // exercises out too, the same as an exercise added on its own.
+      s.active.entries.push(...entries.map(e => joinSessionNoProg(s.active, e)))
       s.active.routineIds = [...[].concat(s.active.routineIds || []), r.id]
       if (!s.active.customName) {
         s.active.name = deriveSessionName(
