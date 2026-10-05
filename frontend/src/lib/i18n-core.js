@@ -44,6 +44,11 @@ export const exerciseNameFor = ex => {
   return translated.toLocaleLowerCase(lang) === ex.n.toLocaleLowerCase('en') ? translated : `${translated} (${ex.n})`
 }
 
+// ponytail: only pt-BR ships, so there is no translated name pack and no English-only toggle to
+// consult — every catalogue name is title-cased exactly as the upstream multi-lang branch does
+// for a lower-case pack. Port `exerciseNameClass` verbatim if translated exercise names ever land.
+export const exerciseNameClass = () => 'capitalize'
+
 // Search both the localized and canonical English title without changing persisted data.
 export const exerciseNameSearchText = ex => {
   const translated = exerciseNames && ex && exerciseNames[ex.id]

@@ -76,7 +76,9 @@ for (const { file, body, note } of outputs) {
     } catch {
       /* missing counts as stale */
     }
-    if (current !== body) {
+    // The artefact body is LF, a Windows checkout is CRLF: compare modulo line endings or
+    // --check is a false positive here.
+    if (current === null || current.replace(/\r\n/g, '\n') !== body) {
       stale++
       console.error(`${rel} is out of date — run: node scripts/build-coach-assets.mjs`)
     } else console.log(`${rel} in sync (${note}).`)

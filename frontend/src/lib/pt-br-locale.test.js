@@ -8,8 +8,8 @@ const placeholders = value => [...String(value).matchAll(/\{\d+\}/g)].map(match 
 const byCodeUnit = ([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)
 
 describe('Brazilian Portuguese locale', () => {
-  test('is the app’s only selectable locale, with Brazilian date formatting', () => {
-    expect(LANGS).toEqual({ 'pt-BR': 'Português (Brasil)' })
+  test('is the appâ€™s only selectable locale, with Brazilian date formatting', () => {
+    expect(LANGS).toEqual({ 'pt-BR': 'PortuguÃªs (Brasil)' })
     expect(DATE_LOCALES['pt-BR']).toBe('pt-BR')
   })
 
@@ -26,7 +26,7 @@ describe('Brazilian Portuguese locale', () => {
       .sort(byCodeUnit)
     const fingerprint = createHash('sha256').update(JSON.stringify(inherited)).digest('hex')
 
-    expect(Object.keys(PT_BR_OVERRIDES)).toHaveLength(814)
+    expect(Object.keys(PT_BR_OVERRIDES)).toHaveLength(862)
     expect(inherited).toHaveLength(641)
     // If this fails, review the changed keys and wording before accepting a new hash. From
     // frontend/: node scripts/pt-br-inheritance-fingerprint.mjs --list
@@ -38,17 +38,17 @@ describe('Brazilian Portuguese locale', () => {
   test('does not leak European Portuguese UI terms', () => {
     const text = Object.values(ptBR).join('\n')
     const europeanPortuguese =
-      /(?:^|[^\p{L}])(?:ficheiro\p{L}*|telemóvel\p{L}*|ecrã\p{L}*|regist(?:o|am|ado|ada|ados|adas)|eliminad\p{L}*|definições|cronómetro|detetad\p{L}*|gémeos|abdómen|anca|coifa dos rotadores|escadora|completaste|acabaste|aguentas|definires|completares|aguenta|aguentaste|ficaste|viajares)(?=$|[^\p{L}])/iu
+      /(?:^|[^\p{L}])(?:ficheiro\p{L}*|telemÃ³vel\p{L}*|ecrÃ£\p{L}*|regist(?:o|am|ado|ada|ados|adas)|eliminad\p{L}*|definiÃ§Ãµes|cronÃ³metro|detetad\p{L}*|gÃ©meos|abdÃ³men|anca|coifa dos rotadores|escadora|completaste|acabaste|aguentas|definires|completares|aguenta|aguentaste|ficaste|viajares)(?=$|[^\p{L}])/iu
     expect(text).not.toMatch(europeanPortuguese)
-    expect(text).not.toMatch(/[«»]/u)
+    expect(text).not.toMatch(/[Â«Â»]/u)
     expect(ptBR.Save).toBe('Salvar')
-    expect(ptBR.Settings).toBe('Configurações')
+    expect(ptBR.Settings).toBe('ConfiguraÃ§Ãµes')
     expect(ptBR['Delete workout']).toBe('Excluir treino')
     expect(ptBR.Superset).toBe('Superset')
-    expect(ptBR['Guest mode — data lives only in this browser.']).toContain('visitante')
-    expect(ptBR.band).toBe('elástico')
-    expect(ptBR['resistance band']).toBe('faixa elástica')
-    expect(ptBR.soleus).toBe('sóleo')
+    expect(ptBR['Guest mode â€” data lives only in this browser.']).toContain('visitante')
+    expect(ptBR.band).toBe('elÃ¡stico')
+    expect(ptBR['resistance band']).toBe('faixa elÃ¡stica')
+    expect(ptBR.soleus).toBe('sÃ³leo')
     expect(ptBR.Unpair).toBe('Desvincular')
     expect(ptBR['Choose starter plan']).toBe('Escolha um plano inicial')
   })

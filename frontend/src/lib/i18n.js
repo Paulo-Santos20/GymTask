@@ -14,6 +14,7 @@ import {
   t,
   instrFor,
   exerciseNameFor,
+  exerciseNameClass,
   exerciseNameSearchText,
   getVersion,
   _setLangState,
@@ -29,6 +30,7 @@ export {
   t,
   instrFor,
   exerciseNameFor,
+  exerciseNameClass,
   exerciseNameSearchText,
 }
 

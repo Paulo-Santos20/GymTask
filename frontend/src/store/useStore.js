@@ -7,6 +7,7 @@ import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { guestAllowed } from '../lib/guest.js'
 import { mergeStates, localExtras } from '../lib/sync-merge.js'
 import { saveCoachDevice, coachDeviceSettings } from '../lib/coach-device.js'
+import { saveWorkoutEdit, deleteEditedWorkout } from '../lib/session-edit.js'
 
 import { WC_DEFAULT } from '../lib/workout-controls.js'
 
@@ -47,6 +48,10 @@ export const DEF = {
   // 'cards' behaviour. beginWorkout copies the value onto s.active, so the header ⋮ menu can
   // override it for the running session without touching this saved default.
   workoutView: 'cards',
+  // What the line under an exercise holds today's rows against (#173, views/Workout.jsx): 'last'
+  // is the last time in that routine, 'best' the best set of the exercise ever logged. Tapping
+  // the line switches it. Absent reads as 'last', the line as it always was.
+  logRef: 'last',
   // Which controls the workout screen shows besides the sets themselves. The default is the
   // lean layout: one "more" button per exercise and a menu on each set number. Every switch
   // brings one of the old always-visible button groups back (Settings → During a workout).
@@ -81,6 +86,17 @@ export const DEF = {
   // lib/bar.js). Personal equipment, so it syncs with the account but never travels in a
   // shared plan. Logged weights stay the total — this only feeds the plate math.
   barWeights: {},
+  // Plate inventory, per unit: { lb: { 45: 1, 35: 1, ..., _ts }, kg: { ... } } - pairs of each
+  // size you own (lib/plates.js), stamped with when the list was last changed so a sync keeps
+  // the later one (lib/sync-merge.js). Kept per unit: a 45 lb plate is not a 20.4 kg one, so a
+  // unit switch shows the other unit's inventory. Absent for a unit, or a list with no sizes =
+  // the standard set, plenty of each. Display only, like barWeights.
+  plates: {},
+  // How an exercise is plate-loaded when the equipment does not say, keyed by exercise id:
+  // { kind: 'pairs' | 'single' | 'none' | null, _ts } (lib/plates.js loadKindFor). A plate-loaded
+  // leg press is 'single'; a barbell you never load plates on is 'none'. Absent or null = derived
+  // from the equipment. Stamped like the plate list, for the same reason.
+  loadKind: {},
   // Gym check-in cards (see views/CheckIn.jsx). Each is a membership
   // code shown as a QR/barcode at the gym's turnstile — added by typing it, importing a photo
   // of the card, or scanning it. We only ever keep the code's VALUE, never a photo: the image
@@ -453,6 +469,23 @@ export const useStore = create((set, get) => {
     replaceState(S, push = false) {
       if (push) forceNext = true
       persist(clone(S), push)
+    },
+
+    // An edit of a saved workout (lib/session-edit.js) is saved or dropped like any other change:
+    // the store's own sync takes it to the server, and a conflict on the way is settled by
+    // mergeStates like one between two devices. A save that cannot happen throws before anything
+    // is written, and the editor stays open with the edits.
+    saveHistoryEdit() {
+      let saved = null
+      get().update(S => { saved = saveWorkoutEdit(S) })
+      return saved
+    },
+    discardHistoryEdit() { get().update(S => { S.active = null }) },
+    // An edit that took out every set deletes the workout rather than saving it empty.
+    deleteHistoryEdit() {
+      let removed = false
+      get().update(S => { removed = deleteEditedWorkout(S) })
+      return removed
     },
 
     isGuest: () => localStorage.getItem('gym_guest') === '1',

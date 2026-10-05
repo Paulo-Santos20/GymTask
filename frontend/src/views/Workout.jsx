@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { workoutControls } from '../lib/workout-controls.js'
 import { useUI } from '../store/useUI.js'
 import { exOr, betterWeight } from '../lib/exercises.js'
 import { usesBar, barWeightFor, plateSplit } from '../lib/bar.js'
+import { loadKindFor, baseWeightFor, inventoryFor, rowLoad, sameLoad, plateDelta } from '../lib/plates.js'
 import {
   effectiveRoutines,
   effectiveRoutineIds,
@@ -37,9 +38,9 @@ import {
   pinnedNoteFor,
   exNoteFor,
 } from '../lib/history.js'
-import { fmtNum, capWords, fmtDate, todayISO, exCount, DAYN } from '../lib/format.js'
+import { fmtNum, fmtPlate, capWords, fmtDate, todayISO, exCount, DAYN } from '../lib/format.js'
 import { beep, vibrate, unlock } from '../lib/sound.js'
-import { t, exerciseNameFor } from '../lib/i18n.js'
+import { t, exerciseNameFor, exerciseNameClass } from '../lib/i18n.js'
 import { api, appBase } from '../lib/api.js'
 import {
   insertionIndexAfterCurrentUnit,
@@ -58,6 +59,7 @@ import {
   exConfigSheet,
   exerciseDetailSheet,
   finishWorkout,
+  exitWorkoutEdit,
   workoutCompleteSheet,
   confirmSheet,
   exerciseNoteSheet,
@@ -103,13 +105,24 @@ import {
 } from '../lib/workout-model.js'
 import { canMoveActiveWorkoutUnit, moveActiveWorkoutUnit } from '../lib/active-workout-order.js'
 import { MUSCLE_NAME } from '../lib/muscles.js'
+import { speedUnitOf, toSpeed, fromSpeed } from '../lib/speed.js'
 import { buildPlannedEntry, plannedConfigOf, builtOutOfProgression } from '../lib/session-start.js'
 import { sessionHistory } from '../lib/backfill.js'
+import { bestSetFor } from '../lib/exercise-history.js'
 
 const SWIPE_MIN_DISTANCE = 48
 const SWIPE_AXIS_RATIO = 1.25
 const SWIPE_IGNORED_TARGETS =
   'button,input,textarea,select,a,[role="button"],[role="checkbox"],[role="switch"],[role="slider"],[contenteditable="true"],.exmedia,[data-swipe-ignore]'
+
+// Arabic and Hebrew letters, the presentation forms included. A set summary with one in it is a
+// per-side set in Arabic: forced left to right, its side words stood on the wrong side of their
+// numbers and the numbers after them turned round (8×15).
+const RTL_LETTER = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/
+
+// A set-row column's number as it is shown. Most columns show what is stored; one with a `view`
+// (cardio speed, stored in km/h) converts it for the screen.
+const viewOf = (col, value) => (col.view && value != null && value !== '' ? col.view(value) : value)
 
 /* ---------- start chooser (no active workout) ---------- */
 function StartChooser() {
@@ -211,6 +224,7 @@ function ExerciseBlock({
   entryIdx,
   compact,
   dense,
+  editing,
   onToggle,
   onToggleSide,
   onField,
@@ -315,6 +329,30 @@ function ExerciseBlock({
   // the session was built so the reason matches the numbers already in the rows.
   const plan = entry.plan
   const guidance = progressionGuidance(plan)
+  // What the rows are held against (#173): the last time in this routine (#216), or the best set
+  // of the exercise ever logged — after a bad day, "last time" puts the bad day on the screen as
+  // the number to beat. Tapping the line switches between the two, and the choice is the
+  // profile's (S.logRef), so every exercise and the next session follow it.
+  const refBest = S.logRef === 'best'
+  const ref = refBest ? bestSetFor(S, entry.id, mode) : last
+  // An exercise logged before only in another mode (reps then, a hold today) has a last time but
+  // no best set to hold today's rows against. The line stays and says so: gone, it took the
+  // switch back to "Last time" with it, reachable then only from Settings or another card.
+  const refHead = ref ? `${refBest ? t('Best set') : t('Last time')} (${fmtDate(ref.d)}): ` : ''
+  const refSets = ref ? (refBest ? [ref.set] : ref.sets).map(s => setLabel(entry.id, s, ref.target, speedUnitOf(S))) : []
+  const refText = ref ? refHead + refSets.join(', ') : refBest && last ? t('Best set: nothing logged this way yet') : null
+  const refAction = refBest ? t('Show last time instead') : t('Show your best set instead')
+  // The button's text is the reference, which says nothing about what a tap does; its name
+  // carries both, the reference first as it reads on screen, then the switch.
+  const refLine = refText ? <button type="button" className="refline small dim"
+    title={refAction} aria-label={`${refText}. ${refAction}`}
+    onClick={() => update(s => { s.logRef = refBest ? 'last' : 'best' })}>
+    {/* Each set on its own left-to-right island. In Arabic the first one followed the label's
+        direction and read 8×60, while those after a Latin "RIR" read 60×8. A set that carries
+        words of a right-to-left script keeps its own direction, still isolated (RTL_LETTER). */}
+    <span>{ref ? <>{refHead}{refSets.map((l, i) => <Fragment key={i}>{i ? ', ' : ''}<bdi dir={RTL_LETTER.test(l) ? 'auto' : 'ltr'}>{l}</bdi></Fragment>)}</> : refText}</span>
+    <Icon name="shuffle" />
+  </button> : null
   // A bodyweight set has no weight to type, so the column is not there (issue #32) — one
   // stepper instead of two, which is the whole point of the flag. Adding a belt weight in the
   // config brings it back, now labelled as the addition it is.
@@ -336,8 +374,18 @@ function ExerciseBlock({
       : bw && !added
         ? repCol
         : loadCol
+  // Speed is stored in km/h and shown in the profile's unit (lib/speed.js): `view` turns the
+  // stored number into the one on screen, `store` the one typed or stepped back into km/h.
+  const speedUnit = speedUnitOf(S)
   const col2 = cardio
-    ? { f: 'speed', step: 0.5, dec: true, hd: t('Speed (km/h)') }
+    ? {
+        f: 'speed',
+        step: 0.5,
+        dec: true,
+        hd: speedUnit === 'mph' ? t('Speed (mph)') : t('Speed (km/h)'),
+        view: v => toSpeed(v, speedUnit),
+        store: v => fromSpeed(v, speedUnit),
+      }
     : timed
       ? bw && !added
         ? null
@@ -363,9 +411,11 @@ function ExerciseBlock({
     // closure problem entirely and keeps every tap operating on the real current value.
     const fresh = useStore.getState().S.active?.entries[entryIdx]?.sets[i]
     const cur = fresh ? fresh[col.f] : s[col.f]
-    if (mode === 'reps' && col.f === 'w') return onField(i, col.f, stepWeight(cur, col.step, dir))
-    onField(i, col.f, Math.max(0, Math.round(((cur || 0) + dir * col.step) * 100) / 100))
-  }
+      if (mode === 'reps' && col.f === 'w') return onField(i, col.f, stepWeight(cur, col.step, dir))
+      // The step is in the unit on screen: +0.5 mph, not +0.5 km/h shown as +0.31.
+      const next = Math.max(0, Math.round(((viewOf(col, cur) || 0) + dir * col.step) * 100) / 100)
+      onField(i, col.f, col.store ? col.store(next) : next)
+    }
   // Uses the shared stepper markup so a set row picks up the same control styling
   // as every other +/- field in the app.
   // Which of the optional control groups this profile wants on screen (Settings → During a
@@ -380,7 +430,12 @@ function ExerciseBlock({
         </button>
       )}
       <span className="val">
-        <NumberField decimal={col.dec} nullable={col.opt} value={s[col.f] ?? ''} onChange={v => onField(i, col.f, v)} />
+        <NumberField
+          decimal={col.dec}
+          nullable={col.opt}
+          value={viewOf(col, s[col.f]) ?? ''}
+          onChange={v => onField(i, col.f, col.store ? col.store(v) : v)}
+        />
       </span>
       {wc.steppers && (
         <button aria-label={t('Increase')} onClick={() => bump(s, i, col, 1)}>
@@ -389,73 +444,82 @@ function ExerciseBlock({
       )}
     </div>
   )
+  // Plate loading, per set row (lib/plates.js): which plates make THIS row's weight, from the
+  // plates you own. 'pairs' splits what is beyond the bar per side, 'single' is one stack (a
+  // belt, a sled), 'none' shows nothing. A unilateral row logs each side's own weight; a bar is
+  // the same bar for both legs, so the line uses the sides' weight while they agree (or only one
+  // side has a number yet) and stays away once they differ. Only reps mode has a weight to load,
+  // and a saved workout being corrected (#203) has nothing left to load, so its rows stay bare.
+  // The rows and their drop-set sub-rows form one sequence in the order the bar sees them, keyed
+  // `i` for a set and `i:dN` for its N-th drop; a rest-pause burst keeps the set's weight, so it
+  // is not in the sequence.
+  const plateLoading = mode === 'reps' && !editing
+  const loadKind = plateLoading ? loadKindFor(S, cfg) : 'none'
+  const base = baseWeightFor(S, entry.id)
+  const loadSeq = loadKind === 'none' ? [] : (() => {
+    const inv = inventoryFor(S)
+    const out = []
+    entry.sets.forEach((s, i) => {
+      let w = s.w
+      if (perSide && isSideSet(s)) {
+        const L = s.sides.L?.w || 0, R = s.sides.R?.w || 0
+        if (L && R && L !== R) return
+        w = L || R
+      }
+      out.push({ key: String(i), load: rowLoad(loadKind, w, base, inv) })
+      dropsOf(s).forEach((d, di) => out.push({ key: i + ':d' + di, load: rowLoad(loadKind, d.w, base, inv) }))
+    })
+    return out
+  })()
+  // Only a bar is named as one: a plate-loaded machine set to per side with its own weight is
+  // not a "Bar 50 lb".
+  const loadSummary = loadKind === 'none' ? t('Off')
+    : loadKind === 'single' ? t('Single stack')
+      : !usesBar(ex) ? t('Per side')
+        : base > 0 ? t('Bar {0}', fmtNum(base) + ' ' + S.unit) : t('No bar')
+  // The line under a set row (or a drop sub-row): shown on the first loaded row and whenever the
+  // stack changes from the loaded row before it, so a run of equal weights shows its plates once.
+  // What to strip and what to add rides along, except in the compact view.
+  const loadLine = key => {
+    const at = loadSeq.findIndex(x => x.key === key)
+    const L = at >= 0 ? loadSeq[at].load : null
+    if (!L) return null
+    let p = at - 1
+    while (p >= 0 && !loadSeq[p].load) p--
+    const prev = p >= 0 ? loadSeq[p].load : null
+    if (prev && sameLoad(prev, L)) return null
+    // "+" between plates: "45 + 5 per side" reads as a sum, a dot did not (Boris, 2026-09-13).
+    const stack = L.plates.map(w => fmtPlate(w)).join(' + ')
+    const text = L.barOnly ? t('Bar only')
+      : L.kind === 'pairs' ? t('{0} per side', stack || '—') : t('Load {0}', stack || '—')
+    const d = prev && !dense ? plateDelta(prev.plates, L.plates) : null
+    const moves = d ? [...d.strip.map(w => '−' + fmtPlate(w)), ...d.add.map(w => '+' + fmtPlate(w))] : []
+    return <div className="plateline">
+      <Icon name="plate" />
+      <span>{text}{L.missing > 0 && <> · <span className="short">{t('{0} short', fmtPlate(L.missing) + ' ' + S.unit)}</span></>}</span>
+      {moves.length > 0 && <span className="moves">{moves.join(' ')}</span>}
+    </div>
+  }
   // Everything about this exercise that is not a set you are logging right now lives behind one
   // button. What used to be a row of buttons in the header, a chip under the bar, a strip of
   // three under the sets and four more below the card is a single list you open once a session.
-  const barInfo =
-    !cardio && !(bw && !added) && usesBar(ex)
-      ? (() => {
-          const bar = barWeightFor(S, entry.id)
-          if (bar == null || bar < 0) return null
-          const nextW = entry.sets.find(s => !s.done)?.w
-          const refW = nextW > 0 ? nextW : Math.max(0, ...entry.sets.map(s => s.w || 0))
-          const split = plateSplit(refW, bar)
-          const perSide = split != null ? t('{0} per side', fmtNum(split) + ' ' + S.unit) : null
-          // With no bar there is no bar weight worth naming — the chip is then just the plate math,
-          // and it still opens the same sheet to turn it back on (issue #138).
-          if (bar === 0) return perSide ? { bar, text: perSide } : null
-          return { bar, text: t('Bar {0}', fmtNum(bar) + ' ' + S.unit) + (perSide ? ' · ' + perSide : '') }
-        })()
-      : null
-  const openMore = () =>
-    menuSheet({
-      title: exerciseNameFor(ex),
-      items: [
-        {
-          icon: 'pencil',
-          label: entry.note ? t('Edit note') : t('Add note'),
-          sub: entry.note || undefined,
-          onClick: () => exerciseNoteSheet(entryIdx),
-        },
-        { icon: 'info', label: t('Details'), onClick: () => exerciseDetailSheet(ex) },
-        {
-          icon: 'history',
-          label: t('History'),
-          sub: last ? t('Last time') + ' ' + fmtDate(last.d) : undefined,
-          onClick: () => exerciseHistorySheet(entry.id),
-        },
-        onProgressionSettings && {
-          icon: 'chartLine',
-          label: t('Progression settings'),
-          sub: guidance ? t(guidance.policyLabel) : undefined,
-          onClick: onProgressionSettings,
-        },
-        barInfo && {
-          icon: 'barbell',
-          label: t('Bar weight'),
-          sub: barInfo.text,
-          onClick: () => barWeightSheet(entry.id),
-        },
-        { icon: 'flame', label: t('Add warm-up set'), onClick: onAddWarmup },
-        onPairPrev && { icon: 'link', label: t('Make superset with previous'), onClick: onPairPrev },
-        onPairNext && { icon: 'link', label: t('Make superset with next'), onClick: onPairNext },
-        onSwap && { icon: 'shuffle', label: t('Swap exercise'), onClick: onSwap, disabled: busy },
-        onMoveUp && { icon: 'chevronUp', label: t('Move up'), onClick: onMoveUp, disabled: busy || !canMoveUp },
-        onMoveDown && {
-          icon: 'chevronDown',
-          label: t('Move down'),
-          onClick: onMoveDown,
-          disabled: busy || !canMoveDown,
-        },
-        onRemoveExercise && {
-          icon: 'trash',
-          label: t('Remove exercise'),
-          onClick: onRemoveExercise,
-          danger: true,
-          disabled: busy,
-        },
-      ],
-    })
+  const openMore = () => menuSheet({
+    title: exerciseNameFor(ex),
+    items: [
+      { icon: 'pencil', label: entry.note ? t('Edit note') : t('Add note'), sub: entry.note || undefined, onClick: () => exerciseNoteSheet(entryIdx) },
+      { icon: 'info', label: t('Details'), onClick: () => exerciseDetailSheet(ex) },
+      { icon: 'history', label: t('History'), sub: last ? t('Last time') + ' ' + fmtDate(last.d) : undefined, onClick: () => exerciseHistorySheet(entry.id) },
+      onProgressionSettings && { icon: 'chartLine', label: t('Progression settings'), sub: guidance ? t(guidance.policyLabel) : undefined, onClick: onProgressionSettings },
+      plateLoading && { icon: 'plate', label: t('Plate loading'), sub: loadSummary, onClick: () => barWeightSheet(entry.id, cfg) },
+      { icon: 'flame', label: t('Add warm-up set'), onClick: onAddWarmup },
+      onPairPrev && { icon: 'link', label: t('Make superset with previous'), onClick: onPairPrev },
+      onPairNext && { icon: 'link', label: t('Make superset with next'), onClick: onPairNext },
+      onSwap && { icon: 'shuffle', label: t('Swap exercise'), onClick: onSwap, disabled: busy },
+      onMoveUp && { icon: 'chevronUp', label: t('Move up'), onClick: onMoveUp, disabled: busy || !canMoveUp },
+      onMoveDown && { icon: 'chevronDown', label: t('Move down'), onClick: onMoveDown, disabled: busy || !canMoveDown },
+      onRemoveExercise && { icon: 'trash', label: t('Remove exercise'), onClick: onRemoveExercise, danger: true, disabled: busy },
+    ],
+  })
   // The set number is the set's own menu: drop / burst / remove — three things that used to
   // sit as chips and an X on every single row.
   const openSetMenu = (s, i) => {
@@ -774,198 +838,94 @@ function ExerciseBlock({
         own line and its own icon: the plan's instruction (cfg.note, from the routine), the
         standing fact about the movement (exNotes), and the message you pinned to yourself last
         session. Today's own note is edited through the button in the header and shown last. */}
-          {cfg.note && <div className="exnote">{cfg.note}</div>}
-          {standingNote && (
-            <div className="exnote">
-              <Icon name="info" style={{ fontSize: 13, marginRight: 5, verticalAlign: '-2px' }} />
-              {standingNote}
-            </div>
-          )}
-          {pinnedNote && (
-            <div className="exnote" style={{ color: 'var(--yellow)' }}>
-              <Icon name="flag" style={{ fontSize: 13, marginRight: 5, verticalAlign: '-2px' }} />
-              {t('From {0}:', fmtDate(pinnedNote.d, true))} {pinnedNote.note}
-            </div>
-          )}
-          {entry.note && <div className="exnote">{entry.note}</div>}
-          {last && (
-            <div className="small dim" style={{ marginBottom: 4 }}>
-              {t('Last time')} ({fmtDate(last.d)}): {last.sets.map(s => setLabel(entry.id, s, last.target)).join(', ')}
-            </div>
-          )}
-          {/* Bar + plates for barbell work: what to load per side for the set in front of you
-        (first undone set; the heaviest row once everything is checked). The logged number
-        stays the total — this chip is the split, and tapping it edits the bar's own weight
-        (S.barWeights, per exercise) mid-workout. Weight ≤ bar leaves just the bar. */}
-          {barInfo && (
-            <div className="small dim" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <Icon name="dumbbell" style={{ fontSize: 12 }} />
-              {barInfo.text}
-            </div>
-          )}
-          {guidance && (
-            <button
-              type="button"
-              className={'progline' + (plan.kind === 'deload' ? ' warn' : '')}
-              aria-label={t('Open progression settings')}
-              onClick={onProgressionSettings}
-            >
-              <Icon name={plan.kind === 'up' ? 'arrowUp' : plan.kind === 'deload' ? 'arrowDown' : 'lightbulb'} />
-              <span>
-                <strong>{t(guidance.policyLabel)}</strong> · {t(...guidance.why)}
-              </span>
-            </button>
-          )}
-        </>
-      )}
-      <div className="card" style={{ marginTop: 10, marginBottom: 0 }}>
-        {/* the header carries the same eff3/timed sizing as the rows, or the labels drift off their
+    {cfg.note && <div className="exnote">{cfg.note}</div>}
+    {standingNote && <div className="exnote"><Icon name="info" style={{ fontSize: 13, marginRight: 5, verticalAlign: '-2px' }} />{standingNote}</div>}
+    {pinnedNote && <div className="exnote" style={{ color: 'var(--yellow)' }}>
+      <Icon name="flag" style={{ fontSize: 13, marginRight: 5, verticalAlign: '-2px' }} />
+      {t('From {0}:', fmtDate(pinnedNote.d, true))} {pinnedNote.note}
+    </div>}
+    {entry.note && <div className="exnote">{entry.note}</div>}
+    {refLine}
+    {guidance && <button type="button" className={'progline' + (plan.kind === 'deload' ? ' warn' : '')}
+      aria-label={t('Open progression settings')} onClick={onProgressionSettings}>
+      <Icon name={plan.kind === 'up' ? 'arrowUp' : plan.kind === 'deload' ? 'arrowDown' : 'lightbulb'} />
+      <span><strong>{t(guidance.policyLabel)}</strong> · {t(...guidance.why)}</span>
+    </button>}
+    </>}
+    <div className="card" style={{ marginTop: 10, marginBottom: 0 }}>
+      {/* the header carries the same eff3/timed sizing as the rows, or the labels drift off their
           columns; over L/R rows it also has to skip the side badge that sits in front of the weight cell */}
-        <div
-          className={
-            'sethead' +
-            (col3 ? ' eff3' : '') +
-            (timed ? ' timed' : '') +
-            (perSide ? ' per-side' : '') +
-            (wc.steppers ? '' : ' plain')
-          }
-        >
-          <span className="n-sp" />
-          <span className="w-sp">{col1.hd}</span>
-          {col2 && <span className="r-sp">{col2.hd}</span>}
-          {col3 && <span className="eff-sp">{col3.hd}</span>}
-          {timed && <span className="ck-sp" />}
-          <span className="ck-sp" />
-        </div>
-        {entry.sets.map((s, i) => {
-          const warm = isWarmupRow(s)
-          const warmBefore = i > 0 && isWarmupRow(entry.sets[i - 1])
-          const isFirstWarmup = warm && !warmBefore
-          // Numbering restarts per phase: with two warm-ups the first work set reads 1, not 3.
-          const phaseNum = entry.sets.slice(0, i + 1).filter(x => isWarmupRow(x) === warm).length
-          return (
-            <div key={i}>
-              {isFirstWarmup && <div className="setph">{t('Warm-up')}</div>}
-              {!warm && warmBefore && <div className="setsep" />}
-              {perSide && !warm && isSideSet(s) ? (
-                // Unilateral work set: the number sits beside a two-row L/R stack, each side logged
-                // and ticked on its own (issue #60).
-                <div ref={el => onSetRowRef?.(i, el)} className={'setrow-side' + (s.done ? ' done' : '')}>
-                  <button
-                    type="button"
-                    className="n"
-                    aria-label={t('Set {0}', phaseNum)}
-                    title={t('More')}
-                    onClick={() => openSetMenu(s, i)}
-                  >
-                    {phaseNum}
-                  </button>
-                  <div className="side-rows">
-                    {sideRow(s, i, 'L', col1, col2, col3)}
-                    {sideExtras(s, i, 'L')}
-                    {sideRow(s, i, 'R', col1, col2, col3)}
-                    {sideExtras(s, i, 'R')}
-                  </div>
-                </div>
-              ) : (
-                <div
-                  ref={el => onSetRowRef?.(i, el)}
-                  className={'setrow' + (s.done ? ' done' : '') + (col3 ? ' eff3' : '') + (timed ? ' timed' : '')}
-                >
-                  <button
-                    type="button"
-                    className="n"
-                    aria-label={t('Set {0}', phaseNum)}
-                    title={t('More')}
-                    onClick={() => openSetMenu(s, i)}
-                  >
-                    {phaseNum}
-                  </button>
-                  {cell(s, i, col1, 'w')}
-                  {col2 && cell(s, i, col2, 'r')}
-                  {col3 && effortCell(s, i, col3)}
-                  {/* A timed set is started, not typed: the timer counts the hold down and checks the
+      <div className={'sethead' + (col3 ? ' eff3' : '') + (timed ? ' timed' : '') + (perSide ? ' per-side' : '') + (wc.steppers ? '' : ' plain')}><span className="n-sp" /><span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{col3 && <span className="eff-sp">{col3.hd}</span>}{timed && <span className="ck-sp" />}<span className="ck-sp" /></div>
+      {entry.sets.map((s, i) => {
+        const warm = isWarmupRow(s)
+        const warmBefore = i > 0 && isWarmupRow(entry.sets[i - 1])
+        const isFirstWarmup = warm && !warmBefore
+        // Numbering restarts per phase: with two warm-ups the first work set reads 1, not 3.
+        const phaseNum = entry.sets.slice(0, i + 1).filter(x => isWarmupRow(x) === warm).length
+        return <div key={i}>
+          {isFirstWarmup && <div className="setph">{t('Warm-up')}</div>}
+          {!warm && warmBefore && <div className="setsep" />}
+          {perSide && !warm && isSideSet(s) ? (
+            // Unilateral work set: the number sits beside a two-row L/R stack, each side logged
+            // and ticked on its own (issue #60).
+            <div ref={el => onSetRowRef?.(i, el)} className={'setrow-side' + (s.done ? ' done' : '')}>
+              <button type="button" className="n" aria-label={t('Set {0}', phaseNum)} title={t('More')} onClick={() => openSetMenu(s, i)}>{phaseNum}</button>
+              <div className="side-rows">
+                {sideRow(s, i, 'L', col1, col2, col3)}
+                {sideExtras(s, i, 'L')}
+                {sideRow(s, i, 'R', col1, col2, col3)}
+                {sideExtras(s, i, 'R')}
+              </div>
+            </div>
+          ) : (
+          <div ref={el => onSetRowRef?.(i, el)} className={'setrow' + (s.done ? ' done' : '') + (col3 ? ' eff3' : '') + (timed ? ' timed' : '')}>
+            <button type="button" className="n" aria-label={t('Set {0}', phaseNum)} title={t('More')} onClick={() => openSetMenu(s, i)}>{phaseNum}</button>
+            {cell(s, i, col1, 'w')}
+            {col2 && cell(s, i, col2, 'r')}
+            {col3 && effortCell(s, i, col3)}
+            {/* A timed set is started, not typed: the timer counts the hold down and checks the
                 set off itself. The checkbox stays for anyone who timed it on their own watch. */}
-                  {timed && (
-                    <button
-                      className="setgo"
-                      aria-label={t('Start set')}
-                      disabled={s.done || !!working}
-                      onClick={() => onStartTimed(i)}
-                    >
-                      <Icon name="play" />
-                    </button>
-                  )}
-                  <Check checked={s.done} onChange={() => onToggle(i)} />
-                </div>
-              )}
-              {/* Drop-sets and rest-pause bursts extend this same row — no long rest, no new set.
+            {timed && !editing && <button className="setgo" aria-label={t('Start set')} disabled={s.done || !!working}
+              onClick={() => onStartTimed(i)}><Icon name="play" /></button>}
+            <Check checked={s.done} onChange={() => onToggle(i)} />
+          </div>
+          )}
+          {loadLine(String(i))}
+          {/* Drop-sets and rest-pause bursts extend this same row — no long rest, no new set.
               A planned exercise arrives with these already filled in (applyIntensifierPlan);
               every value here is just as editable as the main row's own weight/reps. */}
-              {!warm && mode === 'reps' && (
-                <>
-                  {dropsOf(s).map((d, di) => (
-                    <div className="subrow" key={'d' + di}>
-                      <span className="subn">{t('Drop {0}', di + 1)}</span>
-                      {miniStepper(d.w, loadStep, true, v => setDropField(i, di, 'w', v), true)}
-                      {miniStepper(d.r, 1, false, v => setDropField(i, di, 'r', v))}
-                      <button className="iconbtn" aria-label={t('Remove drop')} onClick={() => removeDrop(i, di)}>
-                        <Icon name="xmark" />
-                      </button>
-                    </div>
-                  ))}
-                  {clustersOf(s).map((c, ci) => (
-                    <div className="subrow" key={'c' + ci}>
-                      <span className="subn">{t('Burst {0}', ci + 1)}</span>
-                      {miniStepper(c.r, 1, false, v => setClusterField(i, ci, v))}
-                      <span className="dim small">{c.restSec}s</span>
-                      <button className="iconbtn" aria-label={t('Remove burst')} onClick={() => removeCluster(i, ci)}>
-                        <Icon name="xmark" />
-                      </button>
-                    </div>
-                  ))}
-                  {wc.setShortcuts && (
-                    <div className="setextra">
-                      {!isRestPauseSet(s) && (
-                        <button className="chip add" onClick={() => addDropRow(i)}>
-                          <Icon name="arrowDown" />
-                          {t('+ Drop')}
-                        </button>
-                      )}
-                      {!isDropSet(s) && (
-                        <button className="chip add" onClick={() => addBurstRow(i)}>
-                          <Icon name="bolt" />
-                          {t('+ Burst')}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )
-        })}
-        <div style={{ height: 8 }} />
-        {wc.setShortcuts ? (
-          <div className="row" style={{ flexWrap: 'wrap' }}>
-            <Button size="sm" icon="flame" onClick={onAddWarmup}>
-              {t('Add warm-up set')}
-            </Button>
-            <Button size="sm" icon="minus" disabled={entry.sets.length <= 1} onClick={onRemoveSet}>
-              {t('Remove set')}
-            </Button>
-            <Button size="sm" icon="plus" onClick={onAddSet}>
-              {t('Add set')}
-            </Button>
-          </div>
-        ) : (
-          <Button size="sm" icon="plus" onClick={onAddSet}>
-            {t('Add set')}
-          </Button>
-        )}
-      </div>
-    </>
-  )
+          {!warm && mode === 'reps' && <>
+            {dropsOf(s).map((d, di) => (
+              <div className="subrow" key={'d' + di}>
+                <span className="subn">{t('Drop {0}', di + 1)}</span>
+                {miniStepper(d.w, loadStep, true, v => setDropField(i, di, 'w', v), true)}
+                {miniStepper(d.r, 1, false, v => setDropField(i, di, 'r', v))}
+                <button className="iconbtn" aria-label={t('Remove drop')} onClick={() => removeDrop(i, di)}><Icon name="xmark" /></button>
+              </div>
+            )).flatMap((el, di) => [el, <Fragment key={'dl' + di}>{loadLine(i + ':d' + di)}</Fragment>])}
+            {clustersOf(s).map((c, ci) => (
+              <div className="subrow" key={'c' + ci}>
+                <span className="subn">{t('Burst {0}', ci + 1)}</span>
+                {miniStepper(c.r, 1, false, v => setClusterField(i, ci, v))}
+                <span className="dim small">{c.restSec}s</span>
+                <button className="iconbtn" aria-label={t('Remove burst')} onClick={() => removeCluster(i, ci)}><Icon name="xmark" /></button>
+              </div>
+            ))}
+            {wc.setShortcuts && <div className="setextra">
+              {!isRestPauseSet(s) && <button className="chip add" onClick={() => addDropRow(i)}><Icon name="arrowDown" />{t('+ Drop')}</button>}
+              {!isDropSet(s) && <button className="chip add" onClick={() => addBurstRow(i)}><Icon name="bolt" />{t('+ Burst')}</button>}
+            </div>}
+          </>}
+        </div>
+      })}
+      <div style={{ height: 8 }} />
+      {wc.setShortcuts ? <div className="row" style={{ flexWrap: 'wrap' }}>
+        <Button size="sm" icon="flame" onClick={onAddWarmup}>{t('Add warm-up set')}</Button>
+        <Button size="sm" icon="minus" disabled={entry.sets.length <= 1} onClick={onRemoveSet}>{t('Remove set')}</Button>
+        <Button size="sm" icon="plus" onClick={onAddSet}>{t('Add set')}</Button>
+      </div> : <Button size="sm" icon="plus" onClick={onAddSet}>{t('Add set')}</Button>}
+    </div>
+  </>
 }
 
 /* ---------- active workout ---------- */
@@ -996,6 +956,7 @@ function ActiveWorkout() {
   const update = useStore(s => s.update)
   const { startRest: liveRest, stopRest, stopWork, work } = useUI()
   const A = S.active
+  const editing = !!A.editingWorkoutId
   // A past workout has no rest to time — the sets were done days ago. The work timer for
   // timed sets stays, since counting a hold is how its duration gets entered.
   const startRest = A.backfill ? () => {} : liveRest
@@ -1187,6 +1148,7 @@ function ActiveWorkout() {
   // exercise-level actions (swap, move, remove) address the entry itself, so the "more" menu of
   // a superset member acts on that member, not on whatever the marker happens to point at.
   const blockProps = idx => ({
+    editing,
     onSwap: () => swapActiveWorkoutExercise(idx),
     onMoveUp: () => moveUnitAt(idx, -1),
     onMoveDown: () => moveUnitAt(idx, 1),
@@ -1577,9 +1539,13 @@ function ActiveWorkout() {
         <div className="hdr">
           <button
             className="iconbtn"
-            aria-label={t('Discard')}
+          <button
+            className="iconbtn"
+            aria-label={t(editing ? 'Close editor' : 'Discard')}
             onClick={() =>
-              confirmSheet({
+              editing ?
+                exitWorkoutEdit()
+              : confirmSheet({
                 title: t('Discard workout?'),
                 message: t('The sets you logged in this session will be lost.'),
                 confirmText: t('Discard'),
@@ -1600,7 +1566,7 @@ function ActiveWorkout() {
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontWeight: 600 }}>{A.name}</div>
             <div className="sub">
-              {A.backfill ? fmtDate(A.d, true) : <Elapsed start={A.start} />} · {t('{0} sets', done + '/' + total)}
+              {(A.backfill || editing) ? fmtDate(A.d, true) : <Elapsed start={A.start} />} · {t('{0} sets', done + '/' + total)}
             </div>
           </div>
           <div className="row" style={{ gap: 4, flex: 'none' }}>
@@ -1610,7 +1576,7 @@ function ActiveWorkout() {
             <button
               className="iconbtn"
               style={{ color: 'var(--acc)' }}
-              aria-label={t('Finish')}
+              aria-label={t(editing ? 'Save changes' : 'Finish')}
               onClick={finishWorkout}
             >
               <Icon name="check" />
@@ -1621,6 +1587,9 @@ function ActiveWorkout() {
           <i style={{ width: (total ? (done / total) * 100 : 0) + '%' }} />
         </div>
       </div>
+      {editing && (
+        <p className="muted small">{t('Editing a saved workout. Date and duration stay unchanged.')}</p>
+      )}
       {A.backfill && (
         <div className="muted small" style={{ marginBottom: 8 }}>
           {t('Logging a past workout — no rest timers.')}
