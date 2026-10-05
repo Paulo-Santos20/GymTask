@@ -17,8 +17,26 @@ vi.mock('../lib/api.js', () => ({ api: vi.fn(() => Promise.resolve({})), appBase
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 const clone = value => JSON.parse(JSON.stringify(value))
 const done = (id, w) => ({ id, target: { sets: 1, reps: 5, weight: w }, sets: [{ w, r: 5, done: true }] })
-const saved = { id: 'saved', d: '2026-09-22', start: 1000, end: 2000, routineIds: [], name: 'Push', entries: [done('0025', 80), done('0027', 60)], prs: [] }
-const other = { id: 'other', d: '2026-09-20', start: 0, end: 1, routineIds: [], name: 'Pull', entries: [done('0027', 55)], prs: [] }
+const saved = {
+  id: 'saved',
+  d: '2026-09-22',
+  start: 1000,
+  end: 2000,
+  routineIds: [],
+  name: 'Push',
+  entries: [done('0025', 80), done('0027', 60)],
+  prs: [],
+}
+const other = {
+  id: 'other',
+  d: '2026-09-20',
+  start: 0,
+  end: 1,
+  routineIds: [],
+  name: 'Pull',
+  entries: [done('0027', 55)],
+  prs: [],
+}
 
 let root
 let container
@@ -34,7 +52,13 @@ function renderEditor(extra = {}) {
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
-  act(() => root.render(<MemoryRouter><Workout /></MemoryRouter>))
+  act(() =>
+    root.render(
+      <MemoryRouter>
+        <Workout />
+      </MemoryRouter>,
+    ),
+  )
 }
 function renderTopSheet() {
   if (sheetRoot) act(() => sheetRoot.unmount())
@@ -50,14 +74,26 @@ function renderTopSheet() {
 // Sheets render through nested act() calls, so they are opened before an act() that taps them.
 const button = (host, text) => [...host.querySelectorAll('button')].find(b => b.textContent.trim() === text)
 const S = () => useStore.getState().S
-const untickAll = () => act(() => useStore.getState().update(s => { s.active.entries.forEach(e => e.sets.forEach(set => { set.done = false })) }))
+const untickAll = () =>
+  act(() =>
+    useStore.getState().update(s => {
+      s.active.entries.forEach(e =>
+        e.sets.forEach(set => {
+          set.done = false
+        }),
+      )
+    }),
+  )
 const tapSave = () => act(() => container.querySelector('button[aria-label="Save changes"]').click())
 
 beforeEach(() => {
   vi.useFakeTimers()
   localStorage.clear()
   useUI.setState({ sheets: [], toastMsg: '', timer: null, work: null })
-  root = null; container = null; sheetRoot = null; sheetContainer = null
+  root = null
+  container = null
+  sheetRoot = null
+  sheetContainer = null
 })
 
 afterEach(() => {
@@ -78,7 +114,9 @@ describe('saving an edit that leaves no set', () => {
 
     const dialog = renderTopSheet()
     expect(dialog.querySelector('h3').textContent).toBe('Delete workout?')
-    expect(dialog.textContent).toContain('No sets are left in this workout, so there is nothing to save. Delete it from your history?')
+    expect(dialog.textContent).toContain(
+      'No sets are left in this workout, so there is nothing to save. Delete it from your history?',
+    )
     expect(button(dialog, 'Delete workout').className).toContain('danger')
     act(() => button(dialog, 'Keep editing').click())
 
@@ -89,12 +127,22 @@ describe('saving an edit that leaves no set', () => {
   })
 
   // Fase 4: the sentence about photos and videos going with the workout needs lib/media-refs.js.
-  it.skip('says the workout\'s photos and videos go with it, when it has any', () => {
-    const ref = n => ({ kind: 'image', hash: String(n).repeat(64), mime: 'image/webp', size: 10, width: 8, height: 6, at: 1 })
+  it.skip("says the workout's photos and videos go with it, when it has any", () => {
+    const ref = n => ({
+      kind: 'image',
+      hash: String(n).repeat(64),
+      mime: 'image/webp',
+      size: 10,
+      width: 8,
+      height: 6,
+      at: 1,
+    })
     renderEditor({ media: [ref(1), ref(2), ref(3)] })
     untickAll()
     tapSave()
-    expect(renderTopSheet().textContent).toContain('Delete it from your history? Its 3 photos or videos are deleted with it.')
+    expect(renderTopSheet().textContent).toContain(
+      'Delete it from your history? Its 3 photos or videos are deleted with it.',
+    )
   })
 
   it('Delete workout takes it out of the history and closes the editor', () => {
@@ -111,7 +159,11 @@ describe('saving an edit that leaves no set', () => {
 
   it('asks the same when every exercise was removed, and from the close button’s Save changes', () => {
     renderEditor()
-    act(() => useStore.getState().update(s => { s.active.entries = [] }))
+    act(() =>
+      useStore.getState().update(s => {
+        s.active.entries = []
+      }),
+    )
     act(() => container.querySelector('button[aria-label="Close editor"]').click())
     const save = button(renderTopSheet(), 'Save changes')
     act(() => save.click())
@@ -124,7 +176,11 @@ describe('saving an edit that leaves no set', () => {
 
   it('an edit with a set left saves as before, with no question', () => {
     renderEditor()
-    act(() => useStore.getState().update(s => { s.active.entries[1].sets[0].done = false }))
+    act(() =>
+      useStore.getState().update(s => {
+        s.active.entries[1].sets[0].done = false
+      }),
+    )
     tapSave()
 
     expect(useUI.getState().sheets).toHaveLength(0)

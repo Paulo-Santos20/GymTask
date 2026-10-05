@@ -7,7 +7,9 @@ export async function copyText(text) {
       await navigator.clipboard.writeText(text)
       return true
     }
-  } catch { /* refused (no permission, page not focused): the selection copy may still work */ }
+  } catch {
+    /* refused (no permission, page not focused): the selection copy may still work */
+  }
   try {
     const area = document.createElement('textarea')
     area.value = text

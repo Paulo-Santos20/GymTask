@@ -11,8 +11,8 @@ import { useUI } from './store/useUI.js'
 import { barWeightSheet, plateInventorySheet } from './sheets.jsx'
 import { EXIDX } from './lib/exercises.js'
 
-const SQUAT = '0043'      // barbell
-const COCOONS = '0260'    // body weight
+const SQUAT = '0043' // barbell
+const COCOONS = '0260' // body weight
 const LEG_PRESS = EXIDX['0585'] ? '0585' : Object.values(EXIDX).find(e => e.eq === 'leverage machine').id
 
 const mounted = []
@@ -30,7 +30,8 @@ const stamped = kind => ({ kind, _ts: expect.any(Number) })
 const segButton = (host, text) => [...host.querySelectorAll('.seg button')].find(b => b.textContent.trim() === text)
 const button = (host, text) => [...host.querySelectorAll('button')].find(b => b.textContent.trim() === text)
 // A labelled Stepper is .stp-w > .stp-l (label) + .stp (Decrease, value input, Increase).
-const stepperOf = (host, label) => [...host.querySelectorAll('.stp-w')].find(el => el.querySelector('.stp-l')?.textContent.trim() === label)
+const stepperOf = (host, label) =>
+  [...host.querySelectorAll('.stp-w')].find(el => el.querySelector('.stp-l')?.textContent.trim() === label)
 const valueOf = st => st.querySelector('input').value
 const dec = st => st.querySelector('[aria-label="Decrease"]')
 const inc = st => st.querySelector('[aria-label="Increase"]')
@@ -42,7 +43,11 @@ describe('plate loading editor', () => {
     useStore.setState({ S: { ...JSON.parse(JSON.stringify(DEF)), unit: 'lb' }, user: null })
     document.body.innerHTML = ''
   })
-  afterEach(() => { act(() => { mounted.splice(0).forEach(root => root.unmount()) }) })
+  afterEach(() => {
+    act(() => {
+      mounted.splice(0).forEach(root => root.unmount())
+    })
+  })
 
   it('the exercises used here are what the test assumes', () => {
     expect(EXIDX[SQUAT].eq).toBe('barbell')
@@ -91,7 +96,7 @@ describe('plate loading editor', () => {
     act(() => sw.click())
     expect(S().barWeights[SQUAT]).toBe(0)
     expect(host.textContent).toContain('Plates are counted from 0')
-    expect(host.textContent).not.toContain('Bar (lb)')   // the stepper is gone while there is no bar
+    expect(host.textContent).not.toContain('Bar (lb)') // the stepper is gone while there is no bar
     act(() => host.querySelector('.switch, [role="switch"], input[type="checkbox"]').click())
     expect(S().barWeights[SQUAT]).toBeUndefined()
   })
@@ -132,26 +137,31 @@ describe('plate inventory sheet', () => {
     useStore.setState({ S: { ...JSON.parse(JSON.stringify(DEF)), unit: 'lb' }, user: null })
     document.body.innerHTML = ''
   })
-  afterEach(() => { act(() => { mounted.splice(0).forEach(root => root.unmount()) }) })
+  afterEach(() => {
+    act(() => {
+      mounted.splice(0).forEach(root => root.unmount())
+    })
+  })
 
   it('lists every lb size with the standard count; the first edit copies the set and changes one count', () => {
     act(() => plateInventorySheet())
     const host = mountTopSheet()
     expect(host.querySelector('h3').textContent).toBe('Plates')
-    for (const w of ['45 lb', '35 lb', '25 lb', '15 lb', '10 lb', '5 lb', '2,5 lb', '1,25 lb']) expect(stepperOf(host, w), w).toBeTruthy()
+    for (const w of ['45 lb', '35 lb', '25 lb', '15 lb', '10 lb', '5 lb', '2,5 lb', '1,25 lb'])
+      expect(stepperOf(host, w), w).toBeTruthy()
     expect(valueOf(stepperOf(host, '45 lb'))).toBe('6')
-    expect(valueOf(stepperOf(host, '15 lb'))).toBe('0')   // not in the standard set
+    expect(valueOf(stepperOf(host, '15 lb'))).toBe('0') // not in the standard set
     expect(stepperOf(host, '45 lb').textContent).toContain('pairs')
     expect(S().plates).toEqual({})
     for (let i = 0; i < 5; i++) act(() => dec(stepperOf(host, '45 lb')).click())
     expect(S().plates.lb[45]).toBe(1)
-    expect(S().plates.lb[35]).toBe(6)     // the rest of the standard set came along
+    expect(S().plates.lb[35]).toBe(6) // the rest of the standard set came along
     expect(S().plates.lb[15]).toBeUndefined()
     expect(S().plates.lb._ts).toEqual(expect.any(Number))
     act(() => inc(stepperOf(host, '15 lb')).click())
     expect(S().plates.lb[15]).toBe(1)
     expect(valueOf(stepperOf(host, '45 lb'))).toBe('1')
-    expect(S().plates.kg).toBeUndefined()   // the other unit is untouched
+    expect(S().plates.kg).toBeUndefined() // the other unit is untouched
     expect(host.textContent).toContain('Your own list for lb.')
   })
 

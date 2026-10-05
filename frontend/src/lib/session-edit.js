@@ -51,8 +51,11 @@ const savedData = w => Object.fromEntries(Object.entries(w).filter(([k]) => !DER
 // had `routineIds` or a `topW` (an import, a workout from an older build) holds nothing a Save
 // would add beyond [] / null / the top set its sets already say. (Save itself still writes those.)
 const comparable = w => {
-  const out = Object.fromEntries(Object.entries(savedData(w)).filter(([, v]) => v !== null && !(Array.isArray(v) && !v.length)))
-  if (Array.isArray(out.entries)) out.entries = out.entries.map(e => (e && typeof e === 'object' ? (({ topW, ...rest }) => rest)(e) : e))
+  const out = Object.fromEntries(
+    Object.entries(savedData(w)).filter(([, v]) => v !== null && !(Array.isArray(v) && !v.length)),
+  )
+  if (Array.isArray(out.entries))
+    out.entries = out.entries.map(e => (e && typeof e === 'object' ? (({ topW, ...rest }) => rest)(e) : e))
   return out
 }
 
@@ -197,7 +200,8 @@ function draftRecord(active, current, key) {
     const merged = { ...clone(logged[i]), ...entry }
     delete merged.plan
     delete merged.carried
-    for (const k of ['note', 'notePin', 'noProg', 'muscleSnapshot', 'rid', 'planned']) if (!(k in entry)) delete merged[k]
+    for (const k of ['note', 'notePin', 'noProg', 'muscleSnapshot', 'rid', 'planned'])
+      if (!(k in entry)) delete merged[k]
     return merged
   })
   const record = { ...current, ...updated, id: key, d: current.d, start: current.start, end: current.end }
@@ -232,6 +236,17 @@ export function deleteEditedWorkout(state) {
   state.active = null
   if (!current) return false
   state.workouts = state.workouts.filter(w => w !== current)
-  lowerKeptWeights(state, [...new Set(list(current.entries).map(e => e?.id).filter(id => id != null))], current, null)
+  lowerKeptWeights(
+    state,
+    [
+      ...new Set(
+        list(current.entries)
+          .map(e => e?.id)
+          .filter(id => id != null),
+      ),
+    ],
+    current,
+    null,
+  )
   return true
 }

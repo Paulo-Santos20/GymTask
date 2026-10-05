@@ -20,7 +20,9 @@ function open(settings, existing) {
   const root = createRoot(host)
   mounted.push(root)
   act(() => root.render(sheet.render(() => useUI.getState().closeSheet(sheet.id))))
-  const speed = [...host.querySelectorAll('.stp-w')].find(w => w.querySelector('.stp-l')?.textContent.startsWith('Speed'))
+  const speed = [...host.querySelectorAll('.stp-w')].find(w =>
+    w.querySelector('.stp-l')?.textContent.startsWith('Speed'),
+  )
   const save = [...host.querySelectorAll('button')].find(b => b.textContent.trim() === 'Save')
   return { speed, save, onSave }
 }
@@ -30,7 +32,11 @@ beforeEach(() => {
   useUI.setState({ sheets: [] })
   document.body.innerHTML = ''
 })
-afterEach(() => { act(() => { mounted.splice(0).forEach(root => root.unmount()) }) })
+afterEach(() => {
+  act(() => {
+    mounted.splice(0).forEach(root => root.unmount())
+  })
+})
 
 describe('cardio settings speed', () => {
   it('reads and steps in mph for a profile in pounds, and saves km/h', () => {

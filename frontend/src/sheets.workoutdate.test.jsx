@@ -27,7 +27,10 @@ const type = (el, value) => {
   el.dispatchEvent(new Event('input', { bubbles: true }))
 }
 const button = (host, text) => [...host.querySelectorAll('button')].find(b => b.textContent.trim() === text)
-const unmountAll = () => act(() => { mounted.splice(0).forEach(r => r.unmount()) })
+const unmountAll = () =>
+  act(() => {
+    mounted.splice(0).forEach(r => r.unmount())
+  })
 
 const entry = (id, w) => ({ id, sets: [{ w, r: 5, done: true }] })
 const workout = (id, d, time, min, entries, prs = []) => {
@@ -61,9 +64,15 @@ describe('changing the date of a saved workout', () => {
 
   it('moves the session, keeps the length it had and re-files it in date order', () => {
     const host = render(() => workoutDateSheet(history()[1]))
-    act(() => { type(host.querySelector('input[type=date]'), '2026-08-18') })
-    act(() => { type(host.querySelector('input[type=time]'), '06:15') })
-    act(() => { button(host, 'Save').click() })
+    act(() => {
+      type(host.querySelector('input[type=date]'), '2026-08-18')
+    })
+    act(() => {
+      type(host.querySelector('input[type=time]'), '06:15')
+    })
+    act(() => {
+      button(host, 'Save').click()
+    })
 
     expect(history().map(w => w.id)).toEqual(['late', 'early'])
     const moved = history()[0]
@@ -78,26 +87,41 @@ describe('changing the date of a saved workout', () => {
     // 90 kg was logged second, so 80 kg held the badge too. Moved first, the 80 kg session
     // is no longer a record and the 90 kg one is.
     const host = render(() => workoutDateSheet(history()[1]))
-    act(() => { type(host.querySelector('input[type=date]'), '2026-08-18') })
-    act(() => { button(host, 'Save').click() })
-    expect(history().map(w => [w.id, w.prs])).toEqual([['late', ['bench']], ['early', []]])
+    act(() => {
+      type(host.querySelector('input[type=date]'), '2026-08-18')
+    })
+    act(() => {
+      button(host, 'Save').click()
+    })
+    expect(history().map(w => [w.id, w.prs])).toEqual([
+      ['late', ['bench']],
+      ['early', []],
+    ])
   })
 
   it('refuses a day in the future and leaves history alone', () => {
     const before = history()
     const host = render(() => workoutDateSheet(before[1]))
-    act(() => { type(host.querySelector('input[type=date]'), '2099-01-01') })
-    act(() => { button(host, 'Save').click() })
+    act(() => {
+      type(host.querySelector('input[type=date]'), '2099-01-01')
+    })
+    act(() => {
+      button(host, 'Save').click()
+    })
     expect(history()).toEqual(before)
     expect(useUI.getState().toast).toHaveBeenCalledWith('Pick a day up to today')
-    expect(useUI.getState().sheets).toHaveLength(1)   // still open to correct the date
+    expect(useUI.getState().sheets).toHaveLength(1) // still open to correct the date
   })
 
   it('an empty date is refused rather than moving the workout to nowhere', () => {
     const before = history()
     const host = render(() => workoutDateSheet(before[1]))
-    act(() => { type(host.querySelector('input[type=date]'), '') })
-    act(() => { button(host, 'Save').click() })
+    act(() => {
+      type(host.querySelector('input[type=date]'), '')
+    })
+    act(() => {
+      button(host, 'Save').click()
+    })
     expect(history()).toEqual(before)
     expect(useUI.getState().toast).toHaveBeenCalledWith('Pick a day up to today')
   })
@@ -105,7 +129,9 @@ describe('changing the date of a saved workout', () => {
   it('saving without changing anything closes and touches nothing', () => {
     const before = history()
     const host = render(() => workoutDateSheet(before[1]))
-    act(() => { button(host, 'Save').click() })
+    act(() => {
+      button(host, 'Save').click()
+    })
     expect(history()).toEqual(before)
     expect(useUI.getState().toast).not.toHaveBeenCalled()
     expect(useUI.getState().sheets).toHaveLength(0)
@@ -113,9 +139,15 @@ describe('changing the date of a saved workout', () => {
 
   it('leaves a second workout on the same day in start-time order', () => {
     const host = render(() => workoutDateSheet(history()[1]))
-    act(() => { type(host.querySelector('input[type=date]'), '2026-08-20') })
-    act(() => { type(host.querySelector('input[type=time]'), '21:00') })
-    act(() => { button(host, 'Save').click() })
+    act(() => {
+      type(host.querySelector('input[type=date]'), '2026-08-20')
+    })
+    act(() => {
+      type(host.querySelector('input[type=time]'), '21:00')
+    })
+    act(() => {
+      button(host, 'Save').click()
+    })
     expect(history().map(w => w.id)).toEqual(['early', 'late'])
     expect(history()).toHaveLength(2)
   })
@@ -124,20 +156,38 @@ describe('changing the date of a saved workout', () => {
   // typed and left focused has to be flushed before the move, not after it.
   it('keeps a note typed but never blurred', () => {
     const host = render(() => workoutDetailSheet(history()[1]))
-    act(() => { type(host.querySelector('textarea'), 'felt strong') })
+    act(() => {
+      type(host.querySelector('textarea'), 'felt strong')
+    })
     const edit = render(() => button(host, 'Change date & time').click())
-    act(() => { type(edit.querySelector('input[type=date]'), '2026-08-18') })
-    act(() => { button(edit, 'Save').click() })
+    act(() => {
+      type(edit.querySelector('input[type=date]'), '2026-08-18')
+    })
+    act(() => {
+      button(edit, 'Save').click()
+    })
     unmountAll()
     expect(history().find(w => w.id === 'late').note).toBe('felt strong')
   })
 
   it('a record written before ids keeps one identity for sync', () => {
-    const legacy = { d: '2026-08-25', start: 1767636000000, end: 1767639600000, name: 'Old', vol: 0, entries: [], prs: [] }
+    const legacy = {
+      d: '2026-08-25',
+      start: 1767636000000,
+      end: 1767639600000,
+      name: 'Old',
+      vol: 0,
+      entries: [],
+      prs: [],
+    }
     setHistory([legacy])
     const host = render(() => workoutDateSheet(legacy))
-    act(() => { type(host.querySelector('input[type=date]'), '2026-08-18') })
-    act(() => { button(host, 'Save').click() })
+    act(() => {
+      type(host.querySelector('input[type=date]'), '2026-08-18')
+    })
+    act(() => {
+      button(host, 'Save').click()
+    })
     expect(history()).toHaveLength(1)
     expect(history()[0].id).toBe('2026-08-25|1767636000000')
     expect(history()[0].d).toBe('2026-08-18')
@@ -147,12 +197,24 @@ describe('changing the date of a saved workout', () => {
   // key frozen as its id (moved or edited on the other device) must not make its note and date
   // rows quietly write nowhere.
   it('keeps writing to a record from before ids after a sync froze its key as its id', () => {
-    const legacy = { d: '2026-08-25', start: 1767636000000, end: 1767639600000, name: 'Old', vol: 0, entries: [], prs: [] }
+    const legacy = {
+      d: '2026-08-25',
+      start: 1767636000000,
+      end: 1767639600000,
+      name: 'Old',
+      vol: 0,
+      entries: [],
+      prs: [],
+    }
     setHistory([legacy])
     const host = render(() => workoutDetailSheet(legacy))
     setHistory([{ ...legacy, id: '2026-08-25|1767636000000', d: '2026-08-24', _ts: 5 }])
-    act(() => { type(host.querySelector('textarea'), 'felt strong') })
-    act(() => { host.querySelector('textarea').dispatchEvent(new FocusEvent('focusout', { bubbles: true })) })
+    act(() => {
+      type(host.querySelector('textarea'), 'felt strong')
+    })
+    act(() => {
+      host.querySelector('textarea').dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
+    })
     expect(history()).toHaveLength(1)
     expect(history()[0].note).toBe('felt strong')
   })
@@ -163,15 +225,21 @@ describe('changing the date of a saved workout', () => {
     setHistory([a, b, history()[1]])
     const host = render(() => workoutDetailSheet(b))
     const confirm = render(() => button(host, 'Delete workout').click())
-    act(() => { button(confirm, 'Delete').click() })
+    act(() => {
+      button(confirm, 'Delete').click()
+    })
     expect(history().map(w => w.name)).toEqual(['A', 'late'])
   })
 
   it('does nothing when the workout was deleted from another sheet meanwhile', () => {
     const host = render(() => workoutDateSheet(history()[1]))
     setHistory([history()[0]])
-    act(() => { type(host.querySelector('input[type=date]'), '2026-08-18') })
-    act(() => { button(host, 'Save').click() })
+    act(() => {
+      type(host.querySelector('input[type=date]'), '2026-08-18')
+    })
+    act(() => {
+      button(host, 'Save').click()
+    })
     expect(history().map(w => w.id)).toEqual(['early'])
     expect(useUI.getState().toast).not.toHaveBeenCalledWith('Workout moved')
   })
@@ -203,9 +271,15 @@ describe('changing the duration of a saved workout', () => {
   it('shortens the session from its start and leaves everything else as it was', () => {
     const before = history()[1]
     const host = render(() => workoutDurationSheet(before))
-    act(() => { type(host.querySelector('input.num'), '50') })
-    act(() => { host.querySelector('button[aria-label="Decrease"]').click() })
-    act(() => { button(host, 'Save').click() })
+    act(() => {
+      type(host.querySelector('input.num'), '50')
+    })
+    act(() => {
+      host.querySelector('button[aria-label="Decrease"]').click()
+    })
+    act(() => {
+      button(host, 'Save').click()
+    })
 
     const after = history()[1]
     expect(after.end - after.start).toBe(45 * 60000)
@@ -213,7 +287,7 @@ describe('changing the duration of a saved workout', () => {
     expect(after.d).toBe(before.d)
     expect(after.entries).toEqual(before.entries)
     expect(after.prs).toEqual(['bench'])
-    expect(after._ts).toBeGreaterThan(0)   // stamped: the sync keeps it over an older copy
+    expect(after._ts).toBeGreaterThan(0) // stamped: the sync keeps it over an older copy
     expect(history().map(w => w.id)).toEqual(['early', 'forgot'])
     expect(useUI.getState().toast).toHaveBeenCalledWith('Duration changed')
   })
@@ -223,12 +297,20 @@ describe('changing the duration of a saved workout', () => {
   it('lets the field be emptied to type a new length, and saves what was typed', () => {
     const host = render(() => workoutDurationSheet(history()[1]))
     const field = host.querySelector('input.num')
-    act(() => { type(field, '3') })
-    act(() => { type(field, '') })
+    act(() => {
+      type(field, '3')
+    })
+    act(() => {
+      type(field, '')
+    })
     expect(field.value).toBe('')
-    act(() => { type(field, '75') })
+    act(() => {
+      type(field, '75')
+    })
     expect(field.value).toBe('75')
-    act(() => { button(host, 'Save').click() })
+    act(() => {
+      button(host, 'Save').click()
+    })
     const after = history()[1]
     expect(after.end - after.start).toBe(75 * 60000)
   })
@@ -240,24 +322,36 @@ describe('changing the duration of a saved workout', () => {
     const host = render(() => workoutDurationSheet(before))
     const field = host.querySelector('input.num')
     for (const typed of ['', '0']) {
-      act(() => { type(field, typed) })
-      act(() => { field.dispatchEvent(new FocusEvent('focusout', { bubbles: true })) })
+      act(() => {
+        type(field, typed)
+      })
+      act(() => {
+        field.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
+      })
       expect(field.value === '' || field.value === '0', typed).toBe(true)
       expect(host.textContent).toContain('Enter how long it took — at least 1 minute.')
-      act(() => { button(host, 'Save').click() })
+      act(() => {
+        button(host, 'Save').click()
+      })
       expect(history()[1]).toEqual(before)
       expect(useUI.getState().toast).toHaveBeenLastCalledWith('Enter how long it took — at least 1 minute.')
     }
-    act(() => { type(field, '40') })
+    act(() => {
+      type(field, '40')
+    })
     expect(host.textContent).not.toContain('at least 1 minute')
-    act(() => { button(host, 'Save').click() })
+    act(() => {
+      button(host, 'Save').click()
+    })
     expect(history()[1].end - history()[1].start).toBe(40 * 60000)
   })
 
   it('saving the same length closes and touches nothing', () => {
     const before = history()
     const host = render(() => workoutDurationSheet(before[1]))
-    act(() => { button(host, 'Save').click() })
+    act(() => {
+      button(host, 'Save').click()
+    })
     expect(history()).toEqual(before)
     expect(useUI.getState().toast).not.toHaveBeenCalled()
     expect(useUI.getState().sheets).toHaveLength(0)
@@ -265,10 +359,16 @@ describe('changing the duration of a saved workout', () => {
 
   it('keeps a note typed in the detail sheet but never blurred', () => {
     const host = render(() => workoutDetailSheet(history()[1]))
-    act(() => { type(host.querySelector('textarea'), 'forgot to stop') })
+    act(() => {
+      type(host.querySelector('textarea'), 'forgot to stop')
+    })
     const edit = render(() => button(host, 'Change duration').click())
-    act(() => { type(edit.querySelector('input.num'), '60') })
-    act(() => { button(edit, 'Save').click() })
+    act(() => {
+      type(edit.querySelector('input.num'), '60')
+    })
+    act(() => {
+      button(edit, 'Save').click()
+    })
     unmountAll()
     const saved = history().find(w => w.id === 'forgot')
     expect(saved.note).toBe('forgot to stop')

@@ -30,7 +30,11 @@ export function workoutText(w, { unit, nameOf, speedUnit }) {
     // Title case the way the screen shows it (exerciseNameClass): an English name gets it, a
     // translated one keeps its own casing, which German's capitalised nouns depend on.
     const name = nameOf(entry)
-    return [exerciseNameClass(EXIDX[entry.id]) ? capWords(name) : name, sets.map(s => setLabel(entry.id, s, entry.target, speedUnit)).join(', '), ...(entry.note ? [entry.note] : [])]
+    return [
+      exerciseNameClass(EXIDX[entry.id]) ? capWords(name) : name,
+      sets.map(s => setLabel(entry.id, s, entry.target, speedUnit)).join(', '),
+      ...(entry.note ? [entry.note] : []),
+    ]
   }
   // Grouped the way the detail sheet groups it (sessionSections): per routine first, so a
   // superset is only ever paired inside one routine's section, in the order the sheet lists them.

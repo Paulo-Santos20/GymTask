@@ -18,33 +18,57 @@ const mocks = vi.hoisted(() => {
       mut(next)
       state.S = next
     },
-    replaceState: vi.fn(), setUser: vi.fn(), pullState: vi.fn(), pushState: vi.fn(),
-    signOut: vi.fn(), signOutAll: vi.fn(), resetDemo: vi.fn(), disconnectServer: vi.fn(),
+    replaceState: vi.fn(),
+    setUser: vi.fn(),
+    pullState: vi.fn(),
+    pushState: vi.fn(),
+    signOut: vi.fn(),
+    signOutAll: vi.fn(),
+    resetDemo: vi.fn(),
+    disconnectServer: vi.fn(),
   })
   return state
 })
 vi.mock('../store/useStore.js', () => {
-  const useStore = selector => selector ? selector(mocks.snapshot()) : mocks.snapshot()
+  const useStore = selector => (selector ? selector(mocks.snapshot()) : mocks.snapshot())
   useStore.getState = mocks.snapshot
   return { useStore, DEF: { reminder: { time: '17:30' } }, hasData: () => false }
 })
 vi.mock('../store/useUI.js', () => {
   const snap = () => ({ toast: vi.fn(), openSheet: vi.fn() })
-  const useUI = selector => selector ? selector(snap()) : snap()
+  const useUI = selector => (selector ? selector(snap()) : snap())
   useUI.getState = snap
   return { useUI }
 })
 vi.mock('react-router-dom', () => ({ useNavigate: () => () => {} }))
 vi.mock('../lib/api.js', () => ({
-  api: vi.fn(), webauthnOK: () => false, passkeyLogin: vi.fn(), passkeyRegister: vi.fn(), IS_ANDROID: false,
+  api: vi.fn(),
+  webauthnOK: () => false,
+  passkeyLogin: vi.fn(),
+  passkeyRegister: vi.fn(),
+  IS_ANDROID: false,
 }))
-vi.mock('../lib/push.js', () => ({ pushSupported: () => false, enablePush: vi.fn(), disablePush: vi.fn(), sendTestPush: vi.fn() }))
+vi.mock('../lib/push.js', () => ({
+  pushSupported: () => false,
+  enablePush: vi.fn(),
+  disablePush: vi.fn(),
+  sendTestPush: vi.fn(),
+}))
 vi.mock('../lib/wakelock.js', () => ({ wakeLockSupported: () => false }))
-vi.mock('../lib/mobile.js', () => ({ MOBILE: false, isAndroid: () => Promise.resolve(false), shareExport: vi.fn(), syncReminder: vi.fn() }))
+vi.mock('../lib/mobile.js', () => ({
+  MOBILE: false,
+  isAndroid: () => Promise.resolve(false),
+  shareExport: vi.fn(),
+  syncReminder: vi.fn(),
+}))
 vi.mock('./MobileOnboarding.jsx', () => ({ ConnectSheet: () => null }))
 vi.mock('../sheets.jsx', () => ({
-  loadStarterPlan: vi.fn(), starterPlanSheet: vi.fn(), confirmSheet: vi.fn(), importFromApp: vi.fn(),
-  importFromHevy: vi.fn(), equipmentProfileSheet: vi.fn(),
+  loadStarterPlan: vi.fn(),
+  starterPlanSheet: vi.fn(),
+  confirmSheet: vi.fn(),
+  importFromApp: vi.fn(),
+  importFromHevy: vi.fn(),
+  equipmentProfileSheet: vi.fn(),
 }))
 
 // The Settings view reads the build-time version constant at render time.
@@ -53,8 +77,15 @@ globalThis.__APP_VERSION__ ??= 'test'
 let host, root
 beforeEach(() => {
   mocks.S = {
-    unit: 'kg', restSec: 90, restPauseSec: 15, sound: false, effort: 'none',
-    gifSize: 'full', workouts: [], routines: [], exWeights: {},
+    unit: 'kg',
+    restSec: 90,
+    restPauseSec: 15,
+    sound: false,
+    effort: 'none',
+    gifSize: 'full',
+    workouts: [],
+    routines: [],
+    exWeights: {},
   }
   host = document.createElement('div')
   document.body.appendChild(host)
@@ -83,12 +114,16 @@ describe('Settings — speed unit', () => {
     mocks.S.routines = [{ id: 'c', name: 'Cardio', ex: [{ id: '2138', sets: 1, min: 20, speed: 8 }] }]
     const before = structuredClone(mocks.S)
     mount()
-    act(() => { segButton('mph').click() })
+    act(() => {
+      segButton('mph').click()
+    })
     expect(mocks.S.speedUnit).toBe('mph')
     expect({ ...mocks.S, speedUnit: undefined }).toEqual({ ...before, speedUnit: undefined })
     mount()
     expect(segButton('mph').getAttribute('aria-pressed')).toBe('true')
-    act(() => { segButton('km/h').click() })
+    act(() => {
+      segButton('km/h').click()
+    })
     expect(mocks.S.speedUnit).toBe('kmh')
   })
 })

@@ -16,11 +16,11 @@ vi.mock('../lib/api.js', () => ({ api: vi.fn(() => Promise.resolve({})) }))
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 const clone = value => JSON.parse(JSON.stringify(value))
 
-const SQUAT = '0043'      // barbell full squat
-const DB_BENCH = '0289'   // dumbbell bench press
-const COCOONS = '0260'    // body weight, done here with +25
-const LUNGE = '0054'      // barbell lunge — the coach runs it per side
-const BAND_PULL = '0993'  // band pull-apart (band)
+const SQUAT = '0043' // barbell full squat
+const DB_BENCH = '0289' // dumbbell bench press
+const COCOONS = '0260' // body weight, done here with +25
+const LUNGE = '0054' // barbell lunge — the coach runs it per side
+const BAND_PULL = '0993' // band pull-apart (band)
 // One pair of each — the home gym the coach plans for.
 const HOME = { 45: 1, 35: 1, 25: 1, 15: 1, 10: 1, 5: 1, 2.5: 1 }
 
@@ -45,18 +45,35 @@ function mount(entries, patch = {}) {
   S.plates = { lb: HOME }
   S.workoutView = 'list'
   Object.assign(S, patch)
-  S.active = { id: 'plates-test', d: '2026-09-14', start: Date.now(), routineId: null, name: 'Plates', bw: null, cur: 0, entries, workoutView: S.workoutView }
+  S.active = {
+    id: 'plates-test',
+    d: '2026-09-14',
+    start: Date.now(),
+    routineId: null,
+    name: 'Plates',
+    bw: null,
+    cur: 0,
+    entries,
+    workoutView: S.workoutView,
+  }
   useStore.setState({ S, user: null })
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
-  act(() => root.render(<MemoryRouter><Workout /></MemoryRouter>))
+  act(() =>
+    root.render(
+      <MemoryRouter>
+        <Workout />
+      </MemoryRouter>,
+    ),
+  )
 }
 
-const lines = () => [...container.querySelectorAll('.plateline')].map(el => ({
-  text: el.querySelector('span').textContent,
-  moves: el.querySelector('.moves')?.textContent ?? null,
-}))
+const lines = () =>
+  [...container.querySelectorAll('.plateline')].map(el => ({
+    text: el.querySelector('span').textContent,
+    moves: el.querySelector('.moves')?.textContent ?? null,
+  }))
 
 describe('plate line under set rows', () => {
   it('the exercises used here are what the test assumes', () => {
@@ -67,8 +84,13 @@ describe('plate line under set rows', () => {
     expect(EXIDX[BAND_PULL].eq).toBe('band')
   })
 
-  it('a per-side bar exercise (barbell lunge): the work rows load from the sides\' shared bar', () => {
-    const side = (L, R) => ({ w: Math.max(L, R), r: 16, done: false, sides: { L: { w: L, r: 8, done: false }, R: { w: R, r: 8, done: false } } })
+  it("a per-side bar exercise (barbell lunge): the work rows load from the sides' shared bar", () => {
+    const side = (L, R) => ({
+      w: Math.max(L, R),
+      r: 16,
+      done: false,
+      sides: { L: { w: L, r: 8, done: false }, R: { w: R, r: 8, done: false } },
+    })
     mount([entry(LUNGE, [warm(45), side(65, 65), side(65, 65), side(65, 0)], { w: 65, side: true })])
     expect(lines()).toEqual([
       { text: 'Bar only', moves: null },
@@ -78,7 +100,12 @@ describe('plate line under set rows', () => {
   })
 
   it('sides carrying different weights get no line', () => {
-    const side = (L, R) => ({ w: Math.max(L, R), r: 16, done: false, sides: { L: { w: L, r: 8, done: false }, R: { w: R, r: 8, done: false } } })
+    const side = (L, R) => ({
+      w: Math.max(L, R),
+      r: 16,
+      done: false,
+      sides: { L: { w: L, r: 8, done: false }, R: { w: R, r: 8, done: false } },
+    })
     mount([entry(LUNGE, [side(65, 75)], { w: 65, side: true })])
     expect(lines()).toEqual([])
   })
@@ -120,10 +147,7 @@ describe('plate line under set rows', () => {
   })
 
   it('a body-weight exercise with added weight is one stack; a dumbbell gets no line', () => {
-    mount([
-      entry(COCOONS, [work(25), work(25)], { w: 25 }),
-      entry(DB_BENCH, [work(25), work(25)], { w: 25 }),
-    ])
+    mount([entry(COCOONS, [work(25), work(25)], { w: 25 }), entry(DB_BENCH, [work(25), work(25)], { w: 25 })])
     expect(lines()).toEqual([{ text: 'Load 25', moves: null }])
   })
 
@@ -161,7 +185,9 @@ describe('plate line under set rows', () => {
 
   it('the ⋯ menu offers Plate loading with the bar as its summary', () => {
     mount([entry(SQUAT, [work(145)], { w: 145 })])
-    const more = [...container.querySelectorAll('button')].find(b => (b.getAttribute('aria-label') || b.title || '') === 'More' && !b.classList.contains('n'))
+    const more = [...container.querySelectorAll('button')].find(
+      b => (b.getAttribute('aria-label') || b.title || '') === 'More' && !b.classList.contains('n'),
+    )
     expect(more).toBeTruthy()
     act(() => more.click())
     const sheet = useUI.getState().sheets.at(-1)
@@ -173,25 +199,37 @@ describe('plate line under set rows', () => {
     const item = [...sc.querySelectorAll('.menu-item')].find(b => b.textContent.includes('Plate loading'))
     expect(item).toBeTruthy()
     expect(item.textContent).toContain('Bar 45 lb')
-    act(() => sr.unmount()); sc.remove()
+    act(() => sr.unmount())
+    sc.remove()
   })
 
   it('the ⋯ menu names a bar only for a bar: a machine loaded per side with its own weight reads Per side', () => {
     const MACHINE = Object.values(EXIDX).find(e => e.eq === 'leverage machine').id
     mount([entry(MACHINE, [work(145)], { w: 145 })], {
-      loadKind: { [MACHINE]: { kind: 'pairs', _ts: 1 } }, barWeights: { [MACHINE]: 50 },
+      loadKind: { [MACHINE]: { kind: 'pairs', _ts: 1 } },
+      barWeights: { [MACHINE]: 50 },
     })
     expect(lines()).toEqual([{ text: '45 + 2,5 per side', moves: null }])
-    const more = [...container.querySelectorAll('button')].find(b => (b.getAttribute('aria-label') || b.title || '') === 'More' && !b.classList.contains('n'))
+    const more = [...container.querySelectorAll('button')].find(
+      b => (b.getAttribute('aria-label') || b.title || '') === 'More' && !b.classList.contains('n'),
+    )
     act(() => more.click())
     const sc = document.createElement('div')
     document.body.appendChild(sc)
     const sr = createRoot(sc)
-    act(() => sr.render(useUI.getState().sheets.at(-1).render(() => {})))
+    act(() =>
+      sr.render(
+        useUI
+          .getState()
+          .sheets.at(-1)
+          .render(() => {}),
+      ),
+    )
     const item = [...sc.querySelectorAll('.menu-item')].find(b => b.textContent.includes('Plate loading'))
     expect(item.textContent).toContain('Per side')
     expect(item.textContent).not.toContain('Bar')
-    act(() => sr.unmount()); sc.remove()
+    act(() => sr.unmount())
+    sc.remove()
   })
 
   it('a saved workout being corrected (#203) has no plate line and no Plate loading in its menu', () => {
@@ -200,14 +238,24 @@ describe('plate line under set rows', () => {
     act(() => useStore.setState(s => ({ S: { ...s.S, active: { ...s.S.active, editingWorkoutId: 'saved' } } })))
     expect(container.textContent).toContain('Editing a saved workout')
     expect(lines()).toEqual([])
-    const more = [...container.querySelectorAll('button')].find(b => (b.getAttribute('aria-label') || b.title || '') === 'More' && !b.classList.contains('n'))
+    const more = [...container.querySelectorAll('button')].find(
+      b => (b.getAttribute('aria-label') || b.title || '') === 'More' && !b.classList.contains('n'),
+    )
     act(() => more.click())
     const sc = document.createElement('div')
     document.body.appendChild(sc)
     const sr = createRoot(sc)
-    act(() => sr.render(useUI.getState().sheets.at(-1).render(() => {})))
+    act(() =>
+      sr.render(
+        useUI
+          .getState()
+          .sheets.at(-1)
+          .render(() => {}),
+      ),
+    )
     expect(sc.textContent).toContain('Details')
     expect(sc.textContent).not.toContain('Plate loading')
-    act(() => sr.unmount()); sc.remove()
+    act(() => sr.unmount())
+    sc.remove()
   })
 })

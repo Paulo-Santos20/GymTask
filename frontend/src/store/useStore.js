@@ -477,14 +477,22 @@ export const useStore = create((set, get) => {
     // is written, and the editor stays open with the edits.
     saveHistoryEdit() {
       let saved = null
-      get().update(S => { saved = saveWorkoutEdit(S) })
+      get().update(S => {
+        saved = saveWorkoutEdit(S)
+      })
       return saved
     },
-    discardHistoryEdit() { get().update(S => { S.active = null }) },
+    discardHistoryEdit() {
+      get().update(S => {
+        S.active = null
+      })
+    },
     // An edit that took out every set deletes the workout rather than saving it empty.
     deleteHistoryEdit() {
       let removed = false
-      get().update(S => { removed = deleteEditedWorkout(S) })
+      get().update(S => {
+        removed = deleteEditedWorkout(S)
+      })
       return removed
     },
 

@@ -126,11 +126,15 @@ export function exerciseHistory(S, exId, { limit = HISTORY_SESSIONS } = {}) {
  * Returns { d, set, target } or null.
  */
 export function bestSetFor(S, exId, mode = modeOf({ id: exId })) {
-  const keys = s => mode === 'cardio' ? [Number(s.min) || 0, Number(s.speed) || 0]
-    : mode === 'time' ? [Number(s.sec) || 0, Number(s.w) || 0]
-      : [Number(s.w) || 0, Number(s.r) || 0]
+  const keys = s =>
+    mode === 'cardio'
+      ? [Number(s.min) || 0, Number(s.speed) || 0]
+      : mode === 'time'
+        ? [Number(s.sec) || 0, Number(s.w) || 0]
+        : [Number(s.w) || 0, Number(s.r) || 0]
   const better = (a, b) => {
-    const [a1, a2] = keys(a), [b1, b2] = keys(b)
+    const [a1, a2] = keys(a),
+      [b1, b2] = keys(b)
     if (a1 !== b1) return mode === 'reps' ? beatsWeight(exId, a1, b1) : a1 > b1
     return a2 > b2
   }
@@ -147,7 +151,8 @@ export function bestSetFor(S, exId, mode = modeOf({ id: exId })) {
       if (en.id !== exId) continue
       for (const set of metricRowsForEntry(en, mode)) {
         t ??= startOf(w)
-        if (!best || better(set, best.set) || (!better(best.set, set) && t < best.t)) best = { d: w.d, set, target: en.target || null, t }
+        if (!best || better(set, best.set) || (!better(best.set, set) && t < best.t))
+          best = { d: w.d, set, target: en.target || null, t }
       }
     }
   }

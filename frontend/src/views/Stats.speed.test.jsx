@@ -10,25 +10,57 @@ const mocks = vi.hoisted(() => ({ charts: [], S: null }))
 vi.mock('../store/useStore.js', () => ({ useStore: selector => selector({ S: mocks.S }) }))
 vi.mock('react-router-dom', () => ({ useNavigate: () => () => {} }))
 vi.mock('../sheets.jsx', () => ({
-  bwSheet: () => {}, goalSheet: () => {}, calendarSheet: () => {}, workoutDetailSheet: () => {}, exerciseHistorySheet: () => {},
-  WorkoutRow: () => null, bwDeltaColor: () => 'inherit',
+  bwSheet: () => {},
+  goalSheet: () => {},
+  calendarSheet: () => {},
+  workoutDetailSheet: () => {},
+  exerciseHistorySheet: () => {},
+  WorkoutRow: () => null,
+  bwDeltaColor: () => 'inherit',
 }))
-vi.mock('../components/LineChart.jsx', () => ({ default: props => { mocks.charts.push(props); return null } }))
+vi.mock('../components/LineChart.jsx', () => ({
+  default: props => {
+    mocks.charts.push(props)
+    return null
+  },
+}))
 vi.mock('../components/Heatmap.jsx', () => ({ default: () => null }))
 vi.mock('../components/BodyMap.jsx', () => ({ default: () => null }))
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 const BIKE = '2138'
 const session = (d, speeds) => ({
-  id: d, d, start: Date.parse(d + 'T10:00:00Z'), end: Date.parse(d + 'T10:40:00Z'), name: 'Cardio',
-  entries: [{ id: BIKE, target: { id: BIKE, sets: speeds.length, min: 20, speed: 8 }, sets: speeds.map(speed => ({ min: 20, speed, done: true })) }],
+  id: d,
+  d,
+  start: Date.parse(d + 'T10:00:00Z'),
+  end: Date.parse(d + 'T10:40:00Z'),
+  name: 'Cardio',
+  entries: [
+    {
+      id: BIKE,
+      target: { id: BIKE, sets: speeds.length, min: 20, speed: 8 },
+      sets: speeds.map(speed => ({ min: 20, speed, done: true })),
+    },
+  ],
 })
 let root, host
-afterEach(() => { act(() => root.unmount()); host.remove(); mocks.charts = [] })
+afterEach(() => {
+  act(() => root.unmount())
+  host.remove()
+  mocks.charts = []
+})
 
 function mount(settings) {
-  mocks.S = { body: 'male', effort: 'none', targetW: null, bodyweight: [], routines: [], exWeights: {}, ...settings,
-    workouts: [session('2026-09-01', [8, 9.66]), session('2026-09-08', [16.09])] }
+  mocks.S = {
+    body: 'male',
+    effort: 'none',
+    targetW: null,
+    bodyweight: [],
+    routines: [],
+    exWeights: {},
+    ...settings,
+    workouts: [session('2026-09-01', [8, 9.66]), session('2026-09-08', [16.09])],
+  }
   host = document.createElement('div')
   document.body.appendChild(host)
   root = createRoot(host)
