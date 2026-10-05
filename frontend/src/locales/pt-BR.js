@@ -886,6 +886,13 @@ export const PT_BR_OVERRIDES = {
   'Searching…': 'Buscando…',
   'Could not search online': 'Não foi possível buscar online',
   'No matches for {0}': 'Nenhum resultado para {0}',
+  'Photo of the meal': 'Foto da refeição',
+  'Analyzing the photo…': 'Analisando a foto…',
+  'Could not analyze that photo': 'Não foi possível analisar essa foto',
+  'Share your data with the Coach first': 'Compartilhe seus dados com o Treinador primeiro',
+  'Your meal photos': 'Suas fotos de refeições',
+  'Photos of meals you take, sent to the provider to estimate their macros.':
+    'Fotos das refeições que você tira, enviadas ao provedor para estimar os macros.',
   Meal: 'Refeição',
   Grams: 'Gramas',
   Portion: 'Porção',

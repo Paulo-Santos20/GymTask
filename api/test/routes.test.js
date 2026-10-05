@@ -36,13 +36,13 @@ function harness() {
   return out
 }
 
-test('the disclosure names the provider and the same five categories the payload builds from', async () => {
+test('the disclosure names the provider and the same six categories the payload builds from', async () => {
   fresh({ provider: 'gemini' })
   const { call } = harness()
   const r = await call('GET /api/coach/disclosure')
   assert.equal(r.status, 200)
   assert.equal(r.body.providerLabel, 'Google Gemini')
-  assert.deepEqual(r.body.categories, ['plan', 'training', 'bodyweight', 'profile', 'prefs'])
+  assert.deepEqual(r.body.categories, ['plan', 'training', 'bodyweight', 'profile', 'prefs', 'photo'])
 })
 
 /* ---------- debrief + cohort routes ---------- */
@@ -128,7 +128,10 @@ test('a meal plan is enqueued with the nutrition block from the body and lands a
     s.pending.meals.map(m => m.slot),
     ['cafe', 'almoco', 'lanche', 'jantar'],
   )
-  assert.ok(s.pending.meals.every(m => m.items.length), 'every meal carries its foods')
+  assert.ok(
+    s.pending.meals.every(m => m.items.length),
+    'every meal carries its foods',
+  )
   assert.ok(s.pending.totals.kcal > 0, 'the totals were computed from the items')
   // The fixture echoes the calorie target it was handed: this asserts the body field actually
   // rode through the route, the queue and the payload all the way to the model.
