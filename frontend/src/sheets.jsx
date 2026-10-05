@@ -16,6 +16,7 @@ import {
   betterWeight,
   beatsWeight,
 } from './lib/exercises.js'
+import { appleHealthSupported, bodyweightPayload, openHealth, workoutPayload } from './lib/apple-health.js'
 import { activeProfile, exAvailable, ALL_EQUIPMENT, newProfile } from './lib/equipment.js'
 import {
   fmtDate,
@@ -416,6 +417,19 @@ function BwSheet({ required, onDone, close }) {
     if (onDone) onDone(n)
     else toast(t('Weight saved'))
   }
+  // The Apple Health send-off (RF11) sits ON TOP of the save: it re-checks the value, saves
+  // through the untouched `save` above, then hands the sample to the Shortcuts app. Nothing in
+  // `save` knows Health exists, so a device without the `shortcuts://` scheme keeps saving
+  // exactly as before — this button simply is not rendered there.
+  const send = () => {
+    const n = Math.round((v || 0) * 10) / 10
+    if (!n || n <= 0) {
+      toast(t('Enter a valid weight'))
+      return
+    }
+    save()
+    openHealth(bodyweightPayload({ d: todayISO(), w: n, t: Date.now() }, unit))
+  }
   const recent = [...st.bodyweight].reverse().slice(0, 3)
   const delEntry = d =>
     update(s => {
@@ -449,6 +463,15 @@ function BwSheet({ required, onDone, close }) {
       <Button variant="primary" onClick={save}>
         {required ? t('Save & start workout') : t('Save')}
       </Button>
+      {/* iOS only — the section that explains the Shortcut is hidden everywhere else. */}
+      {!required && appleHealthSupported() && (
+        <>
+          <div style={{ height: 8 }} />
+          <Button icon="heart" onClick={send}>
+            {t('Send to Apple Health')}
+          </Button>
+        </>
+      )}
       {required && (
         <>
           <div style={{ height: 8 }} />
@@ -4011,7 +4034,7 @@ function WorkoutComplete({ close }) {
 }
 export const workoutCompleteSheet = () => ui().openSheet(close => <WorkoutComplete close={close} />, { kind: 'center' })
 
-function FinishSummary({ w, prs, e1prs = [], close }) {
+export function FinishSummary({ w, prs, e1prs = [], close }) {
   const st = useStore(s => s.S)
   return (
     <div style={{ textAlign: 'center', padding: '8px 0' }}>
@@ -4068,6 +4091,16 @@ function FinishSummary({ w, prs, e1prs = [], close }) {
       </h4>
       <BodyMap load={loadOfWorkouts([w])} body={st.body} />
       <div style={{ height: 14 }} />
+      {/* Apple Health (RF11): the session is already in the profile by the time this sheet is
+          open, so the send-off only ever adds a sample — it cannot gate or undo the save. */}
+      {appleHealthSupported() && (
+        <>
+          <Button icon="heart" onClick={() => openHealth(workoutPayload(w))}>
+            {t('Send to Apple Health')}
+          </Button>
+          <div style={{ height: 8 }} />
+        </>
+      )}
       <Button
         variant="primary"
         onClick={() => {
