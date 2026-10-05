@@ -4,6 +4,7 @@ import { useNutritionStore, MEALS } from '../store/nutritionStore.js'
 import { useStore } from '../store/useStore.js'
 import { adaptiveTDEE, MIN_PAIRED_DAYS } from '../lib/tdee-adaptive.js'
 import { searchFoods } from '../lib/foods.js'
+import { suggestFoods, mealForHour } from '../lib/meal-suggest.js'
 import { searchExternal } from '../lib/foodApis.js'
 import { importCodeFromImage } from '../lib/scan.js'
 import { todayISO, isoOf, fmtDate, fmtNum, uid, weekStartOf } from '../lib/format.js'
@@ -65,6 +66,21 @@ export default function Nutrition() {
 
   const day = useMemo(() => log[date] || [], [log, date])
   const totals = useMemo(() => totalsFor(date), [totalsFor, log, date])
+  // What is still missing from the day (RF9): the gap against the targets, the clock hour
+  // (which section the chips land in and how big a portion may be) and everything already
+  // logged that day (never suggest a repeat). The hour is read once, the way `date` is.
+  const sugHour = useMemo(() => new Date().getHours(), [])
+  const sugMeal = mealForHour(sugHour)
+  const sugItems = useMemo(
+    () =>
+      suggestFoods({
+        kcal: targets.kcal - totals.kcal,
+        protein: targets.protein - totals.protein,
+        hour: sugHour,
+        logged: day,
+      }),
+    [targets, totals, day, sugHour],
+  )
   const proteinGoal = Math.round(PER_MEAL_PROTEIN_G_PER_KG * (Number(profile.peso) || 0))
   const local = useMemo(() => (query.trim() ? searchFoods(query, 12) : []), [query])
   // Adaptive maintenance from paired weigh-in + food days — informational only; the
@@ -166,6 +182,13 @@ export default function Nutrition() {
     setQuery('')
     setOnline([])
     setOnlineState('idle')
+  }
+  // A suggestion tap only prefills the form for that section - confirmAdd stays the only
+  // writer to the diary, the same contract the barcode flow follows above.
+  const prefillSuggest = (meal, food) => {
+    openAdd(meal)
+    pick(food)
+    setGrams(food.grams)
   }
   const pick = f => {
     setPicked(f)
@@ -381,6 +404,18 @@ export default function Nutrition() {
                     </button>
                   </Row>
                 ))}
+              {sugMeal === meal && sugItems.length > 0 && (
+                <div className="nut-sug">
+                  <div className="nut-lbl">{t('Suggestions')}</div>
+                  <div className="nut-chips">
+                    {sugItems.map(f => (
+                      <button key={f.name} className="chip" onClick={() => prefillSuggest(meal, f)}>
+                        {f.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <Row icon="plus" title={t('Add food')} onClick={() => openAdd(meal)} />
             </Section>
 
