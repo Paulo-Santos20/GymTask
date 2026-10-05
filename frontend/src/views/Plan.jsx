@@ -2,9 +2,11 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { DAYN, weekOrder, weekStartOf, uid, exCount, routineCount } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
-import { dayAssignSheet, dayAddRoutineSheet, starterPlanSheet, planToolsSheet } from '../sheets.jsx'
+import { dayAssignSheet, dayAddRoutineSheet, starterPlanSheet, planToolsSheet, confirmSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
+import SwipeToDelete from '../components/SwipeToDelete.jsx'
+import { deleteRoutine } from '../lib/routines.js'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { glyphOf, DEFAULT_GLYPH } from '../lib/glyphs.js'
 import { DEMO } from '../lib/demo.js'
@@ -48,6 +50,17 @@ export default function Plan() {
       const next = [].concat(s.week[d] || []).filter(id => id !== rid)
       if (next.length) s.week[d] = next
       else delete s.week[d]
+    })
+
+  // The same confirmation and the same delete as RoutineEdit's "Delete routine" button, minus
+  // its navigation back to /plan, which this screen already is.
+  const confirmDelete = r =>
+    confirmSheet({
+      title: t('Delete routine?'),
+      message: t('“{0}” and its exercises will be removed.', r.name),
+      confirmText: t('Delete'),
+      danger: true,
+      onConfirm: () => update(s => deleteRoutine(s, r.id)),
     })
 
   return (
@@ -146,7 +159,13 @@ export default function Plan() {
           {S.routines.length ? (
             <div className="list">
               {S.routines.map((r, i) => (
-                <div key={r.id} className="item" {...tappable(() => nav('/plan/r/' + r.id))}>
+                <SwipeToDelete
+                  key={r.id}
+                  className="item"
+                  deleteLabel={t('Delete routine')}
+                  onDelete={() => confirmDelete(r)}
+                  {...tappable(() => nav('/plan/r/' + r.id))}
+                >
                   <span className="lrow-i">
                     <Icon name={glyphOf(r.emoji)} />
                   </span>
@@ -188,7 +207,7 @@ export default function Plan() {
                     </div>
                   )}
                   <Icon name="chevronRight" className="chev" />
-                </div>
+                </SwipeToDelete>
               ))}
             </div>
           ) : (
