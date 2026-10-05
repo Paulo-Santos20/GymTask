@@ -131,7 +131,8 @@ NUTRITIONIX_APP_KEY=...
 | — | Grok/Groq BYOK no frontend | ✅ concluído | `grok`+`groq` em `ADAPTERS` (`lib/coach-local.js`, `api/coach/adapters/index.js`); row `groq` (`providers.js`), `adapters/groq.js`, teste wire `adapters-http.test.js`; **tela BYOK restaurada**: `views/CoachSetup.jsx`+`CoachSetup.test.jsx`, rota `/coach/setup` (`App.jsx`), row "AI Coach" (`Settings.jsx`), gating `coachAvailable(byok→true)` (`lib/coach.js` + CoachChat/CoachIntake/Plan) |
 | — | Card Nutrition no Home | ✅ concluído | link `/nutrition` em `views/Home.jsx`; rota existia desde o módulo |
 | — | Rebrand do prompt do Coach + URLs upstream no `openapi` | ✅ concluído | `system-prompt.js`, `prompts/common.md` (+ `prompts.js` regenerado), `functions/index.js` → "GymTask Coach"; assertion `jobs.test.js:458` ajustada; comentários `config.js:19`/`node-fetch.js:10`; `openapi.yaml` (browse/contact/derived → fork) + `website/api.html` regenerado (16 endpoints); `build-coach-assets.mjs` normaliza CRLF (o `--check` do CI é byte-compare, agora estável entre plataformas); `scripts/` (hevy-id-map comments, tempdir `gytask-pt-br-`). Verificado: jobs 1/1, adapters-http 19/19, `--check` verde, greps `openGym Coach`/`inside openGym` = 0. Mantidos por contrato: `opengym_plan: 1`, salt HKDF `opengym-coach-v1`, UA `opengym-coach/` |
-| — | Build + testes centrais | ✅ **verde** (contagens 2026-10-03) | `npm run build` exit 0; `npm test` **1827/1827** (142 arquivos); census locale **752/641** (`pt-br-locale.test.js` 4/4, fingerprint `4f9c1cf2.aea84f3` inalterado; `check-locales` **1393/1393**); `check-source-strings --strict` **0** pendências; `mcp` **88/88**; `api` **185 pass / 0 fail** via `npm test` (falhas CRLF resolvidas em `8b4fe12`: asserções newline-agnostic + `.gitattributes` `eol=lf`) |
+| — | Rodada de features 2026-10-04/05 (3 planos, 50 todos) | ✅ concluído | audit-fixes (31 + F1–F4): segurança functions (CORS allowlist/rate limit/payload caps + guard de bytes no `PUT /api/data`), `firebase-admin` 12→14, suíte `functions/` e lint Biome no CI, a11y (diálogo/aria-labels `t()`/nomes), perf (React.lazy + vendor split, selectors/memo), ~150 testes novos, FCM diário, dead-code/docs. top5-features (7): TDEE adaptativo, proteína por refeição, landmarks musculares (série + presets + edição), memória do Coach (`recent` + PRs), aderência. roadmap-features (12): barcode, deload, onSnapshot, SSE streaming, gráfico combinado, plano alimentar, receitas, revisão semanal agendada, sugestão de refeição, foto→macros (Groq), Apple Health (Shortcuts), bateria final — ver ROADMAP "Entregue" |
+| — | Build + testes centrais | ✅ **verde** (contagens 2026-10-05, CI `edc1b42` = local) | `npm run build` exit 0; `npm test` **2015/2015** (162 arquivos); `check-locales` **1455/1455** (2 locales in sync); `check-source-strings --strict` **0** pendências (1083 strings traduzidas); census locale **814/641** e fingerprint `4f9c1cf2.aea84f3` **inalterado**; `mcp` **88/88** + `node-loadable`; `api` **205 pass / 0 fail**; `functions` **46/46** (suíte rodando no CI desde a rodada de audit); gate Biome verde |
 | — | Deploy Vercel/PWA | 🟡 configs no ar | Projeto `gymtask-jtu8` linkado (`.vercel/` gitignored); **envs 8 production + 6 preview** (6 `VITE_FIREBASE_*` em ambas + `VITE_IMG_BASE`/`VITE_GIF_BASE` em production) via CLI/API (2026-09-28/29); `rootDirectory=frontend` + build settings (`npm ci`/`npm run build`/`dist`) corrigidos via API PATCH; `vercel.json` **duplicado idêntico** (raiz + `frontend/`) com comandos relativos. Dois erros de build resolvidos: `cd: frontend: No such file or directory` (cwd já era o Root Directory) e limite de **12 Serverless Functions do Hobby** (Root Directory vazia via `api/` ~240 `.js`; agora `api/` fica fora do projeto Vercel — functions ficam no Firebase). Build verde ✅ (`1601e6c` READY 2026-09-28 21:18, headers PWA verificados ao vivo); falta `VITE_NUTRITION_PROXY_URL` |
 | — | Firebase deploy config | ✅ em produção | `firebase.json` (nodejs22), `.firebaserc` → **`gymtask-ce4b6`** (placeholder trocado 2026-09-28), `firestore.rules` **deployed** (`firebase deploy --only firestore:rules` exit 0, rules released) |
 | — | FCM push | ✅ código pronto | `pushDailyReminder` FCM topic `gytask-daily` + `functions/README.md` |
@@ -193,6 +194,14 @@ NUTRITIONIX_APP_KEY=...
    cookieAuth corrigido (refs mortas a `register/verify`/`login/verify` removidas), seção Coach
    no `info.description`; `/api/admin/coach*` fora de propósito (filtradas em `server.js`).
    `website/api.html` regenerado (30 endpoints, 14 schemas, 72 KB; parse OK, 27 paths).
+10. ~~**Rodada 2026-10-04/05 — 3 planos de features/auditoria**~~ ✅ — `audit-fixes`
+    (31 todos + F1–F4), `top5-features` (7) e `roadmap-features` (12) fechados com
+    evidência red→green por todo e verificação independente; 50 commits empurrados
+    (`827e5fd..8a782f2`), histórico reescrito para remover trailers de IA dos commits
+    (`edc1b42`, force-push), CI corrigido no job `functions` (`31885c1`: `npm ci` de `api/`
+    porque o teste da revisão semanal importa `jobs.js` → `undici`) e demo no GitHub Pages
+    no ar (Pages habilitado + `pages.yml` verde). **Nada de código restou desta rodada**;
+    resto = credenciais/deploy (acima) + 2 PRs do Dependabot para re-base.
 
 ### Credenciais (todo 15 — pedir ao usuário antes do deploy)
 - ~~Firebase Console: criar projeto, ativar E-mail/senha, app Web → 6 `VITE_FIREBASE_*`~~ ✅
@@ -255,36 +264,59 @@ cd functions && npm install
 ## 8. Ideias futuras (melhorias)
 
 ### Nutrição
-- **Scanner de código de barras nos alimentos** — o decoder web `jsqr` + renderer `lean-qr` já
-  existem no projeto (`@capacitor-mlkit` saiu com a decisão PWA-only; o scan usa `BarcodeDetector`
-  nativo quando existe, jsQR como fallback).
-- **Sugestão automática de refeições**: distribuir calorias/macro restantes do dia nas próximas
-  refeições, com pratos prontos do banco TBCA.
-- **Fotos de refeição** → estimativa de macros (OCR / API de visão).
-- **Receitas** com cálculo de macros por porção e adicionáveis ao log.
-- **Tendências**: peso corporal × ingestão calórica × volume de treino no mesmo gráfico (Stats).
+- ✅ **Scanner de código de barras nos alimentos** (RF1, 2026-10-04) — `BarcodeDetector`
+  nativo quando existe, jsQR como fallback; EAN → entrada de alimento pré-preenchida
+  (`@capacitor-mlkit` saiu com a decisão PWA-only).
+- ✅ **Sugestão automática de refeições** (RF9) — chips com os macros restantes do dia no
+  Nutrition, com pratos prontos do banco TBCA.
+- ✅ **Fotos de refeição → estimativa de macros** (RF10) — visão Groq gratuita (decisão 2)
+  + categoria de consentimento "foto"; `functions/photo`.
+- ✅ **Receitas** (RF7) — macros por porção, adicionáveis ao log.
+- ✅ **Tendências** (RF5) — peso corporal × ingestão calórica × volume de treino no mesmo
+  gráfico do Stats.
 
 ### Coach
-- **Streaming das respostas** (SSE) no `CoachChat` — hoje resposta em bloco.
-- **Memória de treinos**: injetar resumo das últimas N sessões + PRs no prompt automaticamente.
-- **Revisão semanal automática** (o prompt `review.md` já existe) disparada por scheduled function.
-- **Plano alimentar pelo Coach**: gerar/dieta ajustada ao TDEE registrado.
+- ✅ **Streaming das respostas** (RF4, 2026-10-04) — SSE de deltas de token no `CoachChat`
+  com fallback por polling quando o transporte não dá suporte.
+- ✅ **Memória de treinos** (top5 C1) — bloco `recent` (últimas sessões) + detalhe de PRs
+  injetado no payload do create-plan.
+- ✅ **Revisão semanal automática** (RF8) — scheduled function gera proposta pendente;
+  o app a serve via `status()`/`resolvePending()` (o prompt `review.md` já existia).
+- ✅ **Plano alimentar pelo Coach** (RF6) — kind `mealplan` a partir do TDEE registrado
+  (prompt `mealplan.md`).
 
 ### Treino/experiência
-- **Deload automático** e periodização mais rica no motor de progressão.
-- **Widgets** (Android/iOS) do treino do dia.
-- **Integração Google Fit / Apple Health** de escrita (hoje só import).
-- **Modo social**: compartilhar prints de evolução / PRs (share via Web Share API — o share Capacitor do upstream saiu com o PWA-only).
-- **Vídeo/looping dos exercícios** (dataset CDN já parametrizado por `VITE_IMG_BASE/VITE_GIF_BASE`).
+- ✅ **Deload automático** (RF2) — regras de periodização/deload no motor de progressão,
+  com copy própria na UI.
+- **Widgets** (Android/iOS) do treino do dia — ⬜ não feito.
+- **Escrita Google Fit / Apple Health** — ✅ **Apple Health** (RF11, opção A decidida):
+  ponte via Atalhos do iOS, envia peso e treinos; ⬜ **Google Fit** continua pendente.
+- **Modo social**: compartilhar prints de evolução / PRs (share via Web Share API — o share
+  Capacitor do upstream saiu com o PWA-only) — ⬜ não feito.
+- **Vídeo/looping dos exercícios** (dataset CDN já parametrizado por `VITE_IMG_BASE/VITE_GIF_BASE`) — ⬜ não feito.
 
 ### Infra
-- **Firestore real-time** (`onSnapshot`) para sync instantâneo entre dispositivos (hoje pull/push).
-- **Multi-perfil familiar** no mesmo Firebase project.
-- **Backup/export**: dump completo do Firestore para JSON (portabilidade — espírito "you own your data").
+- ✅ **Firestore real-time** (RF3) — `onSnapshot` no `lib/api.js`, sync instantâneo entre
+  dispositivos (substitui o pull/push manual).
+- **Multi-perfil familiar** no mesmo Firebase project — ⬜ não feito.
+- **Backup/export**: dump completo do Firestore para JSON (portabilidade — espírito "you own your data") — ⬜ não feito.
 
 ---
 
-*Última atualização: 2026-10-03 - **stale-docs pass** (audit-fixes todo 30). → Docs corrigidos
+*Última atualização: 2026-10-05 — **rodada de 3 planos** (audit-fixes 31 + top5-features 7
++ roadmap-features 12 = 50 todos, todos com evidência red→green e verificação independente;
+ver ROADMAP "Entregue"). **Contagens 2026-10-05** (CI `edc1b42` = local): frontend vitest
+**2015/2015 (162 arq)**, `npm run build` exit 0, `check-locales` **1455/1455**,
+`check-source-strings --strict` 0 (1083 strings), census **814/641** + fingerprint
+`4f9c1cf2.aea84f3` inalterado, `mcp` **88/88** + node-loadable, `api` **205/0**,
+`functions` **46/46**, gate Biome ✅. **CI/infra desta rodada**: job `functions` corrigido
+(`31885c1` — instala deps de `api/` porque o teste da revisão semanal importa `jobs.js` →
+`undici`), demo no GitHub Pages no ar (Pages habilitado + `pages.yml` verde),
+bundle da Vercel verificado ao vivo com os features novos, histórico git reescrito para
+remover trailers de IA dos commits (force-push `edc1b42`). Pendências = só credenciais
+(§5.1) e 2 PRs do Dependabot.*
+
+*Checkpoint (2026-10-03) - **stale-docs pass** (audit-fixes todo 30). → Docs corrigidos
 contra a realidade do HEAD `8b4fe12`: README (frontend já no ar em produção
 `gymtask-jtu8.vercel.app`), ROADMAP (projeto Vercel já importado com Root Directory
 `frontend/`), `functions/README.md` (firebase-functions v7 / firebase-admin v14 + envs
