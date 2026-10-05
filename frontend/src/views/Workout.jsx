@@ -109,11 +109,15 @@ import { MUSCLE_NAME } from '../lib/muscles.js'
 import { speedUnitOf, toSpeed, fromSpeed } from '../lib/speed.js'
 import { buildPlannedEntry, plannedConfigOf, builtOutOfProgression } from '../lib/session-start.js'
 import { sessionNoProg, setSessionNoProg, setEntryNoProg, joinSessionNoProg } from '../lib/session-noprog.js'
+import { nextOpenSet, workoutKeyAction } from '../lib/workout-keys.js'
 import { sessionHistory } from '../lib/backfill.js'
 import { bestSetFor } from '../lib/exercise-history.js'
 
 const SWIPE_MIN_DISTANCE = 48
 const SWIPE_AXIS_RATIO = 1.25
+// A hold being timed reads a Space/Enter as its "Done" once it has run past its first moments,
+// so the key that started it is not also the key that ends it.
+const HOLD_KEY_GRACE_MS = 1500
 const SWIPE_IGNORED_TARGETS =
   'button,input,textarea,select,a,[role="button"],[role="checkbox"],[role="switch"],[role="slider"],[contenteditable="true"],.exmedia,[data-swipe-ignore]'
 
@@ -1489,6 +1493,87 @@ function ActiveWorkout() {
         },
       ],
     })
+  // Hardware keys (issue #133, lib/workout-keys.js): Space or Enter ticks the next set, ← and →
+  // switch exercise. The listener is added once and calls the handler of the latest render, so
+  // toggle() and navigateUnit() always see the session as it is now.
+  const tabbed = useRef(false)
+  const onKey = useRef(null)
+  // In the list the "current" exercise can be off screen. A key that moves it brings it into
+  // view the way opening the list does; ticking and tapping never scroll it (see above).
+  const showCurrent = () => {
+    if (!listMode) return
+    const scroll = () => {
+      const el = listRef.current?.querySelector('.wl-unit.cur')
+      if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'start' })
+    }
+    // After the render that moves the marker, as the effect above waits for its frame.
+    if (window.requestAnimationFrame) window.requestAnimationFrame(scroll)
+    else window.setTimeout(scroll, 0)
+  }
+  onKey.current = event => {
+    // A sheet on top owns the keyboard (Escape closes it, Enter confirms in it).
+    if (useUI.getState().sheets.length) return false
+    const action = workoutKeyAction(event, { tabbed: tabbed.current, rtl: document.documentElement.dir === 'rtl' })
+    if (!action) return false
+    event.preventDefault()
+    if (action !== 'tick') {
+      navigateUnit(action === 'next' ? 1 : -1)
+      showCurrent()
+      return true
+    }
+    // A hold being timed: the key is its "Done", which logs what was actually held, once the
+    // hold has run past its first moments (HOLD_KEY_GRACE_MS).
+    const work = useUI.getState().work
+    if (work) {
+      if (Date.now() - (work.endsAt - work.total * 1000) >= HOLD_KEY_GRACE_MS) useUI.getState().finishWorkEarly()
+      return true
+    }
+    const fresh = useStore.getState().S.active
+    const next = nextOpenSet(fresh?.entries, fresh?.cur)
+    if (!next) return true
+    // The exercise on screen is finished: this press brings up the next one, and the one after
+    // ticks its set. A key never logs a set for an exercise that was not in front of you.
+    if (!next.current) {
+      focusUnit(next.idx)
+      showCurrent()
+      return true
+    }
+    // A timed set is started rather than ticked, as its play button does; the timer ticks it.
+    if (!next.side && modeAt(next.idx) === 'time') startTimed(next.idx, next.i)
+    else toggle(next.idx, next.i, next.side)
+    return true
+  }
+  useEffect(() => {
+    // A Space that ticked must not also press the button a click left focus on. Preventing the
+    // keydown is enough for Chrome; Firefox presses a button on the keyup, so that goes too.
+    let spaceTaken = false
+    const down = event => {
+      if (event.key === 'Tab') {
+        tabbed.current = true
+        return
+      }
+      const taken = onKey.current?.(event) === true
+      if (event.key === ' ') spaceTaken = taken
+    }
+    const up = event => {
+      if (event.key === ' ' && spaceTaken) {
+        spaceTaken = false
+        event.preventDefault()
+      }
+    }
+    const pointer = () => {
+      tabbed.current = false
+    }
+    document.addEventListener('keydown', down)
+    document.addEventListener('keyup', up)
+    document.addEventListener('pointerdown', pointer, true)
+    return () => {
+      document.removeEventListener('keydown', down)
+      document.removeEventListener('keyup', up)
+      document.removeEventListener('pointerdown', pointer, true)
+    }
+  }, [])
+
   const onSwipePointerDown = event => {
     if (swipe.current || (event.pointerType && event.pointerType !== 'touch' && event.pointerType !== 'pen')) return
     if (event.target.closest?.(SWIPE_IGNORED_TARGETS)) return
