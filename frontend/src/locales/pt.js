@@ -1689,6 +1689,21 @@ export default {
   Adherence: 'Aderência',
   'Weight, intake and volume': 'Peso, ingestão e volume',
   Intake: 'Ingestão',
+  // --- Apple Health: the Shortcuts bridge (RF11) ---
+  'Apple Health': 'Apple Health',
+  'Send to Apple Health': 'Enviar para o Apple Health',
+  'Install the GymTask Shortcut once, then send weigh-ins and finished workouts to Apple Health from the app.':
+    'Instala o atalho GymTask uma só vez e depois envia pesagens e treinos concluídos para o Apple Health a partir da app.',
+  'In the Shortcuts app, create a shortcut named exactly:': 'No app Atalhos, cria um atalho com exatamente este nome:',
+  'Add “Get Dictionary from Input” (your device may name it in its own language) and set its Format to JSON.':
+    'Adiciona “Obter dicionário da entrada” (o aparelho pode mostrar o nome no idioma dele) e define o Formato em JSON.',
+  'Add an If action: when type is “bodyweight”, log a body-mass sample with the dictionary’s value, unit and date.':
+    'Adiciona uma ação Se: quando type for “bodyweight”, cria uma amostra de massa corporal com o valor, a unidade e a data do dicionário.',
+  'Otherwise — type is “workout” — log a workout that lasts the dictionary’s value minutes, starting at its date.':
+    'Caso contrário — type é “workout” — cria um treino com a duração, em minutos, do valor do dicionário, a começar na data dele.',
+  'Done. “Send to Apple Health” appears when you save a weigh-in and on the workout summary.':
+    'Feito. “Enviar para o Apple Health” aparece quando guardas uma pesagem e no resumo do treino.',
+
   // --- coach: the meal plan card (RF6) ---
   'Plan my day of eating': 'Planejar o meu dia de refeições',
   'Meals from your targets and what you log': 'Refeições a partir das suas metas e do que você registra',

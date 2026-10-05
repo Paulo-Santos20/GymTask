@@ -8,6 +8,7 @@ import { ACCENTS, todayISO, localTZ, weekStartOf, MONDAY, SUNDAY } from '../lib/
 import { effortOf } from '../lib/history.js'
 import { unlock, playOnSilentSupported } from '../lib/sound.js'
 import { api, IS_ANDROID } from '../lib/api.js'
+import { appleHealthSupported, SHORTCUT_NAME } from '../lib/apple-health.js'
 import { pushSupported, enablePush, disablePush, sendTestPush, syncPushSubscription } from '../lib/push.js'
 import { wakeLockSupported } from '../lib/wakelock.js'
 import { t, LANGS, INSTR_LANGS } from '../lib/i18n.js'
@@ -682,6 +683,41 @@ export default function Settings() {
           </div>
         </div>
       </Section>
+
+      {/* ---------- Apple Health (RF11): the one-time Shortcut setup. iOS only — the
+        `shortcuts://` scheme exists nowhere else, so on Android and desktop the section is
+        absent rather than a button that cannot fire. Steps render SHORTCUT_NAME from
+        lib/apple-health.js so the instructions and the link the app fires cannot drift. */}
+      {appleHealthSupported() && (
+        <Section title={t('Apple Health')}>
+          <div className="muted small" style={{ lineHeight: 1.6, padding: '0 2px 12px' }}>
+            {t(
+              'Install the GymTask Shortcut once, then send weigh-ins and finished workouts to Apple Health from the app.',
+            )}
+          </div>
+          <ol className="small" style={{ margin: 0, padding: '0 0 0 20px', lineHeight: 1.65, display: 'grid', gap: 7 }}>
+            <li>
+              {t('In the Shortcuts app, create a shortcut named exactly:')} <code>{SHORTCUT_NAME}</code>
+            </li>
+            <li>
+              {t(
+                'Add “Get Dictionary from Input” (your device may name it in its own language) and set its Format to JSON.',
+              )}
+            </li>
+            <li>
+              {t(
+                'Add an If action: when type is “bodyweight”, log a body-mass sample with the dictionary’s value, unit and date.',
+              )}
+            </li>
+            <li>
+              {t(
+                'Otherwise — type is “workout” — log a workout that lasts the dictionary’s value minutes, starting at its date.',
+              )}
+            </li>
+            <li>{t('Done. “Send to Apple Health” appears when you save a weigh-in and on the workout summary.')}</li>
+          </ol>
+        </Section>
+      )}
 
       {/* ---------- data: fill it, bring things over, back it up, wipe it ---------- */}
       <Section title={t('Data')}>
