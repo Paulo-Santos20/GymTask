@@ -939,6 +939,7 @@ export const PT_BR_OVERRIDES = {
   'The routine’s sets and reps. Your history decides the weight.':
     'As séries e repetições da rotina. Seu histórico decide o peso.',
   'Your last session': 'Sua última sessão',
+  'reps from your last session': 'reps da sua última sessão',
   'The reps you logged last time in that routine, carried over.':
     'São mantidas as repetições que você registrou da última vez nessa rotina.',
   'Plan changed — starting from your new target.': 'Plano alterado — você começa pela sua nova meta.',

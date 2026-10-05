@@ -1601,6 +1601,9 @@ export default {
   'Estimates for guidance — not medical advice.': 'Estimativas para orientação — não é aconselhamento médico.',
   // --- plan vs session: the routine's own reps, per-routine progress (#275, #216) ---
   'Planned sessions start from': 'Ponto de partida das sessões planeadas',
+  'Plan: {0}': 'Plano: {0}',
+  'today {0}': 'hoje {0}',
+  'reps from your last session': 'reps da tua última sessão',
   'The routine’s sets and reps. Your history decides the weight.':
     'As séries e repetições da rotina. O teu histórico decide o peso.',
   'Your last session': 'A tua última sessão',

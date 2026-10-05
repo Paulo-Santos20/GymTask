@@ -20,6 +20,7 @@ import {
   supersetUnits,
   unitOf,
   setLabel,
+  setsRepsOf,
   modeOf,
   isBw,
   isPerSide,
@@ -310,7 +311,7 @@ function ExerciseBlock({
   const mode = modeOf({ ...(entry.target || {}), id: entry.id })
   const cardio = mode === 'cardio'
   const timed = mode === 'time'
-  const last = lastEntryFor(S, entry.id)
+  const last = lastEntryFor(S, entry.id, entry.rid)
   const standingNote = exNoteFor(S, entry.id)
   // Only worth surfacing while there is still work left: once the exercise is finished, a note
   // telling you what to do in it is behind you, and the block is already long.
@@ -329,6 +330,35 @@ function ExerciseBlock({
   // the session was built so the reason matches the numbers already in the rows.
   const plan = entry.plan
   const guidance = progressionGuidance(plan)
+  // The plan this exercise was built from (issue #275), on one quiet line in every view — the
+  // routine's "2 × 10" is the thing the rows are measured against. When today's rows open
+  // somewhere else, the same line says so: progression moved the sets or reps (a bodyweight
+  // climb, a deload, an added set), or they carry last session's reps ("Your last session").
+  // An entry built before plans were stamped, and a freestyle one, has no plan to show.
+  const planned = entry.planned && mode !== 'cardio' ? entry.planned : null
+  const planLine = (() => {
+    if (!planned) return null
+    const today = entry.target || {}
+    const todaySets = today.sets || planned.sets || 1
+    const inPlan = timed
+      ? today.sec == null || today.sec === planned.sec
+      : today.reps == null ||
+        (planned.repsMin > 0
+          ? today.reps >= planned.repsMin && today.reps <= planned.reps
+          : today.reps === planned.reps)
+    const note =
+      todaySets !== (planned.sets || 1) || !inPlan
+        ? t('today {0}', setsRepsOf({ mode, sets: todaySets, reps: today.reps, sec: today.sec }))
+        : entry.carried
+          ? t('reps from your last session')
+          : null
+    return (
+      <div className="small dim planline" style={{ marginBottom: 4 }}>
+        {t('Plan: {0}', setsRepsOf({ ...planned, mode }))}
+        {note ? ' · ' + note : ''}
+      </div>
+    )
+  })()
   // What the rows are held against (#173): the last time in this routine (#216), or the best set
   // of the exercise ever logged — after a bad day, "last time" puts the bad day on the screen as
   // the number to beat. Tapping the line switches between the two, and the choice is the
@@ -871,6 +901,8 @@ function ExerciseBlock({
           </button>
         </div>
       </div>
+      {/* compact view keeps the plan line: it is what the rows are measured against */}
+      {dense && planLine}
       {wc.pairButtons && !compact && !dense && (onPairPrev || onPairNext) && (
         <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
           {onPairPrev && (
@@ -937,6 +969,7 @@ function ExerciseBlock({
             </div>
           )}
           {entry.note && <div className="exnote">{entry.note}</div>}
+          {planLine}
           {refLine}
           {guidance && (
             <button
