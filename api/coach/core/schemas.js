@@ -150,7 +150,12 @@ export const MEALPLAN_SCHEMA = {
     summary: STR,
     totals: {
       type: 'object',
-      properties: { kcal: { type: 'number' }, protein: { type: 'number' }, carbs: { type: 'number' }, fat: { type: 'number' } },
+      properties: {
+        kcal: { type: 'number' },
+        protein: { type: 'number' },
+        carbs: { type: 'number' },
+        fat: { type: 'number' },
+      },
     },
     meals: {
       type: 'array',

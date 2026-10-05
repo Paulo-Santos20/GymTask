@@ -21,17 +21,17 @@ export const anthropicSpec = {
     model,
     max_tokens: maxTokens,
     system: system
-      ? [{ type: 'text', text: SYSTEM_PROMPT + '\n\n' + system, cache_control: { type: 'ephemeral' } }]
+      ? [{ type: 'text', text: `${SYSTEM_PROMPT}\n\n${system}`, cache_control: { type: 'ephemeral' } }]
       : SYSTEM_PROMPT,
     messages: [{ role: 'user', content: prompt }],
   }),
-  errorMessage: data => data && data.error && data.error.message,
+  errorMessage: data => data?.error?.message,
   readText: data => {
     if (data.stop_reason === 'refusal')
       return {
         error:
           'the model declined this request' +
-          (data.stop_details && data.stop_details.explanation ? ': ' + data.stop_details.explanation : ''),
+          (data.stop_details?.explanation ? `: ${data.stop_details.explanation}` : ''),
       }
     const text = (data.content || [])
       .filter(b => b && b.type === 'text')
@@ -42,8 +42,8 @@ export const anthropicSpec = {
   // Streaming frames: `content_block_delta` carries the text, `message_delta` the stop reason
   // (end_turn / max_tokens / refusal) — the same two facts readText folds into one answer.
   readDelta: data => {
-    if (data.type === 'content_block_delta') return { text: (data.delta && data.delta.text) || '', finishReason: null }
-    if (data.type === 'message_delta') return { text: '', finishReason: (data.delta && data.delta.stop_reason) || null }
+    if (data.type === 'content_block_delta') return { text: data.delta?.text || '', finishReason: null }
+    if (data.type === 'message_delta') return { text: '', finishReason: data.delta?.stop_reason || null }
     return null
   },
   readModels: data => (data.data || []).map(m => m.id),

@@ -32,7 +32,7 @@ export default {
   spawns: true,
   cli: CLI,
 
-  async check(cfg, env) {
+  async check(_cfg, env) {
     const r = await run(CLI, ['--version'], { env, timeoutMs: 20000 })
     if (r.spawnError) return { ok: false, error: `the ${CLI} CLI is not installed in this image` }
     if (r.timedOut) return { ok: false, error: `the ${CLI} CLI did not respond` }

@@ -41,7 +41,7 @@ export function hashPlan(plan) {
     // Weekday keys still sorted; the routine list within a day never is (it is the merge order).
     week: Object.keys(plan?.week || {})
       .sort()
-      .map(k => k + '=' + [].concat(plan.week[k]).join('+')),
+      .map(k => `${k}=${[].concat(plan.week[k]).join('+')}`),
   })
   let h1 = 0x811c9dc5,
     h2 = 0x01000193

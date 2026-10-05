@@ -112,7 +112,10 @@ test('a watched job streams tokens before it ends, and lands the same proposal a
   assert.equal(events[endAt].outcome, 'ready', 'the end says how the job ended')
   for (const e of events) assert.equal(e.jobId, jobId, 'every event belongs to the job asked for')
 
-  const streamed = events.filter(e => e.type === 'delta').map(e => e.text).join('')
+  const streamed = events
+    .filter(e => e.type === 'delta')
+    .map(e => e.text)
+    .join('')
   assert.ok(streamed.length > 0, 'the answer arrived as text')
   assert.ok(extractJSON(streamed).value, 'the joined deltas parse by the same parser the job used')
   assert.ok(streamed.includes('"changes"'), 'the deltas are the proposal, not a summary of it')
@@ -138,7 +141,10 @@ test('a stream opened after the job is over ends at once instead of leaving a cl
   const { res, events, call } = harness(uid)
   await call('text/event-stream')
   assert.equal(res.ended, true)
-  assert.deepEqual(events.map(e => e.type), ['end'])
+  assert.deepEqual(
+    events.map(e => e.type),
+    ['end'],
+  )
 })
 
 test('an HTTPS provider streams token deltas whose joined bytes are the exact answer, watched or not', async () => {
@@ -182,7 +188,10 @@ test('an HTTPS provider streams token deltas whose joined bytes are the exact an
     jobs.enqueue(uid, { kind: 'review' })
     await call('text/event-stream')
     await until(() => res.ended)
-    const streamed = events.filter(e => e.type === 'delta').map(e => e.text).join('')
+    const streamed = events
+      .filter(e => e.type === 'delta')
+      .map(e => e.text)
+      .join('')
     assert.equal(streamed, content, 'the bytes on the wire joined in order are the answer itself')
     assert.equal(events.at(-1).type, 'end')
     assert.equal(events.at(-1).outcome, 'nochange')

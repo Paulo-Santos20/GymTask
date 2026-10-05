@@ -14,28 +14,28 @@ export const geminiSpec = {
   // No responseSchema on purpose: Gemini's OpenAPI subset rejects the type unions our schemas
   // use for before/after, and json mime plus the validator already holds the line.
   body: ({ prompt, system, maxTokens }) => ({
-    systemInstruction: { parts: [{ text: system ? SYSTEM_PROMPT + '\n\n' + system : SYSTEM_PROMPT }] },
+    systemInstruction: { parts: [{ text: system ? `${SYSTEM_PROMPT}\n\n${system}` : SYSTEM_PROMPT }] },
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: { responseMimeType: 'application/json', maxOutputTokens: maxTokens },
   }),
-  errorMessage: data => data && data.error && data.error.message,
+  errorMessage: data => data?.error?.message,
   readText: data => {
     const cand = (data.candidates || [])[0]
     if (!cand) {
-      const block = data.promptFeedback && data.promptFeedback.blockReason
+      const block = data.promptFeedback?.blockReason
       return { error: block ? `the request was blocked: ${block}` : 'the answer had no candidates' }
     }
     if (cand.finishReason === 'MAX_TOKENS') return { text: '', truncated: true }
     if (cand.finishReason && cand.finishReason !== 'STOP')
       return { error: `the model stopped early: ${cand.finishReason}` }
-    const text = ((cand.content && cand.content.parts) || []).map(p => p.text || '').join('')
+    const text = (cand.content?.parts || []).map(p => p.text || '').join('')
     return { text, truncated: false }
   },
   // One streamed frame: its text parts and the finish reason when the frame names one.
   readDelta: data => {
     const cand = (data.candidates || [])[0]
     if (!cand) return null
-    const text = ((cand.content && cand.content.parts) || []).map(p => p.text || '').join('')
+    const text = (cand.content?.parts || []).map(p => p.text || '').join('')
     return { text, finishReason: cand.finishReason || null }
   },
   readModels: data =>

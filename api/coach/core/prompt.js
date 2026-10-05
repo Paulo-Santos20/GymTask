@@ -10,7 +10,7 @@ export const taskOf = (kind, payload) =>
       ? 'debrief'
       : kind === 'mealplan'
         ? 'mealplan'
-        : payload && payload.refine
+        : payload?.refine
           ? 'refine'
           : 'create'
 
@@ -24,16 +24,16 @@ export const taskOf = (kind, payload) =>
  */
 export function buildPromptParts(kind, payload, repair) {
   const task = taskOf(kind, payload)
-  const system = PROMPTS.common + '\n\n---\n\n' + PROMPTS[task]
+  const system = `${PROMPTS.common}\n\n---\n\n${PROMPTS[task]}`
   // Compact JSON, not pretty-printed: the indentation was ~30% of the payload's tokens and
   // a model reads either just as well.
-  let user = '## Payload\n\n```json\n' + JSON.stringify(payload) + '\n```\n'
+  let user = `## Payload\n\n\`\`\`json\n${JSON.stringify(payload)}\n\`\`\`\n`
   if (repair) {
     user +=
       '\n\n---\n\n' +
       PROMPTS.repair
         .replace('{{PREVIOUS}}', String(repair.previous || '').slice(0, 4000))
-        .replace('{{ERRORS}}', repair.errors.map(e => '- ' + e).join('\n'))
+        .replace('{{ERRORS}}', repair.errors.map(e => `- ${e}`).join('\n'))
   }
   return { system, user, task }
 }
@@ -41,5 +41,5 @@ export function buildPromptParts(kind, payload, repair) {
 /** The two parts as one string — what the runtime-backed adapters (CLI) still consume. */
 export function buildPrompt(kind, payload, repair) {
   const p = buildPromptParts(kind, payload, repair)
-  return p.system + '\n\n---\n\n' + p.user
+  return `${p.system}\n\n---\n\n${p.user}`
 }

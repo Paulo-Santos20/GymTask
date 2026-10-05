@@ -547,7 +547,9 @@ function Typing({ S, kind, coachLocal, config, text }) {
     <div className="msg coach">
       {/* Streamed tokens land here as they arrive; before the first one (or when the stream
           falls back to polling) the dots stand in. */}
-      {text ? <div className="bub stream">{text}</div> : (
+      {text ? (
+        <div className="bub stream">{text}</div>
+      ) : (
         <div className="bub typing">
           <i />
           <i />

@@ -159,11 +159,7 @@ test('an SSE client gets token deltas and a final event byte-identical to the JS
     const evs = events(res)
     const deltas = evs.filter(e => e.type === 'delta')
     assert.ok(deltas.length >= 3, `deltas arrived: ${evs.map(e => e.type).join(',')}`)
-    assert.equal(
-      deltas.map(d => d.text).join(''),
-      JSON_ANSWER,
-      'the joined deltas are the answer itself, in order',
-    )
+    assert.equal(deltas.map(d => d.text).join(''), JSON_ANSWER, 'the joined deltas are the answer itself, in order')
 
     const end = evs.at(-1)
     assert.equal(end.type, 'end', 'the stream closes on an end event')
