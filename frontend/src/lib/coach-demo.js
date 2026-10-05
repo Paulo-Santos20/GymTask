@@ -351,14 +351,24 @@ export function buildMealPlan(S, nutrition) {
         { name: 'Olive oil', grams: 14, kcal: 120, protein: 0, carbs: 0, fat: 14 },
       ],
     },
-    { slot: 'lanche', items: [{ name: 'Greek yoghurt and banana', grams: 250, kcal: 280, protein: 22, carbs: 35, fat: 5 }] },
-    { slot: 'jantar', items: [{ name: 'Salmon, potatoes, greens', grams: 500, kcal: 780, protein: 50, carbs: 70, fat: 30 }] },
+    {
+      slot: 'lanche',
+      items: [{ name: 'Greek yoghurt and banana', grams: 250, kcal: 280, protein: 22, carbs: 35, fat: 5 }],
+    },
+    {
+      slot: 'jantar',
+      items: [{ name: 'Salmon, potatoes, greens', grams: 500, kcal: 780, protein: 50, carbs: 70, fat: 30 }],
+    },
   ]
   const totals = { kcal: 0, protein: 0, carbs: 0, fat: 0 }
   meals.forEach(m => m.items.forEach(it => Object.keys(totals).forEach(k => (totals[k] += it[k]))))
   return {
     kind: 'mealplan',
-    summary: t('Four meals across the day — {0} kcal, {1} g of protein, built from your recorded targets.', totals.kcal, totals.protein),
+    summary: t(
+      'Four meals across the day — {0} kcal, {1} g of protein, built from your recorded targets.',
+      totals.kcal,
+      totals.protein,
+    ),
     totals,
     meals,
     target: (nutrition && nutrition.targets) || {},

@@ -614,7 +614,9 @@ test('a meal plan with no meals, an empty meal, or an item without a name is ref
 test('a macro that is not a non-negative number is refused, not coerced', () => {
   for (const bad of ['lots', null, -1, Number.NaN]) {
     const r = validateMealPlan(
-      mealplan({ meals: [{ slot: 'cafe', items: [{ name: 'Oats', grams: 100, kcal: bad, protein: 1, carbs: 1, fat: 1 }] }] }),
+      mealplan({
+        meals: [{ slot: 'cafe', items: [{ name: 'Oats', grams: 100, kcal: bad, protein: 1, carbs: 1, fat: 1 }] }],
+      }),
     )
     assert.equal(r.ok, false, `kcal ${String(bad)} must not reach the diary`)
   }

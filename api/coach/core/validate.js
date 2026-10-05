@@ -808,13 +808,14 @@ const MACROS = ['kcal', 'protein', 'carbs', 'fat']
 export function validateMealPlan(data) {
   if (!data || typeof data !== 'object') return fail(['the answer was not an object'])
   if (data.nochange)
-    return fail(['a meal plan was requested — "nochange" is not an answer here; build the day from the targets you were given'])
+    return fail([
+      'a meal plan was requested — "nochange" is not an answer here; build the day from the targets you were given',
+    ])
   const errors = []
   if (!isStr(data.summary)) errors.push('summary is required — two or three sentences on how the day is put together')
   const list = Array.isArray(data.meals) ? data.meals : null
   if (!list || !list.length) return fail([...errors, 'meals must be a non-empty array of diary sections'])
-  if (list.length > MAX_MEALS)
-    errors.push(`the answer lists ${list.length} meals — the day has ${MAX_MEALS} sections`)
+  if (list.length > MAX_MEALS) errors.push(`the answer lists ${list.length} meals — the day has ${MAX_MEALS} sections`)
 
   const seen = new Set()
   const meals = []
@@ -825,7 +826,9 @@ export function validateMealPlan(data) {
       return
     }
     if (!MEAL_SLOTS.includes(m.slot)) {
-      errors.push(`${where}.slot "${m.slot}" is not one of ${MEAL_SLOTS.join(', ')} — those are the only sections the diary has`)
+      errors.push(
+        `${where}.slot "${m.slot}" is not one of ${MEAL_SLOTS.join(', ')} — those are the only sections the diary has`,
+      )
       return
     }
     if (seen.has(m.slot)) {

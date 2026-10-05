@@ -12,7 +12,7 @@ export function chatCompletionsSpec(id, { maxTokensField = 'max_completion_token
     id,
     path: () => '/v1/chat/completions',
     modelsPath: '/v1/models',
-    headers: key => (key ? { authorization: 'Bearer ' + key } : {}),
+    headers: key => (key ? { authorization: `Bearer ${key}` } : {}),
     // The rules ride in the system message, byte-identical for every job of a task, so a
     // llama.cpp/Ollama endpoint can reuse its KV prefix cache and only ever re-processes the
     // payload. A schema, when given, turns JSON mode into grammar-constrained decoding —
@@ -20,7 +20,7 @@ export function chatCompletionsSpec(id, { maxTokensField = 'max_completion_token
     body: ({ model, prompt, system, schema, maxTokens }) => ({
       model,
       messages: [
-        { role: 'system', content: system ? SYSTEM_PROMPT + '\n\n' + system : SYSTEM_PROMPT },
+        { role: 'system', content: system ? `${SYSTEM_PROMPT}\n\n${system}` : SYSTEM_PROMPT },
         { role: 'user', content: prompt },
       ],
       ...(temperature != null ? { temperature } : {}),
@@ -39,11 +39,11 @@ export function chatCompletionsSpec(id, { maxTokensField = 'max_completion_token
             const { response_format: _rf, ...rest } = body
             return rest
           })(),
-    errorMessage: data => data && data.error && (typeof data.error === 'string' ? data.error : data.error.message),
+    errorMessage: data => data?.error && (typeof data.error === 'string' ? data.error : data.error.message),
     readText: data => {
       const choice = (data.choices || [])[0]
       if (!choice) return { error: 'the answer had no choices' }
-      const content = choice.message && choice.message.content
+      const content = choice.message?.content
       const text =
         typeof content === 'string' ? content : Array.isArray(content) ? content.map(p => p.text || '').join('') : ''
       return { text, truncated: choice.finish_reason === 'length' }
@@ -54,7 +54,7 @@ export function chatCompletionsSpec(id, { maxTokensField = 'max_completion_token
     readDelta: data => {
       const choice = (data.choices || [])[0]
       if (!choice) return null
-      const piece = choice.delta && choice.delta.content
+      const piece = choice.delta?.content
       return { text: typeof piece === 'string' ? piece : '', finishReason: choice.finish_reason || null }
     },
     readModels: data => {

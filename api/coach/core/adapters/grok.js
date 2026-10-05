@@ -47,8 +47,7 @@ const grokEnv = env => {
 }
 
 /** Instance-config model > XAI_MODEL env > whatever the caller resolved (defaultModel). */
-const modelFor = opts =>
-  (opts.cfg && opts.cfg.models && opts.cfg.models.grok) || procEnv().XAI_MODEL || null || opts.model || null
+const modelFor = opts => opts.cfg?.models?.grok || procEnv().XAI_MODEL || null || opts.model || null
 
 /* Same interface as every other adapter (check/models/invoke — see ../adapters/index.js);
  * the three entry points are wrapped only to merge the environment in before httpAdapter's

@@ -115,7 +115,14 @@ const baseState = () => ({
       notes: '',
     },
   },
-  routines: [{ id: 'r1', name: 'A', prog: 'linear', ex: [{ id: 'ex1', sets: 3, reps: 8, weight: 60, prog: 'linear', inc: 2.5 }] }],
+  routines: [
+    {
+      id: 'r1',
+      name: 'A',
+      prog: 'linear',
+      ex: [{ id: 'ex1', sets: 3, reps: 8, weight: 60, prog: 'linear', inc: 2.5 }],
+    },
+  ],
   week: { 1: ['r1'] },
   workouts: [
     {
@@ -192,7 +199,7 @@ test('weeklyReview: re-running the same week is idempotent — still one pending
   assert.equal(after.pending.changes.length, before.changes.length)
 })
 
-test('the written proposal is the api store\'s own — status() serves it, resolvePending() clears it', async () => {
+test("the written proposal is the api store's own — status() serves it, resolvePending() clears it", async () => {
   const jobs = await import('../../api/coach/jobs.js')
   const served = jobs.status('fx')
   assert.ok(served.pending, 'GET /api/coach/status would answer with this proposal')

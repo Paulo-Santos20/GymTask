@@ -171,8 +171,14 @@ if (kind === 'mealplan') {
           { name: 'Olive oil', grams: 14, kcal: 120, protein: 0, carbs: 0, fat: 14 },
         ],
       },
-      { slot: 'lanche', items: [{ name: 'Greek yoghurt and banana', grams: 280, kcal: 280, protein: 22, carbs: 35, fat: 5 }] },
-      { slot: 'jantar', items: [{ name: 'Salmon, potatoes, greens', grams: 780, kcal: 780, protein: 50, carbs: 70, fat: 30 }] },
+      {
+        slot: 'lanche',
+        items: [{ name: 'Greek yoghurt and banana', grams: 280, kcal: 280, protein: 22, carbs: 35, fat: 5 }],
+      },
+      {
+        slot: 'jantar',
+        items: [{ name: 'Salmon, potatoes, greens', grams: 780, kcal: 780, protein: 50, carbs: 70, fat: 30 }],
+      },
     ],
   })
 }
