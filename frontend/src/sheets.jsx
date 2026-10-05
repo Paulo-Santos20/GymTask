@@ -1823,7 +1823,7 @@ function usageMap(st) {
   )
   return u
 }
-function ExercisePicker({ onPick, close }) {
+function ExercisePicker({ onPick, close, title }) {
   const st = useStore(s => s.S)
   const usage = usageMap(st)
   const [q, setQ] = useState('')
@@ -1857,7 +1857,7 @@ function ExercisePicker({ onPick, close }) {
     return (
       <>
         <div className="row between" style={{ marginBottom: 10 }}>
-          <h3>{t('Add exercise')}</h3>
+          <h3>{title || t('Add exercise')}</h3>
           <Button size="sm" variant="ghost" onClick={() => setByMuscle(false)}>
             {t('All')}
           </Button>
@@ -1869,7 +1869,7 @@ function ExercisePicker({ onPick, close }) {
   return (
     <>
       <div className="row between" style={{ marginBottom: 10 }}>
-        <h3>{t('Add exercise')}</h3>
+        <h3>{title || t('Add exercise')}</h3>
         <Button size="sm" variant="tinted" icon="target" onClick={() => setByMuscle(true)}>
           {t('By muscle')}
         </Button>
@@ -2054,7 +2054,10 @@ function ExercisePicker({ onPick, close }) {
     </>
   )
 }
-export const exercisePicker = onPick => ui().openSheet(close => <ExercisePicker onPick={onPick} close={close} />)
+// ponytail: `title` is the sheet heading when the picker is a replacement ("Change exercise"),
+// the default is the add flow's own heading.
+export const exercisePicker = (onPick, { title } = {}) =>
+  ui().openSheet(close => <ExercisePicker onPick={onPick} close={close} title={title} />)
 
 /** Start a safe swap for one exact active-workout occurrence. */
 export function swapActiveWorkoutExercise(index) {

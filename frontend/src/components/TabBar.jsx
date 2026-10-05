@@ -17,7 +17,8 @@ export default function TabBar({ onStart }) {
     cur === k ||
     (cur === 'history' && k === 'stats') ||
     (cur === 'settings' && k === 'home') ||
-    (cur === 'muscles' && k === 'library')
+    (cur === 'muscles' && k === 'library') ||
+    (cur === 'structural-balance' && k === 'stats')
 
   const startWorkout = () => {
     if (!S.active) {

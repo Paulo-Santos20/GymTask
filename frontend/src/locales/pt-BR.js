@@ -1117,6 +1117,17 @@ export const PT_BR_OVERRIDES = {
   'What you did the last time, in that routine.': 'O que você fez da última vez nessa rotina.',
   'Workout updated': 'Treino atualizado',
   'Your heaviest set of the exercise, from any workout.': 'Sua série mais pesada do exercício, de qualquer treino.',
+
+  // --- structural balance: the tile, the screen and its per-role exercises ---
+  'Structural balance': 'Balanço estrutural',
+  'Compare your lifts against a published ratio table to find the weak link.':
+    'Compare seus levantamentos com uma tabela de proporções publicada para encontrar o elo fraco.',
+  'Log your body weight to score this lift.': 'Registre seu peso corporal para avaliar este exercício.',
+  'Log the anchor lift to score this one.': 'Registre o exercício de referência para avaliar este.',
+  'Use default exercise': 'Usar exercício padrão',
+  'Close-grip bench press (anchor)': 'Supino pegada fechada (referência)',
+  'Standing barbell curl': 'Rosca direta com barra em pé',
+  'See which lift is holding back the rest.': 'Veja qual exercício está segurando os outros.',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

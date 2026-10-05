@@ -5,11 +5,12 @@ import { t } from '../lib/i18n.js'
 import { registerCustom } from '../lib/exercises.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { guestAllowed } from '../lib/guest.js'
-import { mergeStates, localExtras } from '../lib/sync-merge.js'
+import { mergeStates, localExtras, mergeStampedMap } from '../lib/sync-merge.js'
 import { saveCoachDevice, coachDeviceSettings } from '../lib/coach-device.js'
 import { saveWorkoutEdit, deleteEditedWorkout } from '../lib/session-edit.js'
 
 import { WC_DEFAULT } from '../lib/workout-controls.js'
+import { DEFAULT_TEMPLATE_ID } from '../lib/structuralBalanceTemplates.js'
 
 const KEY = 'gym_state_v1'
 // Where this device stands with the server: the revision it last adopted or pushed, and its own
@@ -52,6 +53,13 @@ export const DEF = {
   // is the last time in that routine, 'best' the best set of the exercise ever logged. Tapping
   // the line switches it. Absent reads as 'last', the line as it always was.
   logRef: 'last',
+  // Structural Balance (views/StructuralBalance.jsx): which built-in ratio template is active,
+  // and per-role exercise overrides keyed by `${templateId}:${roleId}` — see
+  // lib/structuralBalance.js's overrideKey(). An override (`{ id, _ts }`, `id: null` once
+  // cleared) replaces that role's curated exercise-id whitelist with a single user-chosen
+  // exercise id; the stamp is what lets a sync keep the choice made last (lib/sync-merge.js).
+  balanceTemplate: DEFAULT_TEMPLATE_ID,
+  balanceOverrides: {},
   // Which controls the workout screen shows besides the sets themselves. The default is the
   // lean layout: one "more" button per exercise and a menu on each set number. Every switch
   // brings one of the old always-visible button groups back (Settings → During a workout).
@@ -665,6 +673,14 @@ export const useStore = create((set, get) => {
           ? await ask(extras)
           : false
       const serverCopy = Object.assign(clone(DEF), state, { active: S.active || null })
+      // The stamped settings maps (plate loading, bar choices, Structural Balance overrides)
+      // keep the entry set last on either side: a choice this device made before signing in must
+      // not be handed back to the server's older one, the same rule mergeStates applies on every
+      // other sync path (lib/sync-merge.js mergeStampedMap).
+      for (const f of ['balanceOverrides', 'loadKind', 'plates']) {
+        const merged = mergeStampedMap(S[f], serverCopy[f])
+        if (Object.keys(merged).length) serverCopy[f] = merged
+      }
       if (keep) {
         const merged = Object.assign(clone(DEF), mergeStates(state, S, { prefer: 'a' }))
         merged.active = S.active || null

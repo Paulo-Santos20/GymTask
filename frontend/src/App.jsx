@@ -37,6 +37,7 @@ const Muscles = lazy(() => import('./views/Muscles.jsx'))
 const Settings = lazy(() => import('./views/Settings.jsx'))
 const CoachChat = lazy(() => import('./views/CoachChat.jsx'))
 const Nutrition = lazy(() => import('./views/Nutrition.jsx'))
+const StructuralBalance = lazy(() => import('./views/StructuralBalance.jsx'))
 
 // last known scrollY per route, so back-navigation can put the page where it was
 const scrollPositions = new Map()
@@ -213,6 +214,7 @@ function Shell() {
                 <Route path="/nutrition" element={<Nutrition />} />
                 <Route path="/library" element={<Library />} />
                 <Route path="/muscles" element={<Muscles />} />
+                <Route path="/structural-balance" element={<StructuralBalance />} />
                 <Route path="/settings" element={<Settings />} />
                 {/* The Coach screens gate themselves on the instance config; the routes exist
                   unconditionally so a deep link from a notification lands somewhere sane
