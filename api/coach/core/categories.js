@@ -10,4 +10,5 @@ export const DATA_CATEGORIES = Object.freeze([
   'bodyweight', // weigh-ins in the window and your goal weight
   'profile', // the intake answers you gave the Coach, including any limitations
   'prefs', // unit, language, effort scale
+  'photo', // a meal photo you take, sent to the provider to estimate its macros (RF10)
 ])

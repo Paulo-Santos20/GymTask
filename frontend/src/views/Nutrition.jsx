@@ -7,6 +7,10 @@ import { searchFoods } from '../lib/foods.js'
 import { suggestFoods, mealForHour } from '../lib/meal-suggest.js'
 import { searchExternal } from '../lib/foodApis.js'
 import { importCodeFromImage } from '../lib/scan.js'
+import { hasConsent } from '../lib/coach.js'
+import { DEMO } from '../lib/demo.js'
+import { fileToDataUrl } from '../lib/photo.js'
+import { photoEstimate } from '../lib/coach-api.js'
 import { todayISO, isoOf, fmtDate, fmtNum, uid, weekStartOf } from '../lib/format.js'
 import { LB_TO_KG } from '../lib/recovery.js'
 import { buildCombinedSeries } from '../lib/combined-chart.js'
@@ -50,6 +54,10 @@ export default function Nutrition() {
   const [online, setOnline] = useState([])
   const [onlineState, setOnlineState] = useState('idle') // idle | loading | done | error
   const fileRef = useRef(null)
+  // RF10: one photo in, editable macro candidates out - consent-gated, never in the demo.
+  const [photoState, setPhotoState] = useState('idle') // idle | loading | error
+  const [photoHits, setPhotoHits] = useState([])
+  const photoRef = useRef(null)
   const toast = useUI(s => s.toast)
 
   const profile = useNutritionStore(s => s.profile)
@@ -175,6 +183,8 @@ export default function Nutrition() {
     setQuery('')
     setOnline([])
     setOnlineState('idle')
+    setPhotoState('idle')
+    setPhotoHits([])
   }
   const closeAdd = () => {
     setAdding(null)
@@ -182,6 +192,8 @@ export default function Nutrition() {
     setQuery('')
     setOnline([])
     setOnlineState('idle')
+    setPhotoState('idle')
+    setPhotoHits([])
   }
   // A suggestion tap only prefills the form for that section - confirmAdd stays the only
   // writer to the diary, the same contract the barcode flow follows above.
@@ -237,6 +249,34 @@ export default function Nutrition() {
       await lookupCode(code.value)
     } catch {
       toast(t('Could not read that image'))
+    }
+  }
+  // RF10: the photo flow reads consent at BOTH ends - the button and the change handler -
+  // so a revoked consent between pick and file never leaves the phone. Demo builds hide the
+  // control entirely and photoEstimate throws behind it.
+  const startPhoto = () => {
+    if (!hasConsent(S)) {
+      toast(t('Share your data with the Coach first'))
+      return
+    }
+    photoRef.current?.click()
+  }
+  const onPhotoFile = async ev => {
+    const file = ev.target.files && ev.target.files[0]
+    ev.target.value = ''
+    if (!file) return
+    if (!hasConsent(S)) return
+    setPhotoState('loading')
+    setPhotoHits([])
+    try {
+      const image = await fileToDataUrl(file)
+      const out = await photoEstimate(image)
+      const results = (out && out.results) || []
+      if (!results.length) throw new Error('no foods')
+      setPhotoHits(results)
+      setPhotoState('idle')
+    } catch {
+      setPhotoState('error')
     }
   }
   const confirmAdd = () => {
@@ -436,13 +476,18 @@ export default function Nutrition() {
                       placeholder={t('Search foods')}
                       aria-label={t('Search foods')}
                     />
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                       <Button variant="tinted" icon="camera" onClick={doScan}>
                         {t('Scan barcode')}
                       </Button>
                       <Button variant="tinted" icon="image" onClick={() => fileRef.current?.click()}>
                         {t('Import photo')}
                       </Button>
+                      {!DEMO && (
+                        <Button variant="tinted" icon="camera" onClick={startPhoto}>
+                          {t('Photo of the meal')}
+                        </Button>
+                      )}
                     </div>
                     <input
                       ref={fileRef}
@@ -452,6 +497,35 @@ export default function Nutrition() {
                       aria-label={t('Import photo')}
                       onChange={onScanFile}
                     />
+                    {!DEMO && (
+                      <input
+                        ref={photoRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        hidden
+                        aria-label={t('Photo of the meal')}
+                        onChange={onPhotoFile}
+                      />
+                    )}
+                    {photoState === 'loading' && <div className="nut-st">{t('Analyzing the photo…')}</div>}
+                    {photoState === 'error' && <div className="nut-st err">{t('Could not analyze that photo')}</div>}
+                    {photoHits.length > 0 && (
+                      <Section title={t('Photo of the meal')}>
+                        {photoHits.map((f, i) => (
+                          <Row
+                            key={'photo' + i}
+                            onClick={() => {
+                              pick(f)
+                              setGrams(f.grams)
+                            }}
+                            accessory="chevron"
+                            title={f.name}
+                            subtitle={`${fmtNum(f.per100g.kcal)} kcal / 100 g · ${Math.round(f.confidence * 100)}%`}
+                          />
+                        ))}
+                      </Section>
+                    )}
                     {!!q && local.length > 0 && <Section title={t('Local foods')}>{local.map(resultRow)}</Section>}
                     {q.length >= 2 && (onlineState === 'loading' || onlineState === 'error' || online.length > 0) && (
                       <Section title={t('Online results')}>

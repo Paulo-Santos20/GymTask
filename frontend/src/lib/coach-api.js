@@ -10,6 +10,8 @@ import { api, appBase } from './api.js'
 import { DEMO } from './demo.js'
 import { t } from './i18n.js'
 import { nutritionSnapshot } from './coach.js'
+import { getApiKey } from './coach-secrets.js'
+import { PHOTO_MODEL, PHOTO_SYSTEM, parseEstimate } from './photo.js'
 import { useStore } from '../store/useStore.js'
 import { useNutritionStore } from '../store/nutritionStore.js'
 import { useUI } from '../store/useUI.js'
@@ -295,7 +297,11 @@ export const requestDebrief = async workoutId =>
     ? (await demo()).demoDebrief(S(), workoutId)
     : LOCAL()
       ? (await local()).localDebrief(S(), workoutId)
-      : server('/api/coach/debrief', { method: 'POST', body: JSON.stringify({ workoutId: workoutId || null }), sse: true })
+      : server('/api/coach/debrief', {
+          method: 'POST',
+          body: JSON.stringify({ workoutId: workoutId || null }),
+          sse: true,
+        })
 // A day of eating from the recorded TDEE: the nutrition snapshot lives only in the phone's
 // local store, so the client snapshots it (lib/coach.js) and sends it with the request —
 // the server allowlists it field by field rather than trusting the shape.
@@ -306,6 +312,39 @@ export const requestMealPlan = async () => {
     : LOCAL()
       ? (await local()).localMealPlan(S(), nutrition)
       : server('/api/coach/mealplan', { method: 'POST', body: JSON.stringify({ nutrition }), sse: true })
+}
+
+/* RF10: one photo -> the vision estimate. The view enforces hasConsent before this is ever
+   called and hides the whole control in the demo; the throw below is the structural
+   backstop behind "a demo never sends a photo". A BYOK phone whose provider is Groq spends
+   its own key through the EXISTING adapter (the phone's key, the phone's request - the
+   array prompt rides chatCompletionsSpec's `content: prompt` unchanged, so JSON mode and
+   the vision parts need no adapter edits); every other keyed configuration posts to the
+   server route on the same VITE_COACH_FUNCTION_URL base every coach request uses. Both
+   paths answer the same editable candidates (lib/photo.js parseEstimate). */
+export const photoEstimate = async image => {
+  if (DEMO) throw new Error('photo estimates are disabled in the demo')
+  const device = useStore.getState().coachLocal
+  if (device && device.mode === 'byok' && device.provider === 'groq') {
+    const key = await getApiKey()
+    if (key) {
+      const { default: groq } = await import('../../../api/coach/core/adapters/groq.js')
+      const out = await groq.invoke({
+        cfg: { providerOptions: { groq: { baseUrl: device.baseUrl || undefined } } },
+        prompt: [
+          { type: 'text', text: PHOTO_SYSTEM },
+          { type: 'image_url', image_url: { url: image } },
+        ],
+        env: { GROQ_API_KEY: key },
+        model: PHOTO_MODEL,
+        timeoutMs: 45000,
+      })
+      if (out.code !== 0) throw new Error(out.stderr || 'the vision provider refused the request')
+      return { results: parseEstimate(out.text) }
+    }
+  }
+  const data = await server('/api/coach/photo', { method: 'POST', body: JSON.stringify({ image }) })
+  return { results: parseEstimate(data && data.results) }
 }
 // The room: anonymous medians across the profiles on this instance that opted in. Only a
 // server has a room; a phone with its own key and the demo both answer locally.
@@ -372,10 +411,7 @@ export function useCoachStatus(active = true) {
   // How often the status poll should run given what we just learned: idle when nothing is
   // running, backstop (never the primary transport) while a healthy stream is attached,
   // the usual 3 s cadence otherwise — the floor under every failure mode.
-  const paceFor = useCallback(
-    s => (!s?.job ? IDLE_MS : coachStreamActive() ? STREAM_POLL_MS : POLL_MS),
-    [],
-  )
+  const paceFor = useCallback(s => (!s?.job ? IDLE_MS : coachStreamActive() ? STREAM_POLL_MS : POLL_MS), [])
 
   const refresh = useCallback(async () => {
     try {

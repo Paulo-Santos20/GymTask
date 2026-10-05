@@ -74,6 +74,7 @@ export const CATEGORY_TEXT = {
   bodyweight: ['Body weight', 'Weigh-ins from the same window, and your goal weight if you set one.'],
   profile: ['What you tell the Coach', 'Your intake answers, including any limitations or injuries you describe.'],
   prefs: ['A few preferences', 'Your unit, your language and which effort scale you log.'],
+  photo: ['Your meal photos', 'Photos of meals you take, sent to the provider to estimate their macros.'],
 }
 export const hasConsent = S => !!S?.coach?.consent?.agreedAt && S.coach.consent.version === CONSENT_VERSION
 

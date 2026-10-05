@@ -1551,6 +1551,13 @@ export default {
   'Searching…': 'A procurar…',
   'Could not search online': 'Não foi possível procurar online',
   'No matches for {0}': 'Sem resultados para {0}',
+  'Photo of the meal': 'Foto da refeição',
+  'Analyzing the photo…': 'A analisar a foto…',
+  'Could not analyze that photo': 'Não foi possível analisar essa foto',
+  'Share your data with the Coach first': 'Partilha os teus dados com o Treinador primeiro',
+  'Your meal photos': 'As tuas fotos de refeições',
+  'Photos of meals you take, sent to the provider to estimate their macros.':
+    'Fotos das refeições que tiras, enviadas ao fornecedor para estimar os macros.',
   Meal: 'Refeição',
   Grams: 'Gramas',
   Portion: 'Porção',

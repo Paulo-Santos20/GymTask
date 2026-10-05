@@ -180,14 +180,17 @@ function rateLimited(req, res) {
  * content-length is checked FIRST, before any body handling, so an oversized upload is
  * refused on the header alone; only then is the already-parsed body measured, for chunked
  * requests that arrive with no header (this code buffers nothing itself). Defaults: coach
- * 1 MiB (prompt/payload traffic is KB-scale), nutritionProxy 16 KiB ({ query } only).
- * Env: COACH_MAX_BODY / NUTRITION_MAX_BODY, read per request so tests/.env can tune them. */
+ * 1 MiB (prompt/payload traffic is KB-scale), photo 4 MiB (a ~2 MB meal JPEG travels as
+ * base64), nutritionProxy 16 KiB ({ query } only).
+ * Env: COACH_MAX_BODY / PHOTO_MAX_BODY / NUTRITION_MAX_BODY, read per request so tests/.env can tune them. */
 const COACH_MAX_BODY = 1024 * 1024
+const PHOTO_MAX_BODY = 4 * 1024 * 1024
 const NUTRITION_MAX_BODY = 16 * 1024
 
 function maxBodyFor(route) {
-  const v = parseInt(process.env[route === 'coach' ? 'COACH_MAX_BODY' : 'NUTRITION_MAX_BODY'], 10)
-  const fallback = route === 'coach' ? COACH_MAX_BODY : NUTRITION_MAX_BODY
+  const envKey = route === 'coach' ? 'COACH_MAX_BODY' : route === 'photo' ? 'PHOTO_MAX_BODY' : 'NUTRITION_MAX_BODY'
+  const fallback = route === 'coach' ? COACH_MAX_BODY : route === 'photo' ? PHOTO_MAX_BODY : NUTRITION_MAX_BODY
+  const v = parseInt(process.env[envKey], 10)
   return Number.isFinite(v) && v > 0 ? v : fallback
 }
 
@@ -362,7 +365,148 @@ async function callGrok({ key, model, messages, temperature, timeoutMs = COACH_F
   }
 }
 
+/* -------------------------- meal-photo estimate (RF10) --------------------------
+ * A photo -> Groq's free vision tier -> editable macro candidates. The route rides the
+ * `coach` function's URL (a path branch, below) so the client's existing
+ * VITE_COACH_FUNCTION_URL base reaches it under every documented shape and no env file
+ * changes. Wire mirrors api/coach/core/adapters/openai.js chatCompletionsSpec (JSON mode,
+ * Bearer header, max_tokens) plus the Groq vision docs (multimodal content parts, the image
+ * as a data URL). The image is forwarded to Groq and nowhere else: no console line carries
+ * it, nothing is written or kept. Key: GROQ_API_KEY, server-side in functions/.env only
+ * (deploy stays manual - decision 4); missing -> 400 naming it, nutritionProxy style. */
+const GROQ_VISION_URL = 'https://api.groq.com/openai/v1/chat/completions'
+const GROQ_VISION_MODEL = 'qwen/qwen3.8-27b'
+const PHOTO_TIMEOUT_MS = 25000
+// Byte-identical copy of PHOTO_SYSTEM in frontend/src/lib/photo.js: the functions bundle
+// ships only its own directory and cannot import the phone's ESM module - the same
+// duplication trade-off as SYSTEM_PROMPT, pinned by both suites' contract tests.
+const PHOTO_PROMPT =
+  'You estimate the macros of a meal photo. Reply ONLY with JSON: ' +
+  '{"foods":[{"name":string,"grams":number,"kcal":number,"protein":number,"carbs":number,"fat":number,"confidence":number}]}. ' +
+  'grams is the estimated portion size of that item; kcal, protein, carbs and fat are TOTALS for that portion. ' +
+  'confidence is between 0 and 1. List at most 5 foods you can actually see, with Portuguese (pt-BR) names.'
+
+/** One model food -> an editable candidate, or null (wrong shape, out of range, junk). */
+function normalisePhotoFood(f) {
+  if (!f || typeof f !== 'object') return null
+  const name = typeof f.name === 'string' ? f.name.trim().slice(0, 60) : ''
+  const grams = Number(f.grams)
+  if (!name || !Number.isFinite(grams)) return null
+  const macro = v => {
+    const n = Number(v)
+    return Number.isFinite(n) && n >= 0 ? Math.min(10000, Math.round(n)) : NaN
+  }
+  const out = {
+    name,
+    grams: Math.min(1500, Math.max(1, Math.round(grams))),
+    kcal: macro(f.kcal),
+    protein: macro(f.protein),
+    carbs: macro(f.carbs),
+    fat: macro(f.fat),
+  }
+  if (
+    !Number.isFinite(out.kcal) ||
+    !Number.isFinite(out.protein) ||
+    !Number.isFinite(out.carbs) ||
+    !Number.isFinite(out.fat)
+  )
+    return null
+  const c = Number(f.confidence)
+  out.confidence = Number.isFinite(c) ? Math.max(0, Math.min(1, c > 2 ? c / 100 : c)) : 0
+  return out
+}
+
+function isPhotoRoute(req) {
+  const p = req && req.path
+  return typeof p === 'string' && p.includes('/api/coach/photo')
+}
+
+async function coachPhoto(req, res) {
+  if (preflight(req, res)) return
+  if (rateLimited(req, res)) return
+  if (payloadTooLarge(req, res, 'photo')) return
+  if (postOnly(req, res)) return
+  const body = bodyOf(req)
+  if (body === null) return send(req, res, 400, { ok: false, error: 'body must be valid JSON' })
+  const image = typeof body.image === 'string' ? body.image : ''
+  if (!image)
+    return send(req, res, 400, {
+      ok: false,
+      error: 'image is required - send { "image": "data:image/jpeg;base64,..." }',
+    })
+  if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image))
+    return send(req, res, 400, { ok: false, error: 'image must be a base64 data URL (data:image/jpeg;base64,...)' })
+  const key = process.env.GROQ_API_KEY
+  if (!key)
+    return send(req, res, 400, {
+      ok: false,
+      error: 'GROQ_API_KEY is not configured on this function - set it server-side in functions/.env and redeploy',
+    })
+
+  const model = process.env.GROQ_VISION_MODEL || GROQ_VISION_MODEL
+  const ctl = new AbortController()
+  const timer = setTimeout(() => ctl.abort(), PHOTO_TIMEOUT_MS)
+  let data
+  try {
+    const upstream = await fetch(GROQ_VISION_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key },
+      body: JSON.stringify({
+        model,
+        temperature: 0,
+        max_tokens: 1500,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: PHOTO_PROMPT },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: PHOTO_PROMPT },
+              { type: 'image_url', image_url: { url: image } },
+            ],
+          },
+        ],
+      }),
+      signal: ctl.signal,
+    })
+    const raw = await upstream.text()
+    try {
+      data = JSON.parse(raw)
+    } catch {
+      data = null
+    }
+    if (!upstream.ok) {
+      if (upstream.status === 429)
+        return send(req, res, 429, {
+          ok: false,
+          error: 'the vision provider is rate limited - try again in a moment, or add the food manually',
+        })
+      const msg =
+        (data && data.error && (typeof data.error === 'string' ? data.error : data.error.message)) ||
+        'the vision provider returned HTTP ' + upstream.status
+      return send(req, res, 502, { ok: false, error: String(msg).slice(0, 300) })
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError')
+      return send(req, res, 504, { ok: false, error: 'the vision provider did not answer within 25s' })
+    return send(req, res, 502, {
+      ok: false,
+      error: 'could not reach the vision provider: ' + String((e && e.message) || e).slice(0, 200),
+    })
+  } finally {
+    clearTimeout(timer)
+  }
+  if (!data) return send(req, res, 502, { ok: false, error: 'the vision provider sent an unreadable answer' })
+
+  const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content
+  const parsed = extractJson(typeof content === 'string' ? content : '')
+  const foods = parsed && Array.isArray(parsed.foods) ? parsed.foods : []
+  const results = foods.map(normalisePhotoFood).filter(Boolean).slice(0, 5)
+  return send(req, res, 200, { ok: true, results })
+}
+
 exports.coach = onRequest({ region: REGION, timeoutSeconds: 300 }, async (req, res) => {
+  if (isPhotoRoute(req)) return coachPhoto(req, res)
   if (preflight(req, res)) return
   if (rateLimited(req, res)) return
   if (payloadTooLarge(req, res, 'coach')) return
@@ -673,7 +817,17 @@ const REVIEW_TYPES = [
   'rename-routine',
   'week',
 ]
-const REVIEW_NEEDS_EX = ['remove-exercise', 'sets', 'reps', 'repsMin', 'repsMax', 'sec', 'cardio', 'exercise-prog', 'inc']
+const REVIEW_NEEDS_EX = [
+  'remove-exercise',
+  'sets',
+  'reps',
+  'repsMin',
+  'repsMax',
+  'sec',
+  'cardio',
+  'exercise-prog',
+  'inc',
+]
 const REVIEW_POLICIES = ['off', 'linear', 'greyskull', 'double', 'time'] // validate.js POLICIES
 const REVIEW_MAX_INC = 50
 const REVIEW_MAX_SPEED = 60
@@ -745,7 +899,9 @@ function wReviewedAt(S, rec) {
 /** Weekday index in the profile's own timezone, as cadence.js derives it (WEEKDAYS order). */
 function wWeekdayIndex(tz, at) {
   try {
-    return WEEKDAYS.indexOf(new Intl.DateTimeFormat('en-US', { timeZone: tz || 'America/Sao_Paulo', weekday: 'long' }).format(new Date(at)))
+    return WEEKDAYS.indexOf(
+      new Intl.DateTimeFormat('en-US', { timeZone: tz || 'America/Sao_Paulo', weekday: 'long' }).format(new Date(at)),
+    )
   } catch {
     return new Date(at).getUTCDay()
   }
@@ -906,7 +1062,9 @@ function wPayload(S, uid, now) {
         })),
       })),
       // payload.js cleanPlan week rule: empty days out, combined days kept, merge order kept.
-      week: Object.fromEntries([1, 2, 3, 4, 5, 6, 0].filter(d => S.week?.[d]?.length).map(d => [d, [].concat(S.week[d])])),
+      week: Object.fromEntries(
+        [1, 2, 3, 4, 5, 6, 0].filter(d => S.week?.[d]?.length).map(d => [d, [].concat(S.week[d])]),
+      ),
     },
     window: {
       from,
@@ -970,12 +1128,14 @@ function wCheckAfter(out, routine, planned, routines) {
     }
     case 'repsMin': {
       if (!isInt(out.after, 1, 100)) return `${where}.after must be a whole number (1-100)`
-      if (planned?.repsMax != null && out.after > planned.repsMax) return `${where}.after must stay at or below the exercise's repsMax`
+      if (planned?.repsMax != null && out.after > planned.repsMax)
+        return `${where}.after must stay at or below the exercise's repsMax`
       return null
     }
     case 'repsMax': {
       if (!isInt(out.after, 1, 100)) return `${where}.after must be a whole number (1-100)`
-      if (planned?.repsMin != null && out.after < planned.repsMin) return `${where}.after must stay at or above the exercise's repsMin`
+      if (planned?.repsMin != null && out.after < planned.repsMin)
+        return `${where}.after must stay at or above the exercise's repsMin`
       return null
     }
     case 'sec':
@@ -1096,7 +1256,18 @@ function wValidate(data, S) {
 
   // Coherence (validate.js:624-664): each change validated alone, the SET has to make sense
   // on one screen - the user approves a screen, not a change.
-  const SCALAR = ['sets', 'reps', 'repsMin', 'repsMax', 'sec', 'inc', 'routine-prog', 'exercise-prog', 'rename-routine', 'week']
+  const SCALAR = [
+    'sets',
+    'reps',
+    'repsMin',
+    'repsMax',
+    'sec',
+    'inc',
+    'routine-prog',
+    'exercise-prog',
+    'rename-routine',
+    'week',
+  ]
   const sameValue = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
   // A scalar whose after equals the plan is dropped, not refused; all gone = honest nochange.
   const kept = changes.filter(ch => !(SCALAR.includes(ch.type) && sameValue(ch.before, ch.after)))
@@ -1211,7 +1382,10 @@ exports.weeklyReview = onSchedule(
         // was actually paid for and read.
         if (out.timeout || out.unreachable || out.status != null) {
           console.error(
-            'weeklyReview: ' + uid + ' model call failed - ' + String(out.timeout ? 'timeout' : out.unreachable || out.error).slice(0, 200),
+            'weeklyReview: ' +
+              uid +
+              ' model call failed - ' +
+              String(out.timeout ? 'timeout' : out.unreachable || out.error).slice(0, 200),
           )
           continue
         }
@@ -1228,7 +1402,9 @@ exports.weeklyReview = onSchedule(
           continue
         }
         if (!checked.ok) {
-          console.error('weeklyReview: ' + uid + ' answer failed validation - ' + checked.errors.join('; ').slice(0, 300))
+          console.error(
+            'weeklyReview: ' + uid + ' answer failed validation - ' + checked.errors.join('; ').slice(0, 300),
+          )
           record({ outcome: 'failed', errorClass: 'unusable' })
           continue
         }
