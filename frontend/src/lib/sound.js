@@ -30,7 +30,10 @@ const ctxFor = () => {
 
 const wake = () => {
   const ctx = ctxFor()
-  if (ctx.state !== 'running') { const p = ctx.resume(); if (p && p.catch) p.catch(() => {}) }
+  if (ctx.state !== 'running') {
+    const p = ctx.resume()
+    if (p && p.catch) p.catch(() => {})
+  }
   return ctx
 }
 
@@ -43,7 +46,14 @@ const sleepAfter = endSec => {
   clearTimeout(idleTm)
   idleTm = setTimeout(() => {
     idleTm = null
-    try { if (audioCtx && audioCtx.state === 'running') { const p = audioCtx.suspend(); if (p && p.catch) p.catch(() => {}) } } catch (e) { /* */ }
+    try {
+      if (audioCtx && audioCtx.state === 'running') {
+        const p = audioCtx.suspend()
+        if (p && p.catch) p.catch(() => {})
+      }
+    } catch (e) {
+      /* */
+    }
   }, at - Date.now())
 }
 
@@ -54,7 +64,10 @@ const sleepAfter = endSec => {
 let brightWave = null
 let brightCtx = null
 const setBright = (ctx, o) => {
-  if (typeof ctx.createPeriodicWave !== 'function') { o.type = 'triangle'; return }
+  if (typeof ctx.createPeriodicWave !== 'function') {
+    o.type = 'triangle'
+    return
+  }
   if (brightCtx !== ctx) {
     brightCtx = ctx
     brightWave = ctx.createPeriodicWave(new Float32Array([0, 0, 0, 0, 0]), new Float32Array([0, 1, 0.6, 0.35, 0.2]))
@@ -67,22 +80,30 @@ const setBright = (ctx, o) => {
 // fade) and `bright` exist for the timer chime below.
 const tone = (freq, dur, when, { peak = 0.35, hold = 0, bright = false } = {}) => {
   const ctx = wake()
-  const o = ctx.createOscillator(), g = ctx.createGain()
-  o.connect(g); g.connect(ctx.destination)
+  const o = ctx.createOscillator(),
+    g = ctx.createGain()
+  o.connect(g)
+  g.connect(ctx.destination)
   o.frequency.value = freq
-  if (bright) setBright(ctx, o); else o.type = 'sine'
+  if (bright) setBright(ctx, o)
+  else o.type = 'sine'
   const t0 = ctx.currentTime + when
   g.gain.setValueAtTime(0.001, t0)
   g.gain.exponentialRampToValueAtTime(peak, t0 + 0.02)
   if (hold > 0) g.gain.setValueAtTime(peak, t0 + dur * hold)
   g.gain.exponentialRampToValueAtTime(0.001, t0 + dur)
-  o.start(t0); o.stop(t0 + dur + 0.05)
+  o.start(t0)
+  o.stop(t0 + dur + 0.05)
   sleepAfter(when + dur + 0.05)
 }
 
 export function beep(enabled, freq, dur, when) {
   if (!enabled) return
-  try { tone(freq || 880, dur || 0.18, when || 0) } catch (e) { /* */ }
+  try {
+    tone(freq || 880, dur || 0.18, when || 0)
+  } catch (e) {
+    /* */
+  }
 }
 
 // The end of a rest or a hold (store/useUI.js). It used to be three of the beeps above and went
@@ -97,17 +118,30 @@ export function beep(enabled, freq, dur, when) {
 // It does not turn other apps down. A web page cannot duck another app's audio: Android only
 // grants audio focus to native code, and on iOS the 'playback' session pauses the music (1. above).
 export const CHIME_PEAK = 0.9
-const CHIME = [[1319, 0.16, 0], [988, 0.16, 0.22], [1319, 0.5, 0.44]]
+const CHIME = [
+  [1319, 0.16, 0],
+  [988, 0.16, 0.22],
+  [1319, 0.5, 0.44],
+]
 export function chime(enabled) {
   if (!enabled) return
-  try { CHIME.forEach(([freq, dur, when]) => tone(freq, dur, when, { peak: CHIME_PEAK, hold: 0.6, bright: true })) } catch (e) { /* */ }
+  try {
+    CHIME.forEach(([freq, dur, when]) => tone(freq, dur, when, { peak: CHIME_PEAK, hold: 0.6, bright: true }))
+  } catch (e) {
+    /* */
+  }
 }
 
 // Call from inside a tap. Gets the context created and running while the browser still counts
 // this as a user gesture; it goes back to sleep on its own. Nothing audible.
 export function unlock(enabled) {
   if (!enabled) return
-  try { wake(); sleepAfter(0) } catch (e) { /* */ }
+  try {
+    wake()
+    sleepAfter(0)
+  } catch (e) {
+    /* */
+  }
 }
 
 // Settings → "Play sounds when the phone is on silent". Offered only where it means something:
@@ -123,18 +157,28 @@ export const playOnSilentSupported = () => {
 }
 export function setPlayOnSilent(on) {
   if (!playOnSilentSupported()) return
-  try { navigator.audioSession.type = on ? 'playback' : 'auto' } catch (e) { /* */ }
+  try {
+    navigator.audioSession.type = on ? 'playback' : 'auto'
+  } catch (e) {
+    /* */
+  }
 }
 
 // Settings → "Vibrate" (Discord, asierlama): the buzz at the end of a rest or a hold and on a set
 // tick, switched on its own the way Sounds is. A page-level switch like setPlayOnSilent, applied
 // by App.jsx, so the places that buzz do not each have to read the profile. On by default.
 let buzz = true
-export function setVibrate(on) { buzz = on !== false }
+export function setVibrate(on) {
+  buzz = on !== false
+}
 // Offered where the browser can buzz at all: iOS has no navigator.vibrate. The Android app needs
 // android.permission.VIBRATE in its manifest, without which the WebView drops every call.
 export const vibrateSupported = () => typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function'
 export function vibrate(p) {
   if (!buzz) return
-  try { navigator.vibrate && navigator.vibrate(p) } catch (e) { /* */ }
+  try {
+    navigator.vibrate && navigator.vibrate(p)
+  } catch (e) {
+    /* */
+  }
 }

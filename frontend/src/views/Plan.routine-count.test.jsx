@@ -62,7 +62,7 @@ const countOn = day =>
     .find(el => el.querySelector('.tt')?.textContent === day)
     ?.querySelector('.small.dim')?.textContent
 
-describe('Plan â€” the day header counts its routines', () => {
+describe('Plan — the day header counts its routines', () => {
   it('uses the singular for one routine and the plural for more', () => {
     mocks.S.week = { 1: ['r1'], 2: ['r1', 'r2'] }
     mount()

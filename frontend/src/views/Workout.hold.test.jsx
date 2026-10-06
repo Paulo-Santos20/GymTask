@@ -16,7 +16,14 @@ vi.mock('../lib/api.js', () => ({ api: vi.fn(() => Promise.resolve({})), appBase
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 const clone = value => JSON.parse(JSON.stringify(value))
-const plank = () => ({ id: '1001', target: { mode: 'time', sets: 2, sec: 10 }, sets: [{ sec: 10, w: 0, done: false }, { sec: 10, w: 0, done: false }] })
+const plank = () => ({
+  id: '1001',
+  target: { mode: 'time', sets: 2, sec: 10 },
+  sets: [
+    { sec: 10, w: 0, done: false },
+    { sec: 10, w: 0, done: false },
+  ],
+})
 
 let root
 let container
@@ -24,12 +31,27 @@ let container
 function renderWorkout(entries) {
   const S = clone(DEF)
   S.sound = true
-  S.active = { id: 'hold-test', d: '2026-09-23', start: Date.now(), routineId: null, name: 'Hold', bw: null, cur: 0, entries }
+  S.active = {
+    id: 'hold-test',
+    d: '2026-09-23',
+    start: Date.now(),
+    routineId: null,
+    name: 'Hold',
+    bw: null,
+    cur: 0,
+    entries,
+  }
   useStore.setState({ S, user: null })
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
-  act(() => root.render(<MemoryRouter><Workout /></MemoryRouter>))
+  act(() =>
+    root.render(
+      <MemoryRouter>
+        <Workout />
+      </MemoryRouter>,
+    ),
+  )
 }
 
 const startHold = () => {
@@ -44,7 +66,9 @@ const doneOf = () => useStore.getState().S.active.entries[0].sets.map(s => s.don
 beforeEach(() => {
   vi.useFakeTimers()
   localStorage.clear()
-  vi.mocked(beep).mockClear(); vi.mocked(chime).mockClear(); vi.mocked(vibrate).mockClear()
+  vi.mocked(beep).mockClear()
+  vi.mocked(chime).mockClear()
+  vi.mocked(vibrate).mockClear()
   useUI.setState({ sheets: [], toastMsg: '', timer: null, work: null })
   root = null
   container = null
@@ -63,7 +87,9 @@ describe('the end of a hold', () => {
   it('ran out on its own: the chime and its buzz pattern, and no tick beep or short buzz after them', () => {
     renderWorkout([plank()])
     startHold()
-    act(() => { vi.advanceTimersByTime(11_000) })
+    act(() => {
+      vi.advanceTimersByTime(11_000)
+    })
     expect(doneOf()).toEqual([true, false])
     expect(chime).toHaveBeenCalledOnce()
     expect(tickBeeps()).toEqual([])
@@ -73,7 +99,9 @@ describe('the end of a hold', () => {
   it('finished early with Done: the set ticks the way a tap does, beep and buzz', () => {
     renderWorkout([plank()])
     startHold()
-    act(() => { vi.advanceTimersByTime(4_000) })
+    act(() => {
+      vi.advanceTimersByTime(4_000)
+    })
     act(() => useUI.getState().finishWorkEarly())
     expect(doneOf()).toEqual([true, false])
     expect(chime).not.toHaveBeenCalled()

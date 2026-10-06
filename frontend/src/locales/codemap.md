@@ -5,12 +5,12 @@
 UI translation packs for the t() string layer. Every key is the English source string
 (`t('Save')` → `'Salvar'`); there is no message-id numbering.
 
-- `pt.js` — European Portuguese base pack (~1376 entries). Not shipped as a runtime locale:
+- `pt.js` — European Portuguese base pack (1563 entries). Not shipped as a runtime locale:
   `LANGS` in `lib/i18n-core.js` only exposes `pt-BR`, so nothing ever loads it via `setLang`.
   It exists as the base layer of `pt-BR.js` and as the key-set reference for tests.
 - `pt-BR.js` — the app's only real locale. `import pt from './pt.js'`, exports
-  `PT_BR_OVERRIDES` (735 Brazilian-specific entries) and
-  `export default { ...pt, ...PT_BR_OVERRIDES }` (pt-BR.js:773), i.e. base + override merge.
+  `PT_BR_OVERRIDES` (871 Brazilian-specific entries) and
+  `export default { ...pt, ...PT_BR_OVERRIDES }` (pt-BR.js:1133), i.e. base + override merge.
 
 ## Design
 
@@ -46,4 +46,6 @@ UI translation packs for the t() string layer. Every key is the English source s
   `lib/i18n-core.test.js`, `lib/active-workout-order.test.js`, and several
   `import.meta.glob('../locales/*.js')` key-coverage checks in view tests.
 - Adding a string = add the English key to `pt.js`, translate in `PT_BR_OVERRIDES`
-  (or both layers), tests enforce key-set parity.
+  (or both layers), tests enforce key-set parity. New keys go to `pt.js` alone when the
+  wording is region-neutral: they become inherited (update the count + hash in
+  `lib/pt-br-locale.test.js` via `scripts/pt-br-inheritance-fingerprint.mjs --list`).

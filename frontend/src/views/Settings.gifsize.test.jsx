@@ -85,7 +85,7 @@ afterEach(() => {
 const mount = () => act(() => root.render(<Settings />))
 const segButton = label => [...host.querySelectorAll('.seg button')].find(b => b.textContent === label)
 
-describe('Settings â€” exercise animations', () => {
+describe('Settings — exercise animations', () => {
   it('offers Full / Small / Hidden and writes gifSize to the store', () => {
     mount()
     expect(segButton('Full')).toBeTruthy()

@@ -139,9 +139,23 @@ import { isFav, toggleFav, sortFavouritesFirst } from './lib/favourites.js'
 import { buildSessionEntries, buildPlannedEntry, builtOutOfProgression } from './lib/session-start.js'
 import { joinSessionNoProg } from './lib/session-noprog.js'
 import { buildCombinedEntries, deriveSessionName } from './lib/session-merge.js'
-import { workoutsOn, backfillStart, backfillEnd, completeBackfill, historyAsOf, sessionHistory } from './lib/backfill.js'
+import {
+  workoutsOn,
+  backfillStart,
+  backfillEnd,
+  completeBackfill,
+  historyAsOf,
+  sessionHistory,
+} from './lib/backfill.js'
 import { speedUnitOf, speedLabel, toSpeed, fromSpeed } from './lib/speed.js'
-import { moveWorkout, sameWorkout, startTimeOf, durationMinOf, setWorkoutDuration, rebuildPrHistory } from './lib/workout-date.js'
+import {
+  moveWorkout,
+  sameWorkout,
+  startTimeOf,
+  durationMinOf,
+  setWorkoutDuration,
+  rebuildPrHistory,
+} from './lib/workout-date.js'
 import { editCompletedSession, editLeftEmpty, editChangesNothing } from './lib/session-edit.js'
 import { stampWorkout } from './lib/sync-merge.js'
 import { saveSessionAsRoutine } from './lib/session-routines.js'
@@ -4196,9 +4210,9 @@ export function logPastWorkoutSheet(initial) {
   const from = typeof initial?.iso === 'string' ? initial : null
   ui().openSheet(close => <LogPastWorkout initial={from} close={close} />)
 }
-  // Backfill stays single-routine (the LogPastWorkout UI is one picker), but it emits the new
-  // shape: a one-element (or empty) routine list, per-entry rid, no top-level routineId.
-  // One routine from the picker, or every routine of a missed combined day.
+// Backfill stays single-routine (the LogPastWorkout UI is one picker), but it emits the new
+// shape: a one-element (or empty) routine list, per-entry rid, no top-level routineId.
+// One routine from the picker, or every routine of a missed combined day.
 // Only from the history before that day (historyAsOf): a session logged later must not hand its
 // progression back to the day it skipped.
 function beginBackfill({ iso, time, durationMin, routineIds, replaceId }) {
@@ -4858,11 +4872,7 @@ function doFinishWorkout() {
       stampWorkout(w)
       const replaced = A.backfill.replaceId ? s.workouts.find(x => x.id === A.backfill.replaceId) : null
       const touched = [
-        ...new Set(
-          [...(replaced?.entries || []), ...w.entries]
-            .map(e => e?.id)
-            .filter(id => id != null),
-        ),
+        ...new Set([...(replaced?.entries || []), ...w.entries].map(e => e?.id).filter(id => id != null)),
       ]
       s.workouts = rebuildPrHistory(completeBackfill(s.workouts, A, w), touched, w)
       shown = s.workouts.find(x => x === w || (w.id != null && x.id === w.id)) || w

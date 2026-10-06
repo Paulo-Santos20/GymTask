@@ -24,6 +24,7 @@ const DELAY = 2200 // long enough to see "the Coach is thinking…", short enoug
 
 let pending = null
 let job = null
+let lastError = null // the last job that ended without a proposal, in the server's shape
 let timer = null
 
 const iso = d => d.toISOString().slice(0, 10)
@@ -306,15 +307,26 @@ export function demoCohort(S) {
 
 /* ---------------- the API surface the demo stands in for ---------------- */
 
-export const demoStatus = () => ({ job, pending, cap: { used: 0, limit: 0 } })
+export const demoStatus = () => ({ job, pending, cap: { used: 0, limit: 0 }, lastError })
 
 function start(kind, make) {
   if (job) throw Object.assign(new Error(t('The Coach is already thinking about your training.')), { status: 409 })
   job = { id: 'demo-' + kind, kind, state: 'running', startedAt: Date.now() }
+  lastError = null
   clearTimeout(timer)
+  // A builder that throws still has to end the job: left uncaught, one throw kept `job` at
+  // 'running' for ever and every later request answered 409 until the page was reloaded. The
+  // failure is recorded the way the server and the phone record theirs, so the chat's
+  // job-ended effect writes the same error line it would for them. `nostate` because the only
+  // thing a builder can trip over is the shape of the profile's own data.
   timer = setTimeout(() => {
-    pending = make()
-    job = null
+    try {
+      pending = make()
+    } catch (e) {
+      lastError = { errorClass: 'nostate', detail: String((e && e.message) || e) }
+    } finally {
+      job = null
+    }
   }, DELAY)
   return { job }
 }

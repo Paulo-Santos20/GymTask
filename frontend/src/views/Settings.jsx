@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore, DEF } from '../store/useStore.js'
 import { workoutControls } from '../lib/workout-controls.js'
@@ -43,14 +43,14 @@ export default function Settings() {
   const wakeOK = wakeLockSupported()
 
   // Two honest choices on a unit switch (issue #22): convert the numbers, or keep them and only
-  // change the label â€” the old behaviour, still right for someone who logged in lb all along
+  // change the label — the old behaviour, still right for someone who logged in lb all along
   // under a kg label. Closing the sheet leaves the unit as it was.
   const switchUnit = v => {
     if (v === S.unit) return
     menuSheet({
       title: t('Convert to {0}?', v),
       subtitle: t(
-        'Every stored weight â€” logged sets, working weights, routine targets, body weight, bar weights â€” is in {0}. Convert the numbers, or keep them and only change the label?',
+        'Every stored weight — logged sets, working weights, routine targets, body weight, bar weights — is in {0}. Convert the numbers, or keep them and only change the label?',
         S.unit,
       ),
       items: [
@@ -103,13 +103,13 @@ export default function Settings() {
     }
     rd.readAsText(f)
   }
-  // Ends the profile's sessions on every device â€” this one included, so on success it lands in
+  // Ends the profile's sessions on every device — this one included, so on success it lands in
   // the same place as the plain sign-out above (home, local data cleared). On failure nothing
   // local is touched: still signed in here, and say so rather than leaving a half-signed-out app.
   const signOutEverywhere = () =>
     confirmSheet({
       title: t('Sign out everywhere?'),
-      message: t('Ends this profileâ€™s sessions on all your devices.'),
+      message: t('Ends this profile’s sessions on all your devices.'),
       confirmText: t('Sign out everywhere'),
       danger: true,
       onConfirm: async () => {
@@ -118,14 +118,14 @@ export default function Settings() {
           nav('/home')
           toast(t('Signed out on all devices'))
         } catch (e) {
-          toast(t('Could not sign out everywhere â€” you are still signed in.'))
+          toast(t('Could not sign out everywhere — you are still signed in.'))
         }
       },
     })
   // Signed in, the empty state is pushed to the profile like any other change, so the wipe
-  // reaches the server and every device that syncs with it â€” the dialog has to say so. The Coach
+  // reaches the server and every device that syncs with it — the dialog has to say so. The Coach
   // keeps its data outside S in two homes that can both be in use on one phone: a file per
-  // profile on the server, and â€” when it runs with the phone's own key â€” a file on the device.
+  // profile on the server, and — when it runs with the phone's own key — a file on the device.
   // Each is cleared on its own; forgetCoach() alone would pick one by mode. A failed call must
   // not stop the reset.
   const resetEverything = () =>
@@ -165,8 +165,8 @@ export default function Settings() {
             <Row
               icon="sparkles"
               iconTint="var(--acc)"
-              title={t('Youâ€™re in the demo')}
-              subtitle={t('Example data, stored only in this browser â€” change anything you like.')}
+              title={t('You’re in the demo')}
+              subtitle={t('Example data, stored only in this browser — change anything you like.')}
             />
             <Row
               icon="reset"
@@ -224,13 +224,13 @@ export default function Settings() {
               icon="shield"
               iconTint="var(--red)"
               title={t('Sign out everywhere')}
-              subtitle={t('Ends this profileâ€™s sessions on all your devices.')}
+              subtitle={t('Ends this profile’s sessions on all your devices.')}
               danger
               onClick={signOutEverywhere}
             />
           </>
         ) : (
-          <Row icon="lock" iconTint="var(--grey)" title={t('Guest mode â€” data lives only in this browser.')} />
+          <Row icon="lock" iconTint="var(--grey)" title={t('Guest mode — data lives only in this browser.')} />
         )}
       </Section>
 
@@ -246,7 +246,7 @@ export default function Settings() {
               ? t('Runs on your GymTask server')
               : coachLocal?.mode === 'byok'
                 ? t('Runs on this phone with your own API key')
-                : t('Off â€” choose how the Coach should run.')
+                : t('Off — choose how the Coach should run.')
           }
           onClick={() => nav('/coach/setup')}
         />
@@ -269,7 +269,7 @@ export default function Settings() {
             label: name,
             subtitle: INSTR_LANGS.includes(k)
               ? null
-              : t("Exercise instructions aren't available in this language yet â€” they stay in English."),
+              : t("Exercise instructions aren't available in this language yet — they stay in English."),
           }))}
         />
         <Row icon="scale" iconTint="var(--teal)" title={t('Weight unit')}>
@@ -303,7 +303,7 @@ export default function Settings() {
         </Row>
         {/* Display only: one decimal reads fine for plate-loadable numbers, two for anyone whose
           per-side figure lands on .25 or .75, or who loads microplates (issue #139). Nothing is
-          stored or rounded differently â€” lib/format.js fmtNum just prints what is already there. */}
+          stored or rounded differently — lib/format.js fmtNum just prints what is already there. */}
         <Row
           icon="plate"
           iconTint="var(--teal)"
@@ -324,7 +324,7 @@ export default function Settings() {
             }
           />
         </Row>
-        {/* Monday or Sunday â€” the Plan list, the Home strip, the calendar grid and every
+        {/* Monday or Sunday — the Plan list, the Home strip, the calendar grid and every
           "this week" total follow it. Stored as a getDay() index (see lib/format.js). */}
         <Row icon="calendar" iconTint="var(--orange)" title={t('Week starts on')}>
           <Segmented
@@ -358,14 +358,29 @@ export default function Settings() {
             }
           />
         </Row>
+        {/* The Home summary is optional; hiding it leaves weight logging, history and Stats intact. */}
+        <Row
+          icon="scale"
+          iconTint="var(--green)"
+          title={t('Body weight')}
+          subtitle={t('Show the body weight card on Home.')}
+        >
+          <Switch
+            checked={S.showWeightCard !== false}
+            label={t('Body weight')}
+            onChange={v =>
+              update(s => {
+                s.showWeightCard = v
+              })
+            }
+          />
+        </Row>
       </Section>
-
-      {/* ---------- during a workout ---------- */}
       <Section
         title={t('During a workout')}
         footer={
           wakeOK
-            ? t('The screen stays on while a workout is running, so you donâ€™t have to unlock your phone between sets.')
+            ? t('The screen stays on while a workout is running, so you don’t have to unlock your phone between sets.')
             : null
         }
       >
@@ -390,7 +405,7 @@ export default function Settings() {
         {/* One exercise at a time (cards with Prev/Next), the whole session stacked as a
           scrollable list, or that list stripped to just names and set rows (compact).
           Legacy/unknown values read as cards. The running session can override this from
-          the workout header's â‹® menu without changing this default. */}
+          the workout header's ⋮ menu without changing this default. */}
         <Row icon="list" iconTint="var(--blue)" title={t('Workout view')}>
           <Segmented
             className="seg-inline"
@@ -425,7 +440,7 @@ export default function Settings() {
             {
               value: 'plan',
               label: t('Your plan'),
-              subtitle: t('The routineâ€™s sets and reps. Your history decides the weight.'),
+              subtitle: t('The routine’s sets and reps. Your history decides the weight.'),
             },
             {
               value: 'last',
@@ -467,7 +482,7 @@ export default function Settings() {
           title={t('Workout controls')}
           accessory="chevron"
           subtitle={t(
-            'Everything hidden here stays one tap away: the â‹¯ button of an exercise and the number of a set.',
+            'Everything hidden here stays one tap away: the ⋯ button of an exercise and the number of a set.',
           )}
           onClick={() => workoutControlsSheet()}
         />
@@ -483,7 +498,7 @@ export default function Settings() {
           }
           options={[{ value: 0, label: t('Off') }, ...[60, 90, 120, 150, 180].map(v => ({ value: v, label: v + 's' }))]}
         />
-        {/* Default for a rest-pause burst added live on a plain set â€” a planned exercise's own
+        {/* Default for a rest-pause burst added live on a plain set — a planned exercise's own
           "Rest (s)" (in its Intensifier config) overrides this, same as the main rest timer
           is the fallback whenever an exercise has no progression rule of its own. */}
         <SelectRow
@@ -549,8 +564,8 @@ export default function Settings() {
           />
         </Row>
         {/* iOS only (WebKit's audio-session API, iOS 17+): with it off the ring/silent switch mutes
-          the timer. On, the phone treats the timer like a music player â€” exclusive, and the
-          music app is not told it may resume â€” so it is a choice, off by default (lib/sound.js). */}
+          the timer. On, the phone treats the timer like a music player — exclusive, and the
+          music app is not told it may resume — so it is a choice, off by default (lib/sound.js). */}
         {S.sound && playOnSilentSupported() && (
           <Row
             icon="bell"
@@ -581,7 +596,7 @@ export default function Settings() {
           />
         </Row>
         {/* Two names for the same judgement, so the column asks in the scale you already think in.
-          The (i) sits before the control â€” you read it on the way to the choice, not after it. */}
+          The (i) sits before the control — you read it on the way to the choice, not after it. */}
         <Row icon="target" iconTint="var(--purple)" title={t('Effort per set')}>
           <button className="helpbtn" aria-label={t('What are RIR and RPE?')} onClick={effortHelpSheet}>
             <Icon name="info" />
@@ -612,7 +627,7 @@ export default function Settings() {
       {/* ---------- volume landmarks ---------- */}
       {/* Per-muscle weekly working-set bounds. Statistics reads this week against them, so the
         profile override is the only thing living here: empty means "the built-in preset", and
-        the fields always show the effective number â€” preset where nothing was overridden.
+        the fields always show the effective number — preset where nothing was overridden.
         Clearing a field puts that one bound back on its preset; a muscle with nothing left
         leaves the map, and an empty map is null again. */}
       <Section
@@ -641,14 +656,14 @@ export default function Settings() {
             <Row key={slug} title={name}>
               <NumberField
                 decimal={false}
-                aria-label={`${name} Â· ${t('Minimum')}`}
+                aria-label={`${name} · ${t('Minimum')}`}
                 style={{ width: '3.5ch', textAlign: 'center' }}
                 value={mev}
                 onChange={setBound('mev')}
               />
               <NumberField
                 decimal={false}
-                aria-label={`${name} Â· ${t('Maximum')}`}
+                aria-label={`${name} · ${t('Maximum')}`}
                 style={{ width: '3.5ch', textAlign: 'center' }}
                 value={mav}
                 onChange={setBound('mav')}
@@ -686,7 +701,7 @@ export default function Settings() {
             }
           />
         </Row>
-        {/* Purely how the muscle map is drawn â€” nothing else in the app reads this. */}
+        {/* Purely how the muscle map is drawn — nothing else in the app reads this. */}
         <Row icon="figureStrength" iconTint="var(--teal)" title={t('Body diagram')}>
           <Segmented
             className="seg-inline"
@@ -725,7 +740,7 @@ export default function Settings() {
         </div>
       </Section>
 
-      {/* ---------- Apple Health (RF11): the one-time Shortcut setup. iOS only â€” the
+      {/* ---------- Apple Health (RF11): the one-time Shortcut setup. iOS only — the
         `shortcuts://` scheme exists nowhere else, so on Android and desktop the section is
         absent rather than a button that cannot fire. Steps render SHORTCUT_NAME from
         lib/apple-health.js so the instructions and the link the app fires cannot drift. */}
@@ -742,20 +757,20 @@ export default function Settings() {
             </li>
             <li>
               {t(
-                'Add â€œGet Dictionary from Inputâ€ (your device may name it in its own language) and set its Format to JSON.',
+                'Add “Get Dictionary from Input” (your device may name it in its own language) and set its Format to JSON.',
               )}
             </li>
             <li>
               {t(
-                'Add an If action: when type is â€œbodyweightâ€, log a body-mass sample with the dictionaryâ€™s value, unit and date.',
+                'Add an If action: when type is “bodyweight”, log a body-mass sample with the dictionary’s value, unit and date.',
               )}
             </li>
             <li>
               {t(
-                'Otherwise â€” type is â€œworkoutâ€ â€” log a workout that lasts the dictionaryâ€™s value minutes, starting at its date.',
+                'Otherwise — type is “workout” — log a workout that lasts the dictionary’s value minutes, starting at its date.',
               )}
             </li>
-            <li>{t('Done. â€œSend to Apple Healthâ€ appears when you save a weigh-in and on the workout summary.')}</li>
+            <li>{t('Done. “Send to Apple Health” appears when you save a weigh-in and on the workout summary.')}</li>
           </ol>
         </Section>
       )}
@@ -773,7 +788,7 @@ export default function Settings() {
           icon="shuffle"
           iconTint="var(--teal)"
           title={t('Import from another app')}
-          subtitle={t('FitNotes, Strong, Hevy â€” or body weight from Apple Health')}
+          subtitle={t('FitNotes, Strong, Hevy — or body weight from Apple Health')}
           accessory="chevron"
           onClick={() => importRef.current.click()}
         />
@@ -827,28 +842,28 @@ export default function Settings() {
         <Row
           icon="lightbulb"
           iconTint="var(--yellow)"
-          title={IS_ANDROID ? t('In Chrome: â‹® menu â†’ Add to Home screen') : t('In Safari: Share â†’ Add to Home Screen')}
+          title={IS_ANDROID ? t('In Chrome: ⋮ menu → Add to Home screen') : t('In Safari: Share → Add to Home Screen')}
           subtitle={
             t('to install GymTask as a full-screen app.') +
             ' ' +
             (user
-              ? t('Your data syncs with your profile â€” sign in anywhere to see it.')
-              : t('Guest data stays on this device â€” export a backup now and then!'))
+              ? t('Your data syncs with your profile — sign in anywhere to see it.')
+              : t('Guest data stays on this device — export a backup now and then!'))
           }
         />
       </Section>
 
-      {/* The version, at the bottom of Settings â€” which is where the support template has been
+      {/* The version, at the bottom of Settings — which is where the support template has been
         telling people to look for it, and where it was not. */}
       <div className="dim small" style={{ textAlign: 'center', marginTop: 4, lineHeight: 1.6 }}>
-        GymTask v{__APP_VERSION__} Â· {t('free & open source (AGPL v3)')}
+        GymTask v{__APP_VERSION__} · {t('free & open source (AGPL v3)')}
         <br />
         <a href="https://github.com/Paulo-Santos20/GymTask" target="_blank" rel="noopener">
           source code
         </a>{' '}
-        Â· exercise data: hasaneyldrm/exercises-dataset (MIT)
+        · exercise data: hasaneyldrm/exercises-dataset (MIT)
         <br />
-        exercise images and animations Â©{' '}
+        exercise images and animations ©{' '}
         <a href="https://gymvisual.com/" target="_blank" rel="noopener">
           Gym visual
         </a>
@@ -858,20 +873,20 @@ export default function Settings() {
 }
 
 // The whole point is that the two scales are one judgement counted from opposite ends, and a
-// paragraph is a bad way to say that â€” the conversion table shows it in one look. Reading down
+// paragraph is a bad way to say that — the conversion table shows it in one look. Reading down
 // a column is the answer to "what do I put here", so the numbers get their own aligned columns.
 const EFFORT_ROWS = [
-  ['0', '10', 'Nothing left â€” went to failure'],
+  ['0', '10', 'Nothing left — went to failure'],
   ['1', '9', 'One more rep in the tank'],
   ['2', '8', 'Two more reps'],
   ['3', '7', 'Three more reps'],
-  ['4+', 'â‰¤6', 'Easy â€” warm-up territory'],
+  ['4+', '≤6', 'Easy — warm-up territory'],
 ]
-// RIR 2 / RPE 8: the row a working set usually lands on â€” the anchor the others are read
+// RIR 2 / RPE 8: the row a working set usually lands on — the anchor the others are read
 // against. Not where the stepper starts; + walks up from the bottom of the scale.
 const EFFORT_TYPICAL = 2
 
-// Settings â†’ During a workout â†’ Workout controls. S.wc overlays DEF.wc, so a profile from
+// Settings → During a workout → Workout controls. S.wc overlays DEF.wc, so a profile from
 // before this setting existed reads as the lean default.
 function WorkoutControlsSheet() {
   const S = useStore(s => s.S)
@@ -885,7 +900,7 @@ function WorkoutControlsSheet() {
     <>
       <h3>{t('Workout controls')}</h3>
       <div className="muted small" style={{ marginBottom: 12 }}>
-        {t('Everything hidden here stays one tap away: the â‹¯ button of an exercise and the number of a set.')}
+        {t('Everything hidden here stays one tap away: the ⋯ button of an exercise and the number of a set.')}
       </div>
       <Section>
         <Row
@@ -951,12 +966,12 @@ function effortHelpSheet() {
       <div className="dim small" style={{ lineHeight: 1.5, display: 'grid', gap: 8 }}>
         <div>
           {t(
-            'RIR counts the reps you left; RPE reads the same effort off a 10-point scale â€” so RPE â‰ˆ 10 âˆ’ RIR. Pick the one you already think in.',
+            'RIR counts the reps you left; RPE reads the same effort off a 10-point scale — so RPE ≈ 10 − RIR. Pick the one you already think in.',
           )}
         </div>
         <div>
           {t(
-            'The highlighted row is where most working sets land. Sets you have already logged keep their own scale, and nothing else reads the value â€” progression and estimated 1RM are unaffected.',
+            'The highlighted row is where most working sets land. Sets you have already logged keep their own scale, and nothing else reads the value — progression and estimated 1RM are unaffected.',
           )}
         </div>
       </div>
@@ -1014,7 +1029,7 @@ function PushCard({ S, update, toast }) {
   const test = async () => {
     try {
       await sendTestPush()
-      toast(t('Test sent â€” should arrive any second'))
+      toast(t('Test sent — should arrive any second'))
     } catch (e) {
       toast(e.message || t('Test failed'))
     }
@@ -1086,9 +1101,9 @@ function PushCard({ S, update, toast }) {
   )
 }
 
-// Equipment profiles ("Home", "Gym", ...) â€” each an id/name/eq-list; the active one filters
+// Equipment profiles ("Home", "Gym", ...) — each an id/name/eq-list; the active one filters
 // the Library, exercise picker, and flags routine entries that need something outside it
-// (see lib/equipment.js). Purely local/synced state â€” no server changes needed.
+// (see lib/equipment.js). Purely local/synced state — no server changes needed.
 function EquipmentCard({ S, update }) {
   const profiles = S.equipProfiles || []
   const remove = p =>
@@ -1107,7 +1122,7 @@ function EquipmentCard({ S, update }) {
     <Section
       title={t('Equipment')}
       footer={t(
-        'Filters the exercise library and picker, and flags routine exercises that need something you donâ€™t have in the active profile.',
+        'Filters the exercise library and picker, and flags routine exercises that need something you don’t have in the active profile.',
       )}
     >
       {profiles.length > 0 && (

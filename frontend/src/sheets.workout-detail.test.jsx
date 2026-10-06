@@ -10,7 +10,9 @@ import { useUI } from './store/useUI.js'
 import { workoutDetailSheet } from './sheets.jsx'
 import { EXDB } from './lib/exercises-data.js'
 
-const lifts = EXDB.filter(e => e.bp !== 'cardio' && e.eq === 'barbell').slice(0, 3).map(e => e.id)
+const lifts = EXDB.filter(e => e.bp !== 'cardio' && e.eq === 'barbell')
+  .slice(0, 3)
+  .map(e => e.id)
 const clone = v => JSON.parse(JSON.stringify(v))
 const mounted = []
 
@@ -26,8 +28,16 @@ function mountTopSheet() {
 const button = (host, text) => [...host.querySelectorAll('button')].find(b => b.textContent.trim() === text)
 
 const workout = (entries, extra = {}) => ({
-  id: 'w1', d: '2026-09-15', start: Date.UTC(2026, 8, 15, 17), end: Date.UTC(2026, 8, 15, 18), name: 'Push',
-  vol: 0, prs: [], routineIds: [], entries, ...extra,
+  id: 'w1',
+  d: '2026-09-15',
+  start: Date.UTC(2026, 8, 15, 17),
+  end: Date.UTC(2026, 8, 15, 18),
+  name: 'Push',
+  vol: 0,
+  prs: [],
+  routineIds: [],
+  entries,
+  ...extra,
 })
 const done = (w, r, more = {}) => ({ w, r, done: true, ...more })
 
@@ -42,16 +52,44 @@ beforeEach(() => {
   document.body.innerHTML = ''
 })
 afterEach(() => {
-  act(() => { mounted.splice(0).forEach(root => root.unmount()) })
+  act(() => {
+    mounted.splice(0).forEach(root => root.unmount())
+  })
   vi.unstubAllGlobals()
 })
 
 describe('workout detail', () => {
-  it('lists a drop-set\'s drops and a rest-pause set\'s bursts', () => {
-    workoutDetailSheet(workout([
-      { id: lifts[0], target: { mode: 'reps' }, sets: [done(100, 8, { type: 'dropset', drops: [{ w: 80, r: 6 }, { w: 60, r: 5 }] })] },
-      { id: lifts[1], target: { mode: 'reps' }, sets: [done(60, 16, { type: 'restpause', clusters: [{ r: 4, restSec: 15 }, { r: 2, restSec: 15 }] })] },
-    ]))
+  it("lists a drop-set's drops and a rest-pause set's bursts", () => {
+    workoutDetailSheet(
+      workout([
+        {
+          id: lifts[0],
+          target: { mode: 'reps' },
+          sets: [
+            done(100, 8, {
+              type: 'dropset',
+              drops: [
+                { w: 80, r: 6 },
+                { w: 60, r: 5 },
+              ],
+            }),
+          ],
+        },
+        {
+          id: lifts[1],
+          target: { mode: 'reps' },
+          sets: [
+            done(60, 16, {
+              type: 'restpause',
+              clusters: [
+                { r: 4, restSec: 15 },
+                { r: 2, restSec: 15 },
+              ],
+            }),
+          ],
+        },
+      ]),
+    )
     const rows = [...mountTopSheet().querySelectorAll('.wd-ex .ss')].map(el => el.textContent)
     expect(rows).toEqual(['100×8 ↘ 80×6 ↘ 60×5', '60×10+4+2'])
   })
@@ -74,25 +112,29 @@ describe('workout detail', () => {
     const combined = entries.map((e, i) => ({ ...e, rid: i < 2 ? 'A' : 'B' }))
     workoutDetailSheet(workout(combined, { routineIds: ['A', 'B'] }))
     host = mountTopSheet()
-    expect(host.textContent).toContain('Freestyle')           // routines since deleted
+    expect(host.textContent).toContain('Freestyle') // routines since deleted
     expect(host.querySelectorAll('.wd-ss .wd-ex')).toHaveLength(2)
   })
 
   it('shows an unpaired exercise without a superset label', () => {
-    workoutDetailSheet(workout([
-      { id: lifts[0], sg: 'sg1', target: { mode: 'reps' }, sets: [done(40, 10)] },
-      { id: lifts[1], target: { mode: 'reps' }, sets: [done(20, 12)] },
-    ]))
+    workoutDetailSheet(
+      workout([
+        { id: lifts[0], sg: 'sg1', target: { mode: 'reps' }, sets: [done(40, 10)] },
+        { id: lifts[1], target: { mode: 'reps' }, sets: [done(20, 12)] },
+      ]),
+    )
     expect(mountTopSheet().querySelector('.wd-ss')).toBeNull()
   })
 
-  it('opens the exercise\'s history from its row', () => {
+  it("opens the exercise's history from its row", () => {
     const w = workout([{ id: lifts[0], target: { mode: 'reps' }, sets: [done(60, 5)] }])
     useStore.setState(s => ({ S: { ...s.S, workouts: [w] } }))
     workoutDetailSheet(w)
     const row = mountTopSheet().querySelector('.wd-ex')
     expect(row.getAttribute('role')).toBe('button')
-    act(() => { row.click() })
+    act(() => {
+      row.click()
+    })
     expect(useUI.getState().sheets).toHaveLength(2)
     const history = mountTopSheet()
     expect(history.textContent).toContain('Exercise history')
@@ -102,7 +144,9 @@ describe('workout detail', () => {
   it('copies the workout as text, with the note as it stands in the box', async () => {
     const writeText = vi.fn(() => Promise.resolve())
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
-    const w = workout([{ id: lifts[0], target: { mode: 'reps' }, sets: [done(60, 5, { phase: 'warmup' }), done(80, 5)] }])
+    const w = workout([
+      { id: lifts[0], target: { mode: 'reps' }, sets: [done(60, 5, { phase: 'warmup' }), done(80, 5)] },
+    ])
     useStore.setState(s => ({ S: { ...s.S, workouts: [w] } }))
     workoutDetailSheet(w)
     const host = mountTopSheet()
@@ -111,7 +155,9 @@ describe('workout detail', () => {
       Object.getOwnPropertyDescriptor(note.constructor.prototype, 'value').set.call(note, 'Good day')
       note.dispatchEvent(new Event('input', { bubbles: true }))
     })
-    await act(async () => { button(host, 'Copy as text').click() })
+    await act(async () => {
+      button(host, 'Copy as text').click()
+    })
     expect(writeText).toHaveBeenCalledTimes(1)
     const text = writeText.mock.calls[0][0]
     expect(text.split('\n')[0]).toMatch(/^Push — /)
@@ -123,20 +169,25 @@ describe('workout detail', () => {
 
   // One rule for both: a superset paired across two routines of a combined session is shown apart
   // in the sheet, each under its own routine, and the copied text does not call it a superset.
-  it('groups a combined session\'s supersets the same way in the sheet and in the copied text', async () => {
+  it("groups a combined session's supersets the same way in the sheet and in the copied text", async () => {
     const writeText = vi.fn(() => Promise.resolve())
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
-    const w = workout([
-      { id: lifts[0], rid: 'A', sg: 'x', target: { mode: 'reps' }, sets: [done(40, 10)] },
-      { id: lifts[1], rid: 'B', sg: 'x', target: { mode: 'reps' }, sets: [done(20, 12)] },
-      { id: lifts[2], rid: 'B', target: { mode: 'reps' }, sets: [done(60, 5)] },
-    ], { routineIds: ['A', 'B'] })
+    const w = workout(
+      [
+        { id: lifts[0], rid: 'A', sg: 'x', target: { mode: 'reps' }, sets: [done(40, 10)] },
+        { id: lifts[1], rid: 'B', sg: 'x', target: { mode: 'reps' }, sets: [done(20, 12)] },
+        { id: lifts[2], rid: 'B', target: { mode: 'reps' }, sets: [done(60, 5)] },
+      ],
+      { routineIds: ['A', 'B'] },
+    )
     useStore.setState(s => ({ S: { ...s.S, workouts: [w] } }))
     workoutDetailSheet(w)
     const host = mountTopSheet()
     expect(host.querySelector('.wd-ss')).toBeNull()
     expect(host.querySelectorAll('.wd-ex')).toHaveLength(3)
-    await act(async () => { button(host, 'Copy as text').click() })
+    await act(async () => {
+      button(host, 'Copy as text').click()
+    })
     expect(writeText.mock.calls[0][0]).not.toContain('Superset')
   })
 
@@ -145,7 +196,9 @@ describe('workout detail', () => {
     document.execCommand = () => false
     workoutDetailSheet(workout([{ id: lifts[0], target: { mode: 'reps' }, sets: [done(60, 5)] }]))
     const host = mountTopSheet()
-    await act(async () => { button(host, 'Copy as text').click() })
+    await act(async () => {
+      button(host, 'Copy as text').click()
+    })
     expect(toast).toHaveBeenCalledWith('Could not copy')
     delete document.execCommand
   })

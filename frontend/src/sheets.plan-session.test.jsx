@@ -14,8 +14,10 @@ const BENCH = '0025'
 const clone = v => JSON.parse(JSON.stringify(v))
 const S = () => useStore.getState().S
 const upd = fn => act(() => useStore.getState().update(fn))
-const rowsOf = rid => S().active.entries.filter(e => e.rid === rid && e.id === BENCH)
-  .map(e => e.sets.filter(s => !isWarmupRow(s)).map(s => `${s.w}x${s.r}`))[0]
+const rowsOf = rid =>
+  S()
+    .active.entries.filter(e => e.rid === rid && e.id === BENCH)
+    .map(e => e.sets.filter(s => !isWarmupRow(s)).map(s => `${s.w}x${s.r}`))[0]
 
 function install(routines, extra = {}) {
   const st = clone(DEF)
@@ -31,10 +33,14 @@ function startOn(day, rids) {
 // Tick every row, optionally typing a rep count first (what the stepper would write), and finish.
 function trainActive(day, typedReps) {
   vi.setSystemTime(new Date(day + 'T18:00:00'))
-  upd(s => s.active.entries.forEach(e => e.sets.forEach(x => {
-    if (!isWarmupRow(x) && typedReps != null) x.r = typedReps
-    x.done = true
-  })))
+  upd(s =>
+    s.active.entries.forEach(e =>
+      e.sets.forEach(x => {
+        if (!isWarmupRow(x) && typedReps != null) x.r = typedReps
+        x.done = true
+      }),
+    ),
+  )
   act(() => finishWorkout())
   useUI.setState({ sheets: [] })
 }
@@ -44,24 +50,32 @@ beforeEach(() => {
   localStorage.clear()
   useUI.setState({ sheets: [] })
 })
-afterEach(() => { vi.useRealTimers() })
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('what you plan is what you train', () => {
   it('a routine edited from 2 × 15 to 2 × 10 opens at 10 on the next training day', () => {
-    install([{ id: 'A', name: 'Plan A', emoji: 'dumbbell', ex: [{ id: BENCH, sets: 2, reps: 15, weight: 50, mode: 'reps' }] }])
+    install([
+      { id: 'A', name: 'Plan A', emoji: 'dumbbell', ex: [{ id: BENCH, sets: 2, reps: 15, weight: 50, mode: 'reps' }] },
+    ])
     startOn('2026-09-07', ['A'])
     expect(rowsOf('A')).toEqual(['50x15', '50x15'])
     trainActive('2026-09-07')
     expect(S().workouts[0].entries[0].target.reps).toBe(15)
 
-    upd(s => { s.routines[0].ex[0] = { ...s.routines[0].ex[0], reps: 10 } })
+    upd(s => {
+      s.routines[0].ex[0] = { ...s.routines[0].ex[0], reps: 10 }
+    })
     startOn('2026-09-14', ['A'])
     expect(S().active.entries[0].target.reps).toBe(10)
     expect(rowsOf('A')).toEqual(['50x10', '50x10'])
   })
 
   it('logging 15 once on a 2 × 10 plan does not turn every later session into 15s', () => {
-    install([{ id: 'A', name: 'Plan A', emoji: 'dumbbell', ex: [{ id: BENCH, sets: 2, reps: 10, weight: 50, mode: 'reps' }] }])
+    install([
+      { id: 'A', name: 'Plan A', emoji: 'dumbbell', ex: [{ id: BENCH, sets: 2, reps: 10, weight: 50, mode: 'reps' }] },
+    ])
     startOn('2026-09-07', ['A'])
     expect(rowsOf('A')).toEqual(['50x10', '50x10'])
     trainActive('2026-09-07', 15)
@@ -82,14 +96,24 @@ describe('what you plan is what you train', () => {
     expect(rowsOf('B')).toEqual(['40x15', '40x15'])
     trainActive('2026-09-09', 12)
     startOn('2026-09-14', ['A'])
-    expect(rowsOf('A')).toEqual(['62.5x10', '62.5x10'])  // A's own line, not B's miss
+    expect(rowsOf('A')).toEqual(['62.5x10', '62.5x10']) // A's own line, not B's miss
     trainActive('2026-09-14')
     startOn('2026-09-16', ['B'])
-    expect(rowsOf('B')).toEqual(['40x15', '40x15'])      // B holds after its own miss
+    expect(rowsOf('B')).toEqual(['40x15', '40x15']) // B holds after its own miss
   })
 
   it('"Your last session" still carries the 15s over', () => {
-    install([{ id: 'A', name: 'Plan A', emoji: 'dumbbell', ex: [{ id: BENCH, sets: 2, reps: 10, weight: 50, mode: 'reps' }] }], { startFrom: 'last' })
+    install(
+      [
+        {
+          id: 'A',
+          name: 'Plan A',
+          emoji: 'dumbbell',
+          ex: [{ id: BENCH, sets: 2, reps: 10, weight: 50, mode: 'reps' }],
+        },
+      ],
+      { startFrom: 'last' },
+    )
     startOn('2026-09-07', ['A'])
     trainActive('2026-09-07', 15)
     startOn('2026-09-14', ['A'])

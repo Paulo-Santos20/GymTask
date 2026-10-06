@@ -21,7 +21,7 @@ import { buildCompletedWorkout } from '../lib/finish-workout.js'
 import { convertWeight } from '../lib/units.js'
 import { isWarmupRow } from '../lib/workout-model.js'
 
-const BENCH = '0025'   // barbell bench press — loaded, 2.5 kg step
+const BENCH = '0025' // barbell bench press — loaded, 2.5 kg step
 const PLAN_CHANGED = 'Plan changed — starting from your new target.'
 const clone = value => JSON.parse(JSON.stringify(value))
 const work = e => e.sets.filter(s => !isWarmupRow(s))
@@ -36,7 +36,8 @@ const signedIn = S => useStore.setState({ S, user: USER, ready: true, sync: { ..
 
 // One routine, "Push": bench 3 × 5 at 100 kg, edited last at `_ts` 100.
 const withPlan = (over = {}) => ({
-  ...clone(DEF), _ts: 100,
+  ...clone(DEF),
+  _ts: 100,
   routines: [{ id: 'A', name: 'Push', _ts: 100, ex: [{ id: BENCH, sets: 3, reps: 5, weight: 100 }] }],
   ...over,
 })
@@ -44,7 +45,10 @@ const withPlan = (over = {}) => ({
 // Train the routine for real: start it, tick every row (optionally at another weight), finish.
 let day = 1
 function train(st, typed = {}) {
-  const entries = start(st).map(e => ({ ...e, sets: e.sets.map(s => ({ ...s, ...(isWarmupRow(s) ? {} : typed), done: true })) }))
+  const entries = start(st).map(e => ({
+    ...e,
+    sets: e.sets.map(s => ({ ...s, ...(isWarmupRow(s) ? {} : typed), done: true })),
+  }))
   const d = `2026-08-${String(day).padStart(2, '0')}`
   const active = { id: 'w' + day, d, start: day * 1000, routineIds: ['A'], name: 'Push', entries }
   day++
@@ -55,7 +59,8 @@ function train(st, typed = {}) {
 beforeEach(() => {
   localStorage.clear()
   localStorage.setItem('gym_owner', USER.id)
-  api.mockReset(); toast.mockReset()
+  api.mockReset()
+  toast.mockReset()
   useStore.setState({ S: clone(DEF), user: null, ready: false, sync: { ...fresh } })
 })
 afterEach(() => {
@@ -69,30 +74,43 @@ describe('a plan edited on this device', () => {
     train(S)
     signedIn(S)
 
-    useStore.getState().update(s => { s.restSec = 75 })
-    expect(useStore.getState().S.routines[0]._ts).toBe(100)   // not a plan edit
+    useStore.getState().update(s => {
+      s.restSec = 75
+    })
+    expect(useStore.getState().S.routines[0]._ts).toBe(100) // not a plan edit
 
-    useStore.getState().update(s => { const c = benchOf(s); c.sets = 2; c.reps = 10 })
+    useStore.getState().update(s => {
+      const c = benchOf(s)
+      c.sets = 2
+      c.reps = 10
+    })
     const after = useStore.getState().S
     expect(after.routines[0]._ts).toBeGreaterThan(100)
     const [e] = start(after)
     expect(e.plan.why[0]).toBe(PLAN_CHANGED)
-    expect(rows(e)).toEqual([[100, 10], [100, 10]])
+    expect(rows(e)).toEqual([
+      [100, 10],
+      [100, 10],
+    ])
     expect(e.planned).toMatchObject({ sets: 2, reps: 10 })
   })
 })
 
 describe('a conflict between the plan edit and a session logged at the old plan', () => {
   // Both devices start from the same copy: one session logged at 3 × 5.
-  const shared = () => { const S = withPlan({ workouts: [] }); train(S); return S }
+  const shared = () => {
+    const S = withPlan({ workouts: [] })
+    train(S)
+    return S
+  }
 
   it('edit on the other device, session here: the edit is kept and the session keeps its routine and plan', async () => {
     const base = shared()
-    const here = { ...clone(base), _ts: 300 }            // the newer copy overall …
-    const logged = train(here)                            // … because a session was logged at 3 × 5
+    const here = { ...clone(base), _ts: 300 } // the newer copy overall …
+    const logged = train(here) // … because a session was logged at 3 × 5
     const there = clone(base)
     Object.assign(benchOf(there), { sets: 2, reps: 10 })
-    there.routines[0]._ts = 250                           // … while the plan was edited over there
+    there.routines[0]._ts = 250 // … while the plan was edited over there
     there._ts = 200
     signedIn(here)
     localStorage.setItem('gym_sync', JSON.stringify({ rev: 1, ts: 100 }))
@@ -112,18 +130,25 @@ describe('a conflict between the plan edit and a session logged at the old plan'
     const [e] = start(useStore.getState().S)
     expect(e.plan.why[0]).toBe(PLAN_CHANGED)
     const lifted = work(logged.entries[0])[0].w
-    expect(rows(e)).toEqual([[lifted, 10], [lifted, 10]])
+    expect(rows(e)).toEqual([
+      [lifted, 10],
+      [lifted, 10],
+    ])
   })
 
   it('edit here, session on the other device: the same, from the other side', async () => {
     const base = shared()
     signedIn({ ...clone(base) })
     localStorage.setItem('gym_sync', JSON.stringify({ rev: 1, ts: 100 }))
-    useStore.getState().update(s => { const c = benchOf(s); c.sets = 2; c.reps = 10 })
+    useStore.getState().update(s => {
+      const c = benchOf(s)
+      c.sets = 2
+      c.reps = 10
+    })
     const editedAt = useStore.getState().S.routines[0]._ts
     const there = { ...clone(base) }
     const logged = train(there)
-    there._ts = Date.now() + 60_000                       // the newer copy overall
+    there._ts = Date.now() + 60_000 // the newer copy overall
     api.mockRejectedValueOnce(httpError(409, { error: 'conflict', rev: 2, state: { ...there, _rev: 2 } }))
     api.mockResolvedValueOnce({ ok: true, rev: 3 })
 
@@ -143,7 +168,7 @@ describe('a conflict between the plan edit and a session logged at the old plan'
 describe('converting the numbers to lb', () => {
   it('converts the plan stamped on each session with the routine, so an edit of the reps holds the weight last lifted', () => {
     const S = withPlan()
-    train(S, { w: 110 })   // the plan says 100, the bar held 110
+    train(S, { w: 110 }) // the plan says 100, the bar held 110
     useStore.setState({ S, user: null, ready: true })
 
     // What Settings → Units → "Convert the numbers" does.
@@ -154,12 +179,18 @@ describe('converting the numbers to lb', () => {
     // Unedited, the plan is not read as changed by the conversion.
     expect(start(lb)[0].plan.why[0]).not.toBe(PLAN_CHANGED)
 
-    useStore.getState().update(s => { benchOf(s).reps = 8 })
+    useStore.getState().update(s => {
+      benchOf(s).reps = 8
+    })
     const [e] = start(useStore.getState().S)
     expect(e.plan.why[0]).toBe(PLAN_CHANGED)
     // Had the stamp stayed at 100 (kg) against a routine at 220.5 (lb), the weight would have
     // looked edited too, and the session would open at the plan's 220.5 instead.
     const lifted = convertWeight(110, 'kg', 'lb')
-    expect(rows(e)).toEqual([[lifted, 8], [lifted, 8], [lifted, 8]])
+    expect(rows(e)).toEqual([
+      [lifted, 8],
+      [lifted, 8],
+      [lifted, 8],
+    ])
   })
 })

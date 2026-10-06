@@ -21,10 +21,22 @@ const signedIn = (S, rev) => {
   useStore.setState({ S, user: { id: 'u1' }, ready: true, sync: { offline: false, pending: false, lastSynced: 0 } })
 }
 const BACKUP = { ...clone(DEF), _ts: 50, restSec: 120, workouts: [workout('w1'), workout('w2')] }
-const SERVER = { ...clone(DEF), _ts: 300, restSec: 60, workouts: [workout('w1'), workout('w2'), workout('elsewhere', '2026-09-26')], _rev: 7 }
+const SERVER = {
+  ...clone(DEF),
+  _ts: 300,
+  restSec: 60,
+  workouts: [workout('w1'), workout('w2'), workout('elsewhere', '2026-09-26')],
+  _rev: 7,
+}
 
-beforeEach(() => { localStorage.clear(); api.mockReset() })
-afterEach(() => { localStorage.clear(); useStore.setState({ S: clone(DEF), user: null, ready: false }) })
+beforeEach(() => {
+  localStorage.clear()
+  api.mockReset()
+})
+afterEach(() => {
+  localStorage.clear()
+  useStore.setState({ S: clone(DEF), user: null, ready: false })
+})
 
 describe('importing a backup over a profile that moved on', () => {
   it('names the workouts on the server that the backup lacks', async () => {
@@ -60,10 +72,12 @@ describe('importing a backup over a profile that moved on', () => {
   // Review of 771184c9: a workout logged here and not yet sent was neither counted nor merged.
   it('counts this device\'s unsent workouts too, and "Merge them in" keeps them', async () => {
     signedIn({ ...clone(DEF), _ts: 200, workouts: [workout('w1')] }, 7)
-    useStore.getState().update(s => { s.workouts.push(workout('unsent', '2026-09-27')) })
+    useStore.getState().update(s => {
+      s.workouts.push(workout('unsent', '2026-09-27'))
+    })
     api.mockResolvedValueOnce({ state: clone(SERVER), rev: 7 })
     const c = await useStore.getState().importConflict(BACKUP)
-    expect(c).toMatchObject({ workouts: 2, local: true })   // 'elsewhere' on the server, 'unsent' here
+    expect(c).toMatchObject({ workouts: 2, local: true }) // 'elsewhere' on the server, 'unsent' here
     api.mockResolvedValueOnce({ ok: true, rev: 8 })
     useStore.getState().importBackup(BACKUP, { mergeWith: c })
     await useStore.getState().pushState()

@@ -86,7 +86,7 @@ afterEach(() => {
 const mount = () => act(() => root.render(<Settings />))
 const segButton = label => [...host.querySelectorAll('.seg button')].find(b => b.textContent === label)
 
-describe('Settings â€” workout view', () => {
+describe('Settings — workout view', () => {
   it('offers Cards / List / Compact and writes workoutView to the store', () => {
     mount()
     expect(segButton('Cards')).toBeTruthy()

@@ -1730,24 +1730,26 @@ function ActiveWorkout() {
     // ticked, or given a duration you typed yourself, and it never reaches S.workouts
     // (lib/finish-workout.js).
     const plan = (!e.sets[i].done && e.sets[i].planSec) || e.sets[i].sec || 45
-    useUI.getState().startWork(plan, exerciseNameFor(exOr(e.id)), (elapsed, { abandoned = false, chimed = false } = {}) => {
-      // A hold a rest displaced (useUI.abandonWork: a set ticked on another row, or another
-      // exercise) keeps its seconds and nothing else. It is not a finish: the row stays unticked
-      // and starts no rest, because the rest that displaced the hold is already counting down —
-      // and the plan it was held against is put aside so the row still knows what it is asking for.
-      if (abandoned) {
+    useUI
+      .getState()
+      .startWork(plan, exerciseNameFor(exOr(e.id)), (elapsed, { abandoned = false, chimed = false } = {}) => {
+        // A hold a rest displaced (useUI.abandonWork: a set ticked on another row, or another
+        // exercise) keeps its seconds and nothing else. It is not a finish: the row stays unticked
+        // and starts no rest, because the rest that displaced the hold is already counting down —
+        // and the plan it was held against is put aside so the row still knows what it is asking for.
+        if (abandoned) {
+          mutEntry(idx, en => {
+            if (en.sets[i].planSec == null && !en.sets[i].done) en.sets[i].planSec = plan
+            en.sets[i].sec = elapsed
+          })
+          return
+        }
         mutEntry(idx, en => {
-          if (en.sets[i].planSec == null && !en.sets[i].done) en.sets[i].planSec = plan
           en.sets[i].sec = elapsed
+          delete en.sets[i].planSec
         })
-        return
-      }
-      mutEntry(idx, en => {
-        en.sets[i].sec = elapsed
-        delete en.sets[i].planSec
+        if (!useStore.getState().S.active.entries[idx].sets[i].done) toggle(idx, i, undefined, { quiet: chimed })
       })
-      if (!useStore.getState().S.active.entries[idx].sets[i].done) toggle(idx, i, undefined, { quiet: chimed })
-    })
   }
 
   // `quiet`: the hold that ticks this set has just ended with the chime and its buzz pattern

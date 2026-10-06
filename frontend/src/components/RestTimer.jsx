@@ -23,17 +23,24 @@ export default function RestTimer() {
   if (!on) return null
   const pct = Math.max(0, Math.min(100, (on.left / on.total) * 100))
 
-  if (work) return (
-    <div id="timer" className="working">
-      <div className="t">{work.left <= 0 && work.overtime ? '+' + clock(-work.left) : clock(work.left)}</div>
-      <div className="grow">
-        {work.label && <div className="lbl">{work.label}</div>}
-        <div className="bar"><i style={{ width: pct + '%' }} /></div>
+  if (work)
+    return (
+      <div id="timer" className="working">
+        <div className="t">{work.left <= 0 && work.overtime ? '+' + clock(-work.left) : clock(work.left)}</div>
+        <div className="grow">
+          {work.label && <div className="lbl">{work.label}</div>}
+          <div className="bar">
+            <i style={{ width: pct + '%' }} />
+          </div>
+        </div>
+        <Button size="sm" onClick={stopWork}>
+          {t('Cancel')}
+        </Button>
+        <Button size="sm" variant="primary" icon="check" onClick={finishWorkEarly}>
+          {t('Done')}
+        </Button>
       </div>
-      <Button size="sm" onClick={stopWork}>{t('Cancel')}</Button>
-      <Button size="sm" variant="primary" icon="check" onClick={finishWorkEarly}>{t('Done')}</Button>
-    </div>
-  )
+    )
   // Three controls plus the clock don't fit one line on a phone — at 360px the bar is left
   // with about 30px and stops saying anything. So the rest variant stacks: clock and bar
   // read at a glance, controls get their own row. −15 and +15 sit together in number-line
@@ -43,16 +50,33 @@ export default function RestTimer() {
   return (
     <div id="timer" className={'rest' + (timer.paused ? ' paused' : '')}>
       <div className="head">
-        <div className="t" role={timer.ready ? 'status' : undefined}>{timer.ready ? t('Ready') : clock(timer.left)}</div>
-        <div className="bar"><i style={{ width: pct + '%' }} /></div>
+        <div className="t" role={timer.ready ? 'status' : undefined}>
+          {timer.ready ? t('Ready') : clock(timer.left)}
+        </div>
+        <div className="bar">
+          <i style={{ width: pct + '%' }} />
+        </div>
       </div>
       <div className="acts">
-        <Button size="sm" icon="minus" onClick={() => addRest(-15)}>15s</Button>
-        <Button size="sm" icon="plus" onClick={() => addRest(15)}>15s</Button>
-        {!timer.ready && <Button size="sm" className="pause" icon={timer.paused ? 'play' : 'pause'}
-          aria-label={t(timer.paused ? 'Resume' : 'Pause')} aria-pressed={!!timer.paused}
-          onClick={timer.paused ? resumeRest : pauseRest} />}
-        <Button size="sm" variant="primary" className="skip" onClick={stopRest}>{t(timer.ready ? 'Dismiss' : 'Skip')}</Button>
+        <Button size="sm" icon="minus" onClick={() => addRest(-15)}>
+          15s
+        </Button>
+        <Button size="sm" icon="plus" onClick={() => addRest(15)}>
+          15s
+        </Button>
+        {!timer.ready && (
+          <Button
+            size="sm"
+            className="pause"
+            icon={timer.paused ? 'play' : 'pause'}
+            aria-label={t(timer.paused ? 'Resume' : 'Pause')}
+            aria-pressed={!!timer.paused}
+            onClick={timer.paused ? resumeRest : pauseRest}
+          />
+        )}
+        <Button size="sm" variant="primary" className="skip" onClick={stopRest}>
+          {t(timer.ready ? 'Dismiss' : 'Skip')}
+        </Button>
       </div>
     </div>
   )

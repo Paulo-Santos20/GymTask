@@ -272,27 +272,45 @@ const server = async (path, opts) => {
   return data
 }
 
+// The job this app last started and has not written a reply for yet. A run that fails before
+// the first status poll — a provider refusing the connection answers in milliseconds — is never
+// seen running, so "running, then gone" cannot be the only way the chat learns a run ended: it
+// also compares the server's last outcome with the id the start request returned. Kept here,
+// at module level, because the plan the intake asks for is started on another screen.
+let awaited = null
+const track = r => {
+  if (r?.job?.id) awaited = r.job.id
+  return r
+}
+export const awaitedJob = () => awaited
+export const settleAwaited = id => {
+  if (!id || awaited === id) awaited = null
+}
+
 export const coachStatus = async () =>
   DEMO ? (await demo()).demoStatus() : LOCAL() ? (await local()).localStatus() : server('/api/coach/status')
-export const requestReview = async note =>
+const _requestReview = async note =>
   DEMO
     ? (await demo()).demoReview(S())
     : LOCAL()
       ? (await local()).localReview(S(), note)
       : server('/api/coach/review', { method: 'POST', body: JSON.stringify({ note: note || '' }), sse: true })
-export const requestPlan = async intake =>
+export const requestReview = (...a) => _requestReview(...a).then(track)
+const _requestPlan = async intake =>
   DEMO
     ? (await demo()).demoPlan(S(), intake)
     : LOCAL()
       ? (await local()).localPlan(S(), intake)
       : server('/api/coach/plan', { method: 'POST', body: JSON.stringify({ intake }), sse: true })
-export const refinePlan = async text =>
+export const requestPlan = (...a) => _requestPlan(...a).then(track)
+const _refinePlan = async text =>
   DEMO
     ? (await demo()).demoRefine(S())
     : LOCAL()
       ? (await local()).localRefine(S(), text)
       : server('/api/coach/plan', { method: 'POST', body: JSON.stringify({ refine: text }), sse: true })
-export const requestDebrief = async workoutId =>
+export const refinePlan = (...a) => _refinePlan(...a).then(track)
+const _requestDebrief = async workoutId =>
   DEMO
     ? (await demo()).demoDebrief(S(), workoutId)
     : LOCAL()
@@ -302,6 +320,7 @@ export const requestDebrief = async workoutId =>
           body: JSON.stringify({ workoutId: workoutId || null }),
           sse: true,
         })
+export const requestDebrief = (...a) => _requestDebrief(...a).then(track)
 // A day of eating from the recorded TDEE: the nutrition snapshot lives only in the phone's
 // local store, so the client snapshots it (lib/coach.js) and sends it with the request —
 // the server allowlists it field by field rather than trusting the shape.
@@ -407,6 +426,7 @@ export function useCoachStatus(active = true) {
   const [state, setState] = useState({ job: null, pending: null, cap: null, loading: true, streamText: '' })
   const timer = useRef(null)
   const loop = useRef(null) // the running poll loop's `tick`, so a manual refresh can re-pace it
+  const seq = useRef(0) // which status request is the newest one
 
   // How often the status poll should run given what we just learned: idle when nothing is
   // running, backstop (never the primary transport) while a healthy stream is attached,
@@ -414,8 +434,13 @@ export function useCoachStatus(active = true) {
   const paceFor = useCallback(s => (!s?.job ? IDLE_MS : coachStreamActive() ? STREAM_POLL_MS : POLL_MS), [])
 
   const refresh = useCallback(async () => {
+    const mine = ++seq.current
     try {
       const s = await coachStatus()
+      // An answer that arrives after a newer request was sent is older than what that request
+      // will bring: the idle poll in flight when a run is started must not land after the
+      // refresh that follows the start, putting back the run count and last outcome from before.
+      if (mine !== seq.current) return s
       setState(prev => ({ ...prev, ...s, loading: false }))
       // Follow (or release) the job's token stream alongside the status itself.
       if (s?.job) openJobStream(s.job.id)
@@ -429,7 +454,7 @@ export function useCoachStatus(active = true) {
       }
       return s
     } catch {
-      setState(s => ({ ...s, loading: false }))
+      if (mine === seq.current) setState(s => ({ ...s, loading: false }))
       return null
     }
   }, [paceFor])

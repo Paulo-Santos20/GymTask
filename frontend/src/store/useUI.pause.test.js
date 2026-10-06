@@ -37,7 +37,7 @@ describe('pausing the rest timer', () => {
     useUI.getState().pauseRest()
     expect(useUI.getState().timer).toMatchObject({ left: 60, total: 90, paused: true, forIdx: 1 })
 
-    vi.advanceTimersByTime(10 * 60000)   // a phone call
+    vi.advanceTimersByTime(10 * 60000) // a phone call
     expect(useUI.getState().timer).toMatchObject({ left: 60, paused: true })
     expect(useUI.getState().timer.ready).toBeUndefined()
     expect(beep).not.toHaveBeenCalled()
@@ -50,7 +50,7 @@ describe('pausing the rest timer', () => {
     expect(useUI.getState().timer).toMatchObject({ left: 1 })
     vi.advanceTimersByTime(1000)
     expect(useUI.getState().timer).toMatchObject({ left: 0, ready: true, forIdx: 1 })
-    expect(useUI.getState().timerFlashId).toBe(1)   // ended on screen: the usual alert
+    expect(useUI.getState().timerFlashId).toBe(1) // ended on screen: the usual alert
     expect(chime).toHaveBeenCalledTimes(1)
   })
 
@@ -99,7 +99,7 @@ describe('pausing the rest timer', () => {
     expect(useUI.getState().timer.left).toBe(50)
   })
 
-  it('leaves the timed hold alone: pausing is the rest\'s alone, and a hold still ends a paused rest', () => {
+  it("leaves the timed hold alone: pausing is the rest's alone, and a hold still ends a paused rest", () => {
     const done = vi.fn()
     useUI.getState().startWork(45, 'Plank', done)
     useUI.getState().pauseRest()

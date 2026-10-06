@@ -22,8 +22,11 @@ const button = (host, text) => [...host.querySelectorAll('button')].find(b => b.
 
 // Two Monday-started weeks: 31 Aug – 6 Sep and 7 – 13 Sep 2026.
 const LOG = [
-  { d: '2026-09-01', w: 81, t: 1 }, { d: '2026-09-03', w: 80, t: 2 },
-  { d: '2026-09-07', w: 80.5, t: 3 }, { d: '2026-09-09', w: 79.5, t: 4 }, { d: '2026-09-13', w: 79, t: 5 },
+  { d: '2026-09-01', w: 81, t: 1 },
+  { d: '2026-09-03', w: 80, t: 2 },
+  { d: '2026-09-07', w: 80.5, t: 3 },
+  { d: '2026-09-09', w: 79.5, t: 4 },
+  { d: '2026-09-13', w: 79, t: 5 },
 ]
 function install(extra = {}) {
   const S = clone(DEF)
@@ -37,10 +40,14 @@ beforeEach(() => {
   document.body.innerHTML = ''
   install()
 })
-afterEach(() => { act(() => { mounted.splice(0).forEach(root => root.unmount()) }) })
+afterEach(() => {
+  act(() => {
+    mounted.splice(0).forEach(root => root.unmount())
+  })
+})
 
 describe('weigh-ins sheet', () => {
-  it('lists every weigh-in under its week, newest first, with the week\'s average and change', () => {
+  it("lists every weigh-in under its week, newest first, with the week's average and change", () => {
     weighInsSheet()
     const host = mountTopSheet()
     expect(host.querySelector('h3').textContent).toBe('Weigh-ins')
@@ -59,7 +66,11 @@ describe('weigh-ins sheet', () => {
   it('follows a Sunday week start', () => {
     install({ weekStart: 0 })
     weighInsSheet()
-    expect([...mountTopSheet().querySelectorAll('[data-week]')].map(w => w.dataset.week)).toEqual(['2026-09-13', '2026-09-06', '2026-08-30'])
+    expect([...mountTopSheet().querySelectorAll('[data-week]')].map(w => w.dataset.week)).toEqual([
+      '2026-09-13',
+      '2026-09-06',
+      '2026-08-30',
+    ])
   })
 
   // The list is months of history scrolled on a phone: a stray tap on a trash button there must
@@ -67,32 +78,47 @@ describe('weigh-ins sheet', () => {
   it('deletes a weigh-in from the list once that is confirmed', () => {
     weighInsSheet()
     const host = mountTopSheet()
-    act(() => { host.querySelector('[data-week="2026-08-31"] button[aria-label="Delete weigh-in"]').click() })
+    act(() => {
+      host.querySelector('[data-week="2026-08-31"] button[aria-label="Delete weigh-in"]').click()
+    })
     expect(useStore.getState().S.bodyweight).toHaveLength(5)
     expect(useUI.getState().sheets).toHaveLength(2)
     const ask = mountTopSheet()
     expect(ask.querySelector('h3').textContent).toBe('Delete weigh-in?')
     expect(ask.textContent).toContain('80 kg')
-    act(() => { button(ask, 'Delete').click() })
-    expect(useStore.getState().S.bodyweight.map(b => b.d)).toEqual(['2026-09-01', '2026-09-07', '2026-09-09', '2026-09-13'])
+    act(() => {
+      button(ask, 'Delete').click()
+    })
+    expect(useStore.getState().S.bodyweight.map(b => b.d)).toEqual([
+      '2026-09-01',
+      '2026-09-07',
+      '2026-09-09',
+      '2026-09-13',
+    ])
     expect(host.textContent).toContain('4 weigh-ins')
   })
 
   it('keeps the weigh-in when the question is cancelled', () => {
     weighInsSheet()
     const host = mountTopSheet()
-    act(() => { host.querySelector('[data-week="2026-08-31"] button[aria-label="Delete weigh-in"]').click() })
+    act(() => {
+      host.querySelector('[data-week="2026-08-31"] button[aria-label="Delete weigh-in"]').click()
+    })
     const ask = mountTopSheet()
-    act(() => { button(ask, 'Cancel').click() })
+    act(() => {
+      button(ask, 'Cancel').click()
+    })
     expect(useUI.getState().sheets).toHaveLength(1)
     expect(useStore.getState().S.bodyweight).toHaveLength(5)
   })
 
   // The log sheet's recent three are the ones just typed: a typo there still goes in one tap.
-  it('still deletes one of the log sheet\'s recent weigh-ins in one tap', () => {
+  it("still deletes one of the log sheet's recent weigh-ins in one tap", () => {
     bwSheet()
     const log = mountTopSheet()
-    act(() => { log.querySelector('button[aria-label="Delete weigh-in"]').click() })
+    act(() => {
+      log.querySelector('button[aria-label="Delete weigh-in"]').click()
+    })
     expect(useUI.getState().sheets).toHaveLength(1)
     expect(useStore.getState().S.bodyweight).toHaveLength(4)
   })
@@ -111,7 +137,9 @@ describe('weigh-ins sheet', () => {
     expect(log.querySelectorAll('button[aria-label="Delete weigh-in"]')).toHaveLength(3)
     const all = button(log, 'All weigh-ins')
     expect(all).toBeTruthy()
-    act(() => { all.click() })
+    act(() => {
+      all.click()
+    })
     expect(mountTopSheet().querySelector('h3').textContent).toBe('Weigh-ins')
 
     useUI.setState({ sheets: [] })

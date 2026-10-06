@@ -28,13 +28,23 @@ beforeEach(() => {
   document.body.innerHTML = ''
 })
 afterEach(() => {
-  act(() => { mounted.splice(0).forEach(root => root.unmount()) })
+  act(() => {
+    mounted.splice(0).forEach(root => root.unmount())
+  })
 })
 
 describe('Replace exercise', () => {
   it('sits on the settings sheet of a routine exercise and closes it before handing over', () => {
     const onReplace = vi.fn()
-    exConfigSheet(EXIDX['0025'], { sets: 3, mode: 'reps', reps: 10, weight: 60 }, vi.fn(), vi.fn(), null, null, onReplace)
+    exConfigSheet(
+      EXIDX['0025'],
+      { sets: 3, mode: 'reps', reps: 10, weight: 60 },
+      vi.fn(),
+      vi.fn(),
+      null,
+      null,
+      onReplace,
+    )
     const host = renderTop()
     const replace = button(host, 'Replace exercise')
     expect(replace).toBeTruthy()
@@ -44,7 +54,16 @@ describe('Replace exercise', () => {
   })
 
   it('names its save button after what saving does, when the caller says', () => {
-    exConfigSheet(EXIDX['0289'], { sets: 3, mode: 'reps', reps: 10, weight: 30 }, vi.fn(), null, null, null, null, 'Replace')
+    exConfigSheet(
+      EXIDX['0289'],
+      { sets: 3, mode: 'reps', reps: 10, weight: 30 },
+      vi.fn(),
+      null,
+      null,
+      null,
+      null,
+      'Replace',
+    )
     const host = renderTop()
     expect(button(host, 'Replace')).toBeTruthy()
     expect(button(host, 'Save')).toBeUndefined()

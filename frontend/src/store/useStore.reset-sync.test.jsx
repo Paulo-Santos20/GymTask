@@ -24,16 +24,31 @@ const signedIn = (S, rev) => {
   localStorage.setItem('gym_sync', JSON.stringify({ rev, ts: S._ts }))
   useStore.setState({ S, user: { id: 'u1' }, ready: true, sync: { offline: false, pending: false, lastSynced: 0 } })
 }
-const PROFILE = { ...clone(DEF), _ts: 100, workouts: [workout('w1', 50), workout('w2', 60)], routines: [{ id: 'r1', name: 'A', ex: [], _ts: 10 }], bodyweight: [{ d: '2026-09-01', w: 80, t: 10 }] }
+const PROFILE = {
+  ...clone(DEF),
+  _ts: 100,
+  workouts: [workout('w1', 50), workout('w2', 60)],
+  routines: [{ id: 'r1', name: 'A', ex: [], _ts: 10 }],
+  bodyweight: [{ d: '2026-09-01', w: 80, t: 10 }],
+}
 
-beforeEach(() => { localStorage.clear(); api.mockReset() })
-afterEach(() => { localStorage.clear(); useStore.setState({ S: clone(DEF), user: null, ready: false }) })
+beforeEach(() => {
+  localStorage.clear()
+  api.mockReset()
+})
+afterEach(() => {
+  localStorage.clear()
+  useStore.setState({ S: clone(DEF), user: null, ready: false })
+})
 
 describe('Reset everything', () => {
   it('replaces the server copy with the empty one, stamped, naming what this copy and the server held', async () => {
     signedIn(clone(PROFILE), 3)
     // the server also has a workout this device never pulled
-    api.mockResolvedValueOnce({ state: { ...clone(PROFILE), workouts: [...PROFILE.workouts, workout('w-elsewhere', 70)], _rev: 3 }, rev: 3 })
+    api.mockResolvedValueOnce({
+      state: { ...clone(PROFILE), workouts: [...PROFILE.workouts, workout('w-elsewhere', 70)], _rev: 3 },
+      rev: 3,
+    })
     api.mockResolvedValueOnce({ ok: true, rev: 4 })
     const before = Date.now()
     await useStore.getState().resetEverything()
@@ -49,7 +64,9 @@ describe('Reset everything', () => {
 
   it('a device that has not seen it and pushes a change from before keeps the reset, not the old profile', async () => {
     signedIn(clone(PROFILE), 3)
-    useStore.getState().update(s => { s.restSec = 45 })   // a change made before the reset, unsent
+    useStore.getState().update(s => {
+      s.restSec = 45
+    }) // a change made before the reset, unsent
     const resetAt = Date.now() + 1000
     const serverReset = { ...clone(DEF), _ts: resetAt, resetAt, resetIds: resetIdsOf(PROFILE), _rev: 4 }
     api.mockRejectedValueOnce(conflict(serverReset, 4))
@@ -66,9 +83,11 @@ describe('Reset everything', () => {
   })
 
   it('what that device logged after the reset is kept, whatever its clock says', async () => {
-    const resetAt = Date.now() + 3600e3   // this device's clock is an hour behind the resetting one
+    const resetAt = Date.now() + 3600e3 // this device's clock is an hour behind the resetting one
     signedIn(clone(PROFILE), 3)
-    useStore.getState().update(s => { s.workouts.push(workout('after', Date.now())) })
+    useStore.getState().update(s => {
+      s.workouts.push(workout('after', Date.now()))
+    })
     const serverReset = { ...clone(DEF), _ts: resetAt, resetAt, resetIds: resetIdsOf(PROFILE), _rev: 4 }
     api.mockRejectedValueOnce(conflict(serverReset, 4))
     api.mockResolvedValueOnce({ ok: true, rev: 5 })
@@ -81,7 +100,7 @@ describe('a backup restored after a reset', () => {
   it('the replace keeps the reset stamp, so it is not taken for a copy from before the reset', async () => {
     const T1 = Date.now() - 3600e3
     signedIn({ ...clone(DEF), _ts: T1, resetAt: T1, resetIds: resetIdsOf(PROFILE) }, 4)
-    const backup = { ...clone(PROFILE), _ts: 50 }   // an old backup: no stamp
+    const backup = { ...clone(PROFILE), _ts: 50 } // an old backup: no stamp
     api.mockResolvedValueOnce({ ok: true, rev: 5 })
     useStore.getState().importBackup(backup)
     await useStore.getState().pushState()
@@ -94,7 +113,9 @@ describe('a backup restored after a reset', () => {
     const T1 = Date.now() - 3600e3
     const resetIds = resetIdsOf(PROFILE)
     signedIn({ ...clone(DEF), _ts: T1, resetAt: T1, resetIds }, 4)
-    useStore.getState().update(s => { s.workouts.push(workout('gym-today', Date.now())) })
+    useStore.getState().update(s => {
+      s.workouts.push(workout('gym-today', Date.now()))
+    })
     // the server after the restore on the other device: the backup's workouts, the stamp kept
     const serverAfterImport = { ...clone(PROFILE), _ts: Date.now() - 1000, resetAt: T1, resetIds, _rev: 5 }
     api.mockRejectedValueOnce(conflict(serverAfterImport, 5))

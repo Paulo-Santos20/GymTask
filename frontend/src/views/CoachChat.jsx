@@ -54,6 +54,8 @@ import {
   cohortStats,
   setCohortShare,
   jobErrorText,
+  awaitedJob,
+  settleAwaited,
 } from '../lib/coach-api.js'
 import { confirmSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
@@ -88,15 +90,23 @@ export default function CoachChat() {
 
   // A job that ends is either a proposal, "nothing to change", or a failure. The server tells
   // the client none of that directly — the job simply stops appearing — so the transition is
-  // read here, once, and written into the thread as the Coach's reply.
+  // read here, once, and written into the thread as the Coach's reply. Two ways to see it end:
+  // the job was seen running and is now gone, or the run this app started (its id came back
+  // from the start request) is already the server's last outcome — a provider that refuses the
+  // connection fails the run before the first status poll, and it is never seen running at all.
   useEffect(() => {
     if (loading) return
     const was = prevJob.current
     prevJob.current = job
-    if (!was || job) return
-    const ms = was.startedAt ? Date.now() - was.startedAt : 0
+    if (job) return
+    const mine = awaitedJob()
+    const endedUnseen = !was && !!mine && last?.id === mine
+    if (!was && !endedUnseen) return
+    settleAwaited(was ? was.id : mine)
+    const ms = was?.startedAt ? Date.now() - was.startedAt : 0
     update(s => {
-      recordTiming(s, ms)
+      // A run that ended unseen has no duration worth learning from.
+      if (was) recordTiming(s, ms)
       if (!pending) {
         const cls = lastError?.errorClass || (last?.outcome === 'failed' ? last.errorClass || 'internal' : null)
         appendChat(
@@ -115,7 +125,7 @@ export default function CoachChat() {
         )
       }
     })
-  }, [job, pending, loading])
+  }, [job, pending, loading, last?.id])
 
   useEffect(() => {
     if (typeof endRef.current?.scrollIntoView === 'function') endRef.current.scrollIntoView({ block: 'end' })

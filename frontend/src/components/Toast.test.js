@@ -18,9 +18,9 @@ describe('the toast', () => {
     const radius = px(rule.match(/border-radius:([^;]+);/)[1].trim())
     const pad = parseFloat(rule.match(/padding:(\d+)px/)[1])
     const size = parseFloat(rule.match(/font-size:(\d+)px/)[1])
-    const oneLine = 2 * pad + size * 1.29   // body line-height
-    expect(radius).toBeGreaterThanOrEqual(oneLine / 2)   // one line: fully rounded ends
-    expect(radius).toBeLessThanOrEqual(oneLine / 2 + 4)  // four lines: a box with round corners
+    const oneLine = 2 * pad + size * 1.29 // body line-height
+    expect(radius).toBeGreaterThanOrEqual(oneLine / 2) // one line: fully rounded ends
+    expect(radius).toBeLessThanOrEqual(oneLine / 2 + 4) // four lines: a box with round corners
   })
 
   // left:50% leaves a box without a width half the screen to wrap in: the same message stood as

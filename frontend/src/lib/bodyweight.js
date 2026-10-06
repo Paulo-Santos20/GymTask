@@ -20,9 +20,14 @@ export function weeklyWeights(bodyweight, ws) {
     byWeek.get(key).push(b)
   }
   const weeks = [...byWeek.keys()].sort().map(key => {
-    const entries = byWeek.get(key).slice().sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : 0))
+    const entries = byWeek
+      .get(key)
+      .slice()
+      .sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : 0))
     return { key, n: entries.length, avg: entries.reduce((sum, b) => sum + Number(b.w), 0) / entries.length, entries }
   })
-  weeks.forEach((week, i) => { week.delta = i ? week.avg - weeks[i - 1].avg : null })
+  weeks.forEach((week, i) => {
+    week.delta = i ? week.avg - weeks[i - 1].avg : null
+  })
   return weeks.reverse()
 }

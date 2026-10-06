@@ -252,6 +252,13 @@ const P = {
       <path d="M13.8 10.2a3.6 3.6 0 0 0-5.4-.4l-2.6 2.6a3.6 3.6 0 0 0 5.1 5.1l1.5-1.5" />
     </>
   ),
+  grip: (
+    <>
+      {[6.2, 12, 17.8].map(y =>
+        [9.2, 14.8].map(x => <circle key={x + '-' + y} cx={x} cy={y} r="1.5" fill="currentColor" stroke="none" />),
+      )}
+    </>
+  ),
   play: <path d="M8.4 5.6 18 12l-9.6 6.4Z" />,
   pause: <path d="M9.4 5.8v12.4M14.6 5.8v12.4" />,
   reset: (

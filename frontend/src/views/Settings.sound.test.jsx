@@ -105,7 +105,7 @@ const rowTitled = title =>
 const switchIn = row =>
   row.querySelector('[role="switch"]') || row.querySelector('input[type="checkbox"]') || row.querySelector('button')
 
-describe('Settings â€” play sounds when the phone is on silent', () => {
+describe('Settings — play sounds when the phone is on silent', () => {
   it('is offered on a browser with an audio session (iOS), under Sounds, with the music trade-off spelled out', () => {
     mount()
     const row = rowTitled('Play sounds when the phone is on silent')
@@ -151,7 +151,7 @@ describe('Settings â€” play sounds when the phone is on silent', () => {
   })
 })
 
-describe('Settings â€” Sounds switch unlocks audio from the tap', () => {
+describe('Settings — Sounds switch unlocks audio from the tap', () => {
   it('turning Sounds on unlocks; turning it off does not', () => {
     mocks.S.sound = false
     mount()

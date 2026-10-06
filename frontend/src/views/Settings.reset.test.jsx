@@ -8,7 +8,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
 // "Reset everything" is one dialog with two truths. A guest's data lives in this browser only.
 // A signed-in profile pushes the empty state to the server like any other change, so the wipe
-// reaches every device that syncs with it â€” and the Coach's own files have to go too: the
+// reaches every device that syncs with it — and the Coach's own files have to go too: the
 // per-profile one on the server, and the device one when the Coach runs with the phone's own key.
 const mocks = vi.hoisted(() => {
   const state = { S: null, user: null, coachLocal: null }
@@ -111,7 +111,7 @@ const openDialog = () => {
 }
 const serverForgetCalls = () => mocks.api.mock.calls.filter(([path]) => path === '/api/coach/forget')
 
-describe('Settings â€” reset everything', () => {
+describe('Settings — reset everything', () => {
   it('guest: says the wipe is local, resets to the defaults, never calls the Coach', () => {
     mount()
     const dialog = openDialog()

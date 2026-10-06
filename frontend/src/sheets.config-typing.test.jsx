@@ -11,7 +11,7 @@ import { exConfigSheet } from './sheets.jsx'
 // rest-pause's reps and rest) or a range (the Epley deload) were clamped on every keystroke, like
 // the workout duration was: an emptied field snapped back to its minimum and the digits typed next
 // landed after it, so a weight drop retyped as 20 read 520 and a deload typed as 80 read 95.
-const ex = EXDB.find(e => e.id === '0009')   // a weighted machine exercise: Epley deload applies
+const ex = EXDB.find(e => e.id === '0009') // a weighted machine exercise: Epley deload applies
 const mounted = []
 
 function renderConfig(cfg) {
@@ -26,7 +26,11 @@ function renderConfig(cfg) {
   return { host, onSave }
 }
 // The last field so labelled: "Rest (s)" is also the exercise's own rest, further up the sheet.
-const field = (host, label) => [...host.querySelectorAll('.stp-w')].filter(w => w.querySelector('.stp-l')?.textContent === label).at(-1).querySelector('input.num')
+const field = (host, label) =>
+  [...host.querySelectorAll('.stp-w')]
+    .filter(w => w.querySelector('.stp-l')?.textContent === label)
+    .at(-1)
+    .querySelector('input.num')
 function type(el, value) {
   Object.getOwnPropertyDescriptor(el.constructor.prototype, 'value').set.call(el, value)
   el.dispatchEvent(new Event('input', { bubbles: true }))
@@ -41,7 +45,11 @@ describe('exercise settings: typing into a field with a minimum', () => {
     useStore.setState(s => ({ S: { ...s.S, unit: 'kg' } }))
     document.body.innerHTML = ''
   })
-  afterEach(() => { act(() => { mounted.splice(0).forEach(root => root.unmount()) }) })
+  afterEach(() => {
+    act(() => {
+      mounted.splice(0).forEach(root => root.unmount())
+    })
+  })
 
   it('lets a drop-set field be emptied and retyped, and saves what was typed', () => {
     const { host, onSave } = renderConfig({ intensifier: { type: 'dropset', count: 2, pct: 10 } })
@@ -65,7 +73,7 @@ describe('exercise settings: typing into a field with a minimum', () => {
     expect(rest.value).toBe('2')
     act(() => leave(rest))
     expect(rest.value).toBe('5')
-    act(() => type(field(host, 'Rest-pause reps'), ''))   // saved without leaving the field
+    act(() => type(field(host, 'Rest-pause reps'), '')) // saved without leaving the field
     act(() => save(host))
     expect(onSave.mock.calls[0][0].intensifier).toEqual({ type: 'restpause', totalReps: 1, restSec: 5 })
   })
@@ -100,7 +108,11 @@ describe('exercise settings: a timed bodyweight hold', () => {
     useStore.setState(s => ({ S: { ...s.S, unit: 'kg' } }))
     document.body.innerHTML = ''
   })
-  afterEach(() => { act(() => { mounted.splice(0).forEach(root => root.unmount()) }) })
+  afterEach(() => {
+    act(() => {
+      mounted.splice(0).forEach(root => root.unmount())
+    })
+  })
   const labels = host => [...host.querySelectorAll('.stp-l')].map(l => l.textContent)
 
   it('has one weight field, the added load, and talks about the hold', () => {

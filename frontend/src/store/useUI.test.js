@@ -7,8 +7,14 @@ import { useStore } from './useStore.js'
 // "Off" has to hold at the timer itself, not at the four places that start one — the same
 // reason the rest-after-a-set rule is a shared condition rather than four copies.
 describe('rest timer set to Off', () => {
-  beforeEach(() => { vi.useFakeTimers(); useUI.setState({ timer: null }) })
-  afterEach(() => { useUI.getState().stopRest(); vi.useRealTimers() })
+  beforeEach(() => {
+    vi.useFakeTimers()
+    useUI.setState({ timer: null })
+  })
+  afterEach(() => {
+    useUI.getState().stopRest()
+    vi.useRealTimers()
+  })
 
   it('starts nothing', () => {
     useUI.getState().startRest(0)
@@ -75,16 +81,22 @@ describe('opt-in timer screen flash', () => {
     expect(useUI.getState().timerFlashId).toBe(1)
   })
 
-  const goHidden = () => { Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')) }
-  const goVisible = () => { Object.defineProperty(document, 'hidden', { value: false, configurable: true }); document.dispatchEvent(new Event('visibilitychange')) }
-  afterEach(() => goVisible())   // leave document.hidden the way every other test expects it
+  const goHidden = () => {
+    Object.defineProperty(document, 'hidden', { value: true, configurable: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+  }
+  const goVisible = () => {
+    Object.defineProperty(document, 'hidden', { value: false, configurable: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+  }
+  afterEach(() => goVisible()) // leave document.hidden the way every other test expects it
 
   it('does not flash a rest that expires while the app is hidden, even once reopened, but keeps Ready visible', () => {
     useStore.setState({ S: { ...useStore.getState().S, timerFlash: true } })
     useUI.getState().startRest(90)
     goHidden()
-    vi.setSystemTime(Date.now() + 91_000)   // deadline passes with no ticks — the app was actually closed/suspended
-    goVisible()                             // reopening re-fires visibilitychange, which is how the bug used to trigger
+    vi.setSystemTime(Date.now() + 91_000) // deadline passes with no ticks — the app was actually closed/suspended
+    goVisible() // reopening re-fires visibilitychange, which is how the bug used to trigger
     expect(useUI.getState().timerFlashId).toBe(0)
     expect(useUI.getState().timer).toMatchObject({ left: 0, ready: true })
   })
@@ -112,7 +124,8 @@ describe('opt-in timer screen flash', () => {
   // unnoticed: a one-second rest, started on screen and over on screen, ran out in silence.
   it('a hide and a show BEFORE the rest starts is no catch-up: it still flashes', () => {
     useStore.setState({ S: { ...useStore.getState().S, timerFlash: true } })
-    goHidden(); goVisible()                 // switched apps and came back, with no timer running
+    goHidden()
+    goVisible() // switched apps and came back, with no timer running
     useUI.getState().startRest(1)
     vi.advanceTimersByTime(1000)
     expect(useUI.getState().timerFlashId).toBe(1)
@@ -120,7 +133,8 @@ describe('opt-in timer screen flash', () => {
 
   it('a hide and a show BEFORE the hold starts is no catch-up: it still flashes', () => {
     useStore.setState({ S: { ...useStore.getState().S, timerFlash: true } })
-    goHidden(); goVisible()                 // switched apps and came back, with no timer running
+    goHidden()
+    goVisible() // switched apps and came back, with no timer running
     useUI.getState().startWork(1, 'Plank', vi.fn())
     vi.advanceTimersByTime(1000)
     expect(useUI.getState().timerFlashId).toBe(1)
@@ -131,7 +145,10 @@ describe('opt-in timer screen flash', () => {
 // startWork enforced it. Ticking a timed set's own checkbox by hand starts a rest
 // (Workout.toggle) while the hold is still running, which left both going.
 describe('a rest and a hold never run together', () => {
-  beforeEach(() => { vi.useFakeTimers(); useUI.setState({ timer: null, work: null }) })
+  beforeEach(() => {
+    vi.useFakeTimers()
+    useUI.setState({ timer: null, work: null })
+  })
   afterEach(() => {
     useUI.getState().stopRest()
     useUI.getState().stopWork()
@@ -148,10 +165,10 @@ describe('a rest and a hold never run together', () => {
   it('so a left-over hold cannot reach zero under a running rest and log a set nobody held', () => {
     const holdDone = vi.fn()
     useUI.getState().startWork(30, 'Plank', holdDone)
-    vi.advanceTimersByTime(12_000)                    // 12 s of the plank held
+    vi.advanceTimersByTime(12_000) // 12 s of the plank held
     useUI.getState().startRest(90, 1)
-    vi.advanceTimersByTime(30_000)                    // past where the hold would have run out
-    expect(useUI.getState().timer.left).toBe(60)      // the rest is still counting, untouched
+    vi.advanceTimersByTime(30_000) // past where the hold would have run out
+    expect(useUI.getState().timer.left).toBe(60) // the rest is still counting, untouched
     expect(useUI.getState().work).toBe(null)
     // Once, on the way out, and never again — and with the 12 s it actually held, marked as no
     // finish. The count alone would not say which: a hold left running reaches its own zero and
@@ -170,7 +187,7 @@ describe('a rest and a hold never run together', () => {
     useUI.getState().startRest(90, 1)
     expect(useUI.getState().work).toBe(null)
     expect(holdDone).toHaveBeenCalledTimes(1)
-    expect(holdDone).toHaveBeenCalledWith(18, { abandoned: true })   // the seconds held, and: abandoned
+    expect(holdDone).toHaveBeenCalledWith(18, { abandoned: true }) // the seconds held, and: abandoned
   })
 
   it('under two seconds there is nothing to hand back — that was a play button by accident', () => {

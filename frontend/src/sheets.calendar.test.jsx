@@ -30,20 +30,32 @@ describe('Calendar canonical workout days', () => {
   })
 
   afterEach(() => {
-    act(() => { mounted.splice(0).forEach(root => root.unmount()) })
+    act(() => {
+      mounted.splice(0).forEach(root => root.unmount())
+    })
     useStore.setState({ S: original })
   })
 
   it('keeps multiple legacy sessions on the heatmap fallback day clickable in Calendar', () => {
     const day = todayISO()
     const start = new Date(day + 'T09:00:00').getTime()
-    useStore.setState({ S: {
-      ...original,
-      workouts: [
-        { id: 'legacy-a', d: '', start, end: start + 15 * 60000, name: 'Legacy A', vol: 100, entries: [] },
-        { id: 'legacy-b', d: 'not-a-day', start: start + 30 * 60000, end: start + 45 * 60000, name: 'Legacy B', vol: 200, entries: [] },
-      ],
-    } })
+    useStore.setState({
+      S: {
+        ...original,
+        workouts: [
+          { id: 'legacy-a', d: '', start, end: start + 15 * 60000, name: 'Legacy A', vol: 100, entries: [] },
+          {
+            id: 'legacy-b',
+            d: 'not-a-day',
+            start: start + 30 * 60000,
+            end: start + 45 * 60000,
+            name: 'Legacy B',
+            vol: 200,
+            entries: [],
+          },
+        ],
+      },
+    })
 
     calendarSheet(day)
     const host = renderTop()

@@ -5,7 +5,18 @@ import { t } from '../lib/i18n.js'
 import { registerCustom } from '../lib/exercises.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { guestAllowed } from '../lib/guest.js'
-import { mergeStates, localExtras, mergeStampedMap, inUnitOf, stampRoutines, stampCustomEx, entryKey, keepReset, mergeResetIds, resetIdsOf } from '../lib/sync-merge.js'
+import {
+  mergeStates,
+  localExtras,
+  mergeStampedMap,
+  inUnitOf,
+  stampRoutines,
+  stampCustomEx,
+  entryKey,
+  keepReset,
+  mergeResetIds,
+  resetIdsOf,
+} from '../lib/sync-merge.js'
 import { convertStateUnit } from '../lib/units.js'
 import { saveCoachDevice, coachDeviceSettings } from '../lib/coach-device.js'
 import { saveWorkoutEdit, deleteEditedWorkout } from '../lib/session-edit.js'
@@ -122,6 +133,10 @@ export const DEF = {
   // card and the /checkin route; the saved gymCards stay so turning it back on restores them.
   // Defaults on; an older profile without the key reads as on (`!== false`).
   checkIn: true,
+  // Whether the body-weight summary card is shown on Home. Off only hides that card: existing
+  // entries, Stats, imports and the separate pre-workout weigh-in flow keep working.
+  // Defaults on; an older profile without the key reads as on (`!== false`).
+  showWeightCard: true,
   // Whether Start opens the quick weigh-in first (sheets.jsx startFlow, issue #137). Off starts
   // the session straight away; weight can still be logged from Home/Stats. Defaults on; an
   // older profile without the key reads as on (`!== false`).
@@ -171,40 +186,117 @@ export const useStore = create((set, get) => {
   let pollTm = null
   let offlineChanges = false // a push failed for lack of network — the next one that lands says so
 
-  const readSync = () => {
+  const DIRTY_KEY = 'gym_dirty'
+  const readStoredSync = () => {
     try {
       return JSON.parse(localStorage.getItem(SYNC_KEY)) || null
     } catch {
       return null
     }
   }
-  const writeSync = (rev, ts) => localStorage.setItem(SYNC_KEY, JSON.stringify({ rev, ts: ts || 0 }))
-  // A change the server has not seen: owed by a failed push, made during boot, or simply newer
-  // than the marker's timestamp. Read by importConflict to count this device's own unsent work.
-  const owes = () =>
-    localStorage.getItem('gym_dirty') === '1' ||
-    pushPending ||
-    pushTm !== null ||
-    !!pushing ||
-    (get().S._ts || 0) > (readSync()?.ts || 0)
-  // What the banner shows a signed-in user: `offline` when the server could not be reached at
-  // all, `pending` while a change is still owed to it (either way, or a push the server refused).
+  const storedOwed = () => localStorage.getItem(DIRTY_KEY) === '1'
+  /* Where the copy in memory stands with the server: the revision it descends from (`base`, as
+     { rev, ts }) and whether it owes the server a change (`owed`). Both belong to the copy, per
+     tab. The marker and the dirty flag in localStorage are shared by every tab of the browser:
+     a tab left open used to quote the revision ANOTHER tab had just synced, so the server saw a
+     current baseRev, took the stale copy without a 409, and the workout logged in the other tab
+     was gone (#283); and a tab that owed nothing read another tab's failed push as its own,
+     merged where it should have adopted, and brought back what the other tab had just deleted.
+     Every copy this store puts in place records where it stands; storage is only where a copy
+     loaded fresh (a new tab, a reload) learns it, which is why persist writes them beside it. */
+  const meta = new WeakMap()
+  const metaOf = (S = get().S) => {
+    let m = meta.get(S)
+    if (!m) {
+      m = { base: readStoredSync(), owed: storedOwed() }
+      meta.set(S, m)
+    }
+    return m
+  }
+  const saveMarker = base => {
+    try {
+      if (!base) {
+        localStorage.removeItem(SYNC_KEY)
+        return
+      }
+      const v = JSON.stringify(base)
+      // Unchanged, it is not written again: other tabs react to this key moving.
+      if (localStorage.getItem(SYNC_KEY) !== v) localStorage.setItem(SYNC_KEY, v)
+    } catch {
+      /* storage refused - the copy in memory still knows */
+    }
+  }
+  const saveOwed = owed => {
+    try {
+      if (owed) localStorage.setItem(DIRTY_KEY, '1')
+      else localStorage.removeItem(DIRTY_KEY)
+    } catch {
+      /* as above */
+    }
+  }
+  const writeSync = (rev, ts) => {
+    const base = { rev, ts: ts || 0 }
+    meta.set(get().S, { ...metaOf(), base })
+    saveMarker(base)
+  }
+  const dropSync = () => {
+    meta.set(get().S, { ...metaOf(), base: null })
+    saveMarker(null)
+  }
+  const markOwed = owed => {
+    meta.set(get().S, { ...metaOf(), owed })
+    saveOwed(owed)
+  }
+  const localChanged = (S = get().S) => {
+    const { base } = metaOf(S)
+    return !!base && (S._ts || 0) > (base.ts || 0)
+  }
+  const owes = () => metaOf().owed || pushPending || pushTm !== null || !!pushing || localChanged()
+  // What the banner shows a signed-in user (components/SyncBanner.jsx): `offline` when the
+  // server could not be reached at all, `pending` while a change is still owed to it, `status`
+  // ranking the flags once so no screen has to: 'local' nobody signed in, 'offline' unreachable,
+  // 'error' the server answered with a failure, 'pending' reachable with a change waiting, 'ok'
+  // both copies agree. `lastError`: { status, code } of the failure behind 'offline' or 'error'
+  // (status 0 without an HTTP answer).
+  const statusOf = (x, user) =>
+    !user ? 'local' : x.offline ? 'offline' : x.lastError ? 'error' : x.pending ? 'pending' : 'ok'
+  const sameError = (a, b) => (a && b ? a.status === b.status && a.code === b.code : a === b)
   const setSync = patch => {
     const cur = get().sync
     const next = { ...cur, ...patch }
-    if (next.offline !== cur.offline || next.pending !== cur.pending || next.lastSynced !== cur.lastSynced)
+    next.status = statusOf(next, get().user)
+    if (Object.keys(next).some(k => (k === 'lastError' ? !sameError(next[k], cur[k]) : next[k] !== cur[k])))
       set({ sync: next })
   }
   const isNetworkError = e => e && e.status == null // fetch itself failed: no response at all
+  // The server answered: whatever was wrong with the connection is over.
+  const reached = (extra = {}) => setSync({ offline: false, lastError: null, ...extra })
+  // What a failed request says about the connection.
+  const failed = (e, extra = {}) => {
+    const lastError = {
+      status: e?.status ?? 0,
+      code: e?.code || (e?.status === 401 ? 'auth' : isNetworkError(e) ? 'network' : 'http'),
+    }
+    if (isNetworkError(e)) setSync({ offline: true, lastError, ...extra })
+    else setSync({ offline: false, lastError, ...extra })
+  }
 
   // `_ts` is when this device last changed the data — it decides which copy wins on the next
   // pull (restoredStateFor). A copy merely adopted from the server or the file mirror keeps the
   // stamp it came with: re-stamping a read would make an unchanged copy look newer than a real
-  // change made on another device, and push it over that change.
+  // change made on another device, and push it over that change. A change is never stamped
+  // before the revision it builds on: that stamp came from the clock of whichever device wrote
+  // it, and with this clock behind, the change looked older than its own base — unchanged — and
+  // a pull replaced it with the server's copy.
   const persist = (S, push = true, stamp = true) => {
-    if (stamp) S._ts = Date.now()
+    const { base, owed } = metaOf()
+    if (stamp) S._ts = Math.max(Date.now(), (base?.ts || 0) + 1)
     registerCustom(S.customEx)
+    // The marker goes first: a tab that loads the copy in between gets an older base than the
+    // copy's, which costs one merge at worst — never a newer one, which would lose data.
+    saveMarker(base)
     localStorage.setItem(KEY, JSON.stringify(S))
+    meta.set(S, { base, owed })
     set({ S })
     if (push && get().user) {
       // Before boot has pulled, the copy in hand may be older than the server's: a push now
@@ -237,16 +329,15 @@ export const useStore = create((set, get) => {
     if (!force && Date.now() - lastCheck < CHECK_MIN_MS) return
     lastCheck = Date.now()
     if (pulling) return pulling
-    const sync = readSync()
-    const owed = localStorage.getItem('gym_dirty') === '1' || pushTm !== null || pushPending
-    if (!sync || owed) return get().pullState()
+    const { base } = metaOf()
+    if (!base || owes()) return get().pullState()
     try {
       const { rev } = await api('/api/data/rev')
-      setSync({ offline: false })
-      if (rev !== sync.rev) return get().pullState()
+      reached()
+      if (rev !== base.rev) return get().pullState()
     } catch (e) {
       if (e.status === 401) return
-      if (isNetworkError(e)) setSync({ offline: true })
+      if (isNetworkError(e)) failed(e)
       else return get().pullState() // a server that lacks the route (older API) — the full pull knows the old protocol
     }
   }
@@ -283,16 +374,19 @@ export const useStore = create((set, get) => {
     return !a || fu === tu ? a : inUnitOf({ unit: fu, active: a }, to).active
   }
   const mergeInto = (local, remote, rev) => {
+    const ts = metaOf().base?.ts || 0
     const merged = Object.assign(clone(DEF), mergeStates(local, remote))
     merged.active = carryActive(local, merged)
     persist(merged, false)
-    writeSync(rev, readSync()?.ts || 0)
+    if (rev == null) dropSync()
+    else writeSync(rev, ts)
   }
   // Take the server's copy as this device's own, timestamp and all (see persist).
   const adopt = (next, rev) => {
     next.active = carryActive(get().S, next)
     persist(next, false, false)
     writeSync(rev, next._ts)
+    markOwed(false)
   }
 
   /* Live sync (RF3): one Firestore listener on this account's document (lib/firebase.js
@@ -317,17 +411,17 @@ export const useStore = create((set, get) => {
   }
   const settleSnapshot = state => {
     if (!get().user || !get().ready || !state) return
-    const sync = readSync()
-    if (!sync) return // before the first pull the marker does not exist — that pull settles it
+    const base = metaOf().base
+    if (!base) return // before the first pull the marker does not exist — that pull settles it
     const rev = Number(state._rev) || 0
-    if (rev === sync.rev) return // the echo of what this device last wrote
+    if (rev === base.rev) return // the echo of what this device last wrote
     const S = get().S
     const remote = Object.assign(clone(DEF), state, { active: S.active || null })
     const merged = Object.assign(clone(DEF), mergeStates(S, remote))
     merged.active = carryActive(S, merged)
     if (JSON.stringify(merged) === JSON.stringify(S)) return // our own write, seen before its ack
     persist(merged, true) // merged copy is this device's now; the write rides the 1.5 s debounce
-    writeSync(rev, sync.ts || 0) // the push that follows is conditional on exactly the merged doc
+    writeSync(rev, base.ts || 0) // the push that follows is conditional on exactly the merged doc
   }
   const watchUser = async () => {
     const uid = get().user ? get().user.id : null
@@ -353,22 +447,25 @@ export const useStore = create((set, get) => {
 
   const doPush = async (attempt = 0) => {
     const S = get().S
-    const sync = readSync()
+    const { base } = metaOf()
+    // A forced push is one attempt. One that fails is retried as an ordinary push against the
+    // revision this copy descends from: kept armed, it went out later without a baseRev and
+    // replaced whatever another device had written in the meantime.
     const force = forceNext
+    forceNext = false
     const body = { state: S }
-    if (!force && sync) body.baseRev = sync.rev
+    if (!force && base) body.baseRev = base.rev
     try {
       const r = await api('/api/data', { method: 'PUT', body: JSON.stringify(body) })
-      if (force) forceNext = false
       // A server from before revisions answers without one — then there is nothing to hold the
       // next push to, and the marker must not pretend otherwise.
-      if (r.rev == null) localStorage.removeItem(SYNC_KEY)
+      if (r.rev == null) dropSync()
       else writeSync(r.rev, S._ts)
-      localStorage.removeItem('gym_dirty')
+      markOwed(false)
       toldTooLarge = false
+      reached({ pending: false, lastSynced: Date.now() })
       // Back from offline with changes that were waiting: say so once — the banner that promised
       // "syncs when you're back online" has just kept its word.
-      setSync({ offline: false, pending: false, lastSynced: Date.now() })
       if (offlineChanges) {
         offlineChanges = false
         import('./useUI.js')
@@ -376,29 +473,21 @@ export const useStore = create((set, get) => {
           .catch(() => {})
       }
     } catch (e) {
-      // A session that is gone is boot's business (/api/me); the copy stays owed to the server.
-      if (e.status === 401) {
-        localStorage.setItem('gym_dirty', '1')
-        return
-      }
-      if (isNetworkError(e)) {
-        localStorage.setItem('gym_dirty', '1')
-        offlineChanges = true
-        setSync({ offline: true, pending: true })
-        return
-      }
       if (e.status === 409 && e.data && attempt < 2) {
         // Another device wrote since this one last read. The server sent its document along;
         // merge and push once more against that revision. A second refusal in a row leaves the
-        // copy dirty and the next resume pull takes it from there.
+        // copy owed and the next resume pull takes it from there.
         mergeInto(get().S, e.data.state, e.data.rev || 0)
         return doPush(attempt + 1)
       }
-      localStorage.setItem('gym_dirty', '1')
-      setSync({ offline: false, pending: true })
+      // Whatever went wrong — no network, a refused token, a server error, a page that is not
+      // the app's — the copy stays owed to the server and the next check retries it.
+      markOwed(true)
+      if (isNetworkError(e)) offlineChanges = true
+      failed(e, { pending: true })
       // A 413 comes from the proxy in front of the API (nginx: client_max_body_size), which
       // caps the request body. Every later push is at least as big, so nothing reaches the
-      // server until the limit is raised — said once per refusal streak; gym_dirty keeps the
+      // server until the limit is raised — said once per refusal streak; the owed copy keeps the
       // retries going. useUI imports this store, hence the lazy import.
       if (e.status === 413 && !toldTooLarge) {
         toldTooLarge = true
@@ -446,34 +535,62 @@ export const useStore = create((set, get) => {
     set({ user: null, S: e.newValue ? loadState() : clone(DEF) })
   })
 
+  // Another tab of this browser synced — its marker moved to a revision this tab's copy does not
+  // descend from. Rather than take that tab's saved copy (storage holds the copy and its marker
+  // under two keys, and an event can arrive with one updated and not the other), this tab asks
+  // the server, as it would on coming back to it: one small request, and a pull only if the
+  // revision really moved. A hidden tab does the same when it is shown again. Its own base still
+  // guards the push either way: a copy this tab has not refreshed gets a 409 and a merge.
+  window.addEventListener('storage', e => {
+    if (e.key !== SYNC_KEY || !e.newValue) return
+    const user = get().user
+    if (!user || localStorage.getItem('gym_owner') !== user.id) return
+    let theirs = null
+    try {
+      theirs = JSON.parse(e.newValue)
+    } catch {
+      return
+    }
+    if (theirs?.rev == null || theirs.rev === metaOf().base?.rev) return
+    checkRev(true)
+  })
+
   // Everything a sign-out leaves behind on this device, whichever way it was triggered. The owner
   // goes last, after the wiped copy is written — the storage listener above relies on the order.
   const clearLocalSession = () => {
     get().setUser(null)
     localStorage.removeItem('gym_guest')
-    localStorage.removeItem('gym_dirty')
-    localStorage.removeItem(SYNC_KEY)
+    markOwed(false)
+    dropSync()
     localStorage.removeItem(KEY)
     persist(clone(DEF), false)
     localStorage.removeItem('gym_owner')
   }
 
+  // The copy loaded from storage records where it stands at once: a later read of the marker
+  // would see whatever ANOTHER tab has since synced into it (see meta above).
+  const S0 = (() => {
+    const s = loadState()
+    registerCustom(s.customEx)
+    meta.set(s, { base: readStoredSync(), owed: storedOwed() })
+    return s
+  })()
+  const user0 = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('gym_user')) || null
+    } catch {
+      return null
+    }
+  })()
+  // Server sync as the banner sees it (components/SyncBanner.jsx). Only meaningful signed in.
+  const sync0 = { offline: false, pending: storedOwed(), lastError: null, lastSynced: 0 }
+  sync0.status = statusOf(sync0, user0)
+
   return {
-    S: (() => {
-      const s = loadState()
-      registerCustom(s.customEx)
-      return s
-    })(),
-    user: (() => {
-      try {
-        return JSON.parse(localStorage.getItem('gym_user')) || null
-      } catch {
-        return null
-      }
-    })(),
+    S: S0,
+    user: user0,
     ready: false,
-    // Server sync as the banner sees it (components/SyncBanner.jsx). Only meaningful signed in.
-    sync: { offline: false, pending: localStorage.getItem('gym_dirty') === '1', lastSynced: 0 },
+    sync: sync0,
     /* Instance capabilities from GET /api/config. `config.coach` is present only when the owner
        has both enabled the Coach and connected a provider — every Coach entry point in the app
        hangs off it via coachAvailable(), so an unconfigured instance renders exactly what it
@@ -528,9 +645,7 @@ export const useStore = create((set, get) => {
       const mine = owes()
         ? (get().S.workouts || []).filter(w => w && !inBackup.has(key(w)) && !onServer.has(key(w))).length
         : 0
-      return workouts + mine
-        ? { workouts: workouts + mine, state, rev: res.rev, local: mine > 0 || owes() }
-        : null
+      return workouts + mine ? { workouts: workouts + mine, state, rev: res.rev, local: mine > 0 || owes() } : null
     },
     // A backup in place of this copy. With `mergeWith` — importConflict's answer — the server's
     // copy is merged in instead of replaced (with this device's changes not yet on it, when there
@@ -652,8 +767,8 @@ export const useStore = create((set, get) => {
         // data still moves into a freshly created profile.
         const owner = localStorage.getItem('gym_owner')
         if (owner && owner !== u.id) {
-          localStorage.removeItem('gym_dirty')
-          localStorage.removeItem(SYNC_KEY)
+          markOwed(false)
+          dropSync()
           localStorage.removeItem(KEY)
           persist(clone(DEF), false)
         }
@@ -699,27 +814,26 @@ export const useStore = create((set, get) => {
           } else if (pushing) await pushing
           const res = await api('/api/data')
           lastCheck = Date.now()
-          setSync({ offline: false })
+          reached()
           const { state, rev } = res
           const S = get().S
+          const { base, owed } = metaOf()
           // Owed to the server: a push that failed, or a change made while boot was still pulling.
-          const dirty = localStorage.getItem('gym_dirty') === '1' || pushPending
-          const sync = readSync()
+          const dirty = owed || pushPending
           // A server from before revisions: the old rule, newer `_ts` wins outright.
           if (rev == null) {
-            localStorage.removeItem(SYNC_KEY)
+            dropSync()
             const restored = restoredStateFor(S, state, dirty)
             if (restored) {
               restored.active = carryActive(S, restored)
               persist(restored, false, false)
-            }
-            else if (hasData(S)) await get().pushState()
+            } else if (hasData(S)) await get().pushState()
             return
           }
-          // No marker yet — first pull on this device, or a client that just learned about
+          // No base yet — first pull on this device, or a client that just learned about
           // revisions. The newer copy wins as before, except that a copy still owed to the
           // server (dirty) is merged instead of pushed over whatever is there.
-          if (!sync) {
+          if (!base) {
             if (dirty && state) {
               mergeInto(S, state, rev)
               pushPending = false
@@ -734,10 +848,10 @@ export const useStore = create((set, get) => {
             } else writeSync(rev, state?._ts || 0)
             return
           }
-          const serverMoved = rev !== sync.rev
-          const localChanged = dirty || (S._ts || 0) > (sync.ts || 0)
+          const serverMoved = rev !== base.rev
+          const changed = dirty || localChanged(S)
           if (!serverMoved) {
-            if (localChanged) await get().pushState()
+            if (changed) await get().pushState()
             return
           }
           if (!state) {
@@ -745,7 +859,7 @@ export const useStore = create((set, get) => {
             if (hasData(S)) await get().pushState()
             return
           }
-          if (!localChanged) {
+          if (!changed) {
             adopt(Object.assign(clone(DEF), state, { active: S.active || null }), rev)
             return
           }
@@ -753,12 +867,24 @@ export const useStore = create((set, get) => {
           pushPending = false
           await get().pushState()
         } catch (e) {
-          if (isNetworkError(e)) setSync({ offline: true }) /* keep local; the poll retries */
+          failed(e) /* keep local; the poll retries */
         } finally {
           pulling = null
         }
       })()
       return pulling
+    },
+
+    // "Sync now": what is waiting goes, the server's copy is checked, and the answer is the
+    // `sync` every screen reads — status 'ok' when the two agree.
+    async syncNow() {
+      if (!get().user) {
+        setSync({})
+        return get().sync
+      }
+      if (pulling) await pulling
+      await get().pullState()
+      return get().sync
     },
 
     // Sign-in (and pairing a phone) takes the server's profile as this device's copy — the
@@ -774,7 +900,7 @@ export const useStore = create((set, get) => {
       const S = get().S
       setSync({ offline: false })
       if (!state) {
-        localStorage.removeItem('gym_dirty')
+        markOwed(false)
         if (hasData(S)) {
           if (rev != null) writeSync(rev, 0)
           forceNext = true
@@ -801,14 +927,14 @@ export const useStore = create((set, get) => {
         merged.active = carryActive(S, merged)
         persist(merged, false)
         if (rev != null) writeSync(rev, 0)
-        else localStorage.removeItem(SYNC_KEY)
+        else dropSync()
         await get().pushState()
         return { adopted: true, added: true }
       }
-      localStorage.removeItem('gym_dirty')
+      markOwed(false)
       if (rev != null) adopt(serverCopy, rev)
       else {
-        localStorage.removeItem(SYNC_KEY)
+        dropSync()
         persist(serverCopy, false, false)
       }
       setSync({ pending: false })
@@ -840,7 +966,7 @@ export const useStore = create((set, get) => {
     // Dynamic import so the generator never ships in a self-hosted bundle.
     async resetDemo() {
       const { buildDemoState } = await import('../lib/demoSeed.js')
-      localStorage.removeItem('gym_dirty')
+      markOwed(false)
       persist(Object.assign(clone(DEF), buildDemoState()), false)
     },
 

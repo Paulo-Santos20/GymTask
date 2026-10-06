@@ -24,8 +24,12 @@ function mediaBody(query) {
 }
 
 // Flat `selector{declarations}` rules, in source order.
-const rulesIn = (text, offset = 0) => [...text.matchAll(/([^{}@]+)\{([^{}]*)\}/g)]
-  .map(m => ({ selectors: m[1].split(',').map(s => s.trim()), decls: m[2], order: offset + m.index }))
+const rulesIn = (text, offset = 0) =>
+  [...text.matchAll(/([^{}@]+)\{([^{}]*)\}/g)].map(m => ({
+    selectors: m[1].split(',').map(s => s.trim()),
+    decls: m[2],
+    order: offset + m.index,
+  }))
 
 const desktop = mediaBody('(min-width:1000px)')
 // Top-level rules only: every other @media block is left out, since none of them touches `.list`.
@@ -37,7 +41,8 @@ const compound = text => ({
   classes: [...text.matchAll(/\.([\w-]+)/g)].map(m => m[1]),
   other: text.replace(/#[\w-]+|\.[\w-]+/g, ''),
 })
-const fits = (c, el) => !c.other && c.ids.every(id => el.id === id) && c.classes.every(k => (el.classes || []).includes(k))
+const fits = (c, el) =>
+  !c.other && c.ids.every(id => el.id === id) && c.classes.every(k => (el.classes || []).includes(k))
 // Descendant selectors only, which is all the list rules use: the last compound is the element,
 // the others have to be found among its ancestors, in order.
 function matches(selector, el, ancestors) {

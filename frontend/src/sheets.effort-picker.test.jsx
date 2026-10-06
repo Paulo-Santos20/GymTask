@@ -22,7 +22,13 @@ const openPicker = (kind, value, onPick) => {
   const root = createRoot(host)
   mounted.push(root)
   let closedByComponent = false
-  act(() => root.render(sheet.render(() => { closedByComponent = true })))
+  act(() =>
+    root.render(
+      sheet.render(() => {
+        closedByComponent = true
+      }),
+    ),
+  )
   return {
     host,
     closed: () => closedByComponent,
@@ -36,16 +42,25 @@ const field = host => host.querySelector('input')
 const tap = el => act(() => el.dispatchEvent(new MouseEvent('click', { bubbles: true })))
 // React tracks the input's value through the prototype setter, so a bare el.value never reaches
 // onChange. Same helper the weight-input and custom-target sheet tests use.
-const type = (host, value) => act(() => {
-  const el = field(host)
-  Object.getOwnPropertyDescriptor(el.constructor.prototype, 'value').set.call(el, value)
-  el.dispatchEvent(new Event('input', { bubbles: true }))
+const type = (host, value) =>
+  act(() => {
+    const el = field(host)
+    Object.getOwnPropertyDescriptor(el.constructor.prototype, 'value').set.call(el, value)
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+
+beforeEach(() => {
+  globalThis.IS_REACT_ACT_ENVIRONMENT = true
 })
 
-beforeEach(() => { globalThis.IS_REACT_ACT_ENVIRONMENT = true })
-
 afterEach(() => {
-  mounted.forEach(r => { try { act(() => r.unmount()) } catch { /* already unmounted */ } })
+  mounted.forEach(r => {
+    try {
+      act(() => r.unmount())
+    } catch {
+      /* already unmounted */
+    }
+  })
   mounted.length = 0
   document.body.innerHTML = ''
   useUI.setState({ sheets: [] })
@@ -61,14 +76,14 @@ describe('the effort picker commits once', () => {
     expect(onPick).toHaveBeenCalledTimes(1)
     expect(p.closed()).toBe(true)
     p.dismiss()
-    expect(onPick).toHaveBeenCalledTimes(1)      // the unmount must not log a second time
+    expect(onPick).toHaveBeenCalledTimes(1) // the unmount must not log a second time
   })
 
   it('typing an exact value logs nothing until the sheet goes away', () => {
     const onPick = vi.fn()
     const p = openPicker('rpe', null, onPick)
     type(p.host, '1')
-    expect(onPick).not.toHaveBeenCalled()        // this is the bug: `1` used to be a rating
+    expect(onPick).not.toHaveBeenCalled() // this is the bug: `1` used to be a rating
     type(p.host, '10')
     expect(onPick).not.toHaveBeenCalled()
     expect(p.closed()).toBe(false)
@@ -82,7 +97,7 @@ describe('the effort picker commits once', () => {
     const p = openPicker('rir', null, onPick)
     tap(p.host.querySelector('[aria-label="Increase"]'))
     expect(onPick).not.toHaveBeenCalled()
-    expect(field(p.host).value).not.toBe('')     // the number moved on screen, though
+    expect(field(p.host).value).not.toBe('') // the number moved on screen, though
   })
 
   it('Done logs the typed value once, and the unmount after it does not repeat', () => {

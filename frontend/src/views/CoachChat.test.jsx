@@ -64,6 +64,9 @@ vi.mock('../lib/coach-api.js', () => ({
   requestMealPlan: vi.fn(() => Promise.resolve({})),
   cohortStats: vi.fn(() => Promise.resolve({ ok: false, enabled: true, sharing: false })),
   setCohortShare: vi.fn(() => Promise.resolve({ ok: true, sharing: true })),
+  // The job-ended effect reads these even when the status mock reports no job.
+  awaitedJob: () => null,
+  settleAwaited: () => {},
   JOB_ERRORS: { internal: 'x' },
 }))
 vi.mock('../sheets.jsx', () => ({ startFlow: vi.fn(), confirmSheet: vi.fn() }))

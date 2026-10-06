@@ -10,8 +10,18 @@ import { useStore } from './useStore.js'
 // before the local timer completes. No-ops for guests / offline. The device id keeps the
 // timer this browser's own: a desktop tab finishing its rest on screen used to cancel the
 // alert the phone in the gym was waiting for, because the server held one timer per account.
-const pushRestTimer = sec => { if (useStore.getState().user) api('/api/push/rest-timer', { method: 'POST', body: JSON.stringify({ seconds: sec, deviceId: deviceId() }) }).catch(() => {}) }
-const cancelPushRestTimer = () => { if (useStore.getState().user) api('/api/push/rest-timer/cancel', { method: 'POST', body: JSON.stringify({ deviceId: deviceId() }) }).catch(() => {}) }
+const pushRestTimer = sec => {
+  if (useStore.getState().user)
+    api('/api/push/rest-timer', { method: 'POST', body: JSON.stringify({ seconds: sec, deviceId: deviceId() }) }).catch(
+      () => {},
+    )
+}
+const cancelPushRestTimer = () => {
+  if (useStore.getState().user)
+    api('/api/push/rest-timer/cancel', { method: 'POST', body: JSON.stringify({ deviceId: deviceId() }) }).catch(
+      () => {},
+    )
+}
 
 // Books the end of a rest with the server push, which announces it if this tab is suspended
 // before the local timer completes. The mobile build's native alarm (lib/rest-alert.js) is not
@@ -31,7 +41,9 @@ const notificationsSupported = () => typeof window !== 'undefined' && 'Notificat
 // on reopen so a countdown that vanished does not look like a bug.
 let pageHiddenAt = null
 if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => { if (document.hidden) pageHiddenAt = Date.now() })
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) pageHiddenAt = Date.now()
+  })
 }
 
 // The Push switch in Settings is the one place notifications are turned on, and "on" means this
@@ -40,7 +52,11 @@ if (typeof document !== 'undefined') {
 // switch off (issue #239). Off is off now; the permission is only ever asked for by the switch.
 const restAlertsOn = async reg => {
   if (Notification.permission !== 'granted') return false
-  try { return !!(await reg?.pushManager?.getSubscription?.()) } catch { return false }
+  try {
+    return !!(await reg?.pushManager?.getSubscription?.())
+  } catch {
+    return false
+  }
 }
 
 const maybeRestNotification = async () => {
@@ -54,7 +70,10 @@ const maybeRestNotification = async () => {
     // Android Chrome forbids the Notification constructor (Illegal constructor) - the
     // service-worker registration path is the one that actually pops there.
     const opts = { tag: 'rest-timer', icon: 'icon-512.png' }
-    if (reg?.showNotification) { reg.showNotification(t('Rest over — next set!'), opts); return }
+    if (reg?.showNotification) {
+      reg.showNotification(t('Rest over — next set!'), opts)
+      return
+    }
     new Notification(t('Rest over — next set!'), opts)
   } catch {
     // Intentionally ignore: notification APIs vary by browser and policy in edge cases.
@@ -70,8 +89,10 @@ let workDone = null
 const MAX_WORK_OVERTIME_SEC = 15 * 60
 
 const stopRestTicking = () => {
-  if (timerInt) clearInterval(timerInt); timerInt = null
-  if (timerTick) document.removeEventListener('visibilitychange', timerTick); timerTick = null
+  if (timerInt) clearInterval(timerInt)
+  timerInt = null
+  if (timerTick) document.removeEventListener('visibilitychange', timerTick)
+  timerTick = null
 }
 // The rest countdown's tick, from a start or from a resume: the same endsAt-based count either
 // way, so a paused rest carries on exactly as a started one runs.
@@ -90,7 +111,8 @@ const runRest = (set, get) => {
         // The Android alarm for this end stays quiet while the app is on screen, so this chime is
         // the only one. Locked, this branch never runs and the alarm's tone does.
         chime(snd)
-        vibrate([200, 100, 200]); get().flashTimer()
+        vibrate([200, 100, 200])
+        get().flashTimer()
       }
       // The toast stays even when the rest ran out while the app was hidden: a guest, or anyone
       // without push permission, gets no notification, and a countdown that silently vanishes
@@ -112,13 +134,13 @@ const runRest = (set, get) => {
 }
 
 export const useUI = create((set, get) => ({
-  sheets: [],          // { id, render:(close)=>JSX, kind:'sheet'|'center', locked }
+  sheets: [], // { id, render:(close)=>JSX, kind:'sheet'|'center', locked }
   toastMsg: '',
-  timer: null,         // rest countdown between sets — { left, total, endsAt, forIdx, ready?, paused? }
-                       // forIdx: index of the active entry whose set started the rest (undefined when unknown)
-                       // paused: held at `left`; `endsAt` means nothing until resumeRest sets it again
-  work: null,          // work countdown DURING a timed set (issue #16) — { left, total, endsAt, label, overtime? }
-  timerFlashId: 0,     // changing the id retriggers the theme-blink visual alert
+  timer: null, // rest countdown between sets — { left, total, endsAt, forIdx, ready?, paused? }
+  // forIdx: index of the active entry whose set started the rest (undefined when unknown)
+  // paused: held at `left`; `endsAt` means nothing until resumeRest sets it again
+  work: null, // work countdown DURING a timed set (issue #16) — { left, total, endsAt, label, overtime? }
+  timerFlashId: 0, // changing the id retriggers the theme-blink visual alert
 
   flashTimer() {
     if (!useStore.getState().S.timerFlash) return
@@ -129,10 +151,14 @@ export const useUI = create((set, get) => ({
     const id = uid()
     set(s => ({ sheets: [...s.sheets, { id, render, kind, locked }] }))
     const close = () => get().closeSheet(id)
-    return { id, close, lock: v => set(s => ({ sheets: s.sheets.map(x => x.id === id ? { ...x, locked: v } : x) })) }
+    return { id, close, lock: v => set(s => ({ sheets: s.sheets.map(x => (x.id === id ? { ...x, locked: v } : x)) })) }
   },
-  closeSheet(id) { set(s => ({ sheets: s.sheets.filter(x => x.id !== id) })) },
-  closeAll() { set({ sheets: [] }) },
+  closeSheet(id) {
+    set(s => ({ sheets: s.sheets.filter(x => x.id !== id) }))
+  },
+  closeAll() {
+    set({ sheets: [] })
+  },
 
   toast(msg) {
     set({ toastMsg: msg })
@@ -194,14 +220,24 @@ export const useUI = create((set, get) => ({
   addRest(sec) {
     const tm = get().timer
     if (!tm) return
-    if (tm.ready) { if (sec > 0) get().startRest(sec, tm.forIdx); else get().stopRest(); return }
+    if (tm.ready) {
+      if (sec > 0) get().startRest(sec, tm.forIdx)
+      else get().stopRest()
+      return
+    }
     const left = tm.left + sec
     // taking off more than is left means "I'm ready now" — same as skipping, and it keeps a
     // negative duration out of both the progress bar and the server-side push schedule
-    if (left <= 0) { get().stopRest(); return }
+    if (left <= 0) {
+      get().stopRest()
+      return
+    }
     // Paused, there is no end to move and nothing booked on the server: the time is simply held,
     // and the notification holds the new figure.
-    if (tm.paused) { set({ timer: { ...tm, left, total: tm.total + sec } }); return }
+    if (tm.paused) {
+      set({ timer: { ...tm, left, total: tm.total + sec } })
+      return
+    }
     const endsAt = tm.endsAt + sec * 1000
     set({ timer: { ...tm, left, total: tm.total + sec, endsAt } })
     bookRestEnd(endsAt, tm.total + sec)
@@ -230,12 +266,12 @@ export const useUI = create((set, get) => ({
      countdown ran out in front of you and the end chime and buzz have just played; `abandoned`
      when a rest displaced the hold (abandonWork). */
   startWork(sec, label, onDone) {
-    get().abandonWork()   // a hold this one replaces keeps what it held, same as a rest replacing one
+    get().abandonWork() // a hold this one replaces keeps what it held, same as a rest replacing one
     get().stopRest()
     const total = Math.max(1, Math.round(sec) || 1)
     const endsAt = Date.now() + total * 1000
     workDone = onDone
-    pageHiddenAt = document.hidden ? Date.now() : null   // see startRest: a stale hide is not a catch-up
+    pageHiddenAt = document.hidden ? Date.now() : null // see startRest: a stale hide is not a catch-up
     set({ work: { left: total, total, endsAt, label, overtime: useStore.getState().S.timedSetOvertime === true } })
     workTick = () => {
       const wk = get().work
@@ -248,9 +284,13 @@ export const useUI = create((set, get) => ({
       if (left <= 0) {
         if (seenLive && !wk.alerted) {
           chime(snd)
-          vibrate([200, 100, 200]); get().flashTimer()
+          vibrate([200, 100, 200])
+          get().flashTimer()
         }
-        if (wk.overtime && left > -MAX_WORK_OVERTIME_SEC) { set({ work: { ...wk, left, alerted: true } }); return }
+        if (wk.overtime && left > -MAX_WORK_OVERTIME_SEC) {
+          set({ work: { ...wk, left, alerted: true } })
+          return
+        }
         const done = workDone
         get().stopWork()
         // `chimed` tells the set's own tick that this end has already sounded and buzzed — not
@@ -269,7 +309,10 @@ export const useUI = create((set, get) => ({
     const wk = get().work
     if (!wk) return
     const startedAt = wk.endsAt - wk.total * 1000
-    const elapsed = Math.max(1, Math.min(wk.total + (wk.overtime ? MAX_WORK_OVERTIME_SEC : 0), Math.round((Date.now() - startedAt) / 1000)))
+    const elapsed = Math.max(
+      1,
+      Math.min(wk.total + (wk.overtime ? MAX_WORK_OVERTIME_SEC : 0), Math.round((Date.now() - startedAt) / 1000)),
+    )
     const done = workDone
     vibrate(30)
     get().stopWork()
@@ -283,7 +326,10 @@ export const useUI = create((set, get) => ({
   // the hold is the one now running.
   abandonWork() {
     const wk = get().work
-    if (!wk) { get().stopWork(); return }
+    if (!wk) {
+      get().stopWork()
+      return
+    }
     const elapsed = wk.total - wk.left
     const done = workDone
     get().stopWork()
@@ -295,10 +341,11 @@ export const useUI = create((set, get) => ({
   },
   // Abandon without logging anything.
   stopWork() {
-    if (workInt) clearInterval(workInt); workInt = null
-    if (workTick) document.removeEventListener('visibilitychange', workTick); workTick = null
+    if (workInt) clearInterval(workInt)
+    workInt = null
+    if (workTick) document.removeEventListener('visibilitychange', workTick)
+    workTick = null
     workDone = null
     set({ work: null })
-  }
+  },
 }))
-

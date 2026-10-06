@@ -1827,4 +1827,25 @@ export default {
   'No data': 'Sem dados',
   'See which lift is holding back the rest.': 'Vê qual exercício está a travar os outros.',
   Open: 'Abrir',
+
+  // --- Fase 6 upstream leftovers (weigh-ins, deload, coach endpoint) ---
+  'A deload routine opens at the numbers set here, so the progression above does not apply to it.':
+    'Uma rotina de deload começa nos números definidos aqui, então a progressão acima não se aplica a ela.',
+  'All weigh-ins': 'Todas as pesagens',
+  'Android blocks unencrypted http:// connections from apps, so this phone can only reach an https:// endpoint. Put HTTPS in front of it (Tailscale or a reverse proxy), or choose "Use my self-hosted GymTask": your server can reach an http:// model on its own network.':
+    'O Android bloqueia conexões http:// não criptografadas de apps, então este telefone só alcança um endpoint https. Coloque o HTTPS na frente dele (Tailscale ou um reverse proxy), ou escolha "Usar meu GymTask self-hosted": seu servidor pode alcançar um modelo http:// na própria rede.',
+  'Average {0}': 'Média {0}',
+  'Delete weigh-in': 'Excluir pesagem',
+  'Delete weigh-in?': 'Excluir pesagem?',
+  'Deload routine': 'Rotina de deload',
+  'Enter the endpoint URL': 'Digite a URL do endpoint',
+  'Its workouts do not count toward progression. They still show in history and statistics.':
+    'Os treinos dela não contam para a progressão. Eles continuam aparecendo no histórico e nas estatísticas.',
+  'Log this workout': 'Registrar este treino',
+  'No weight to enter — just time the hold.': 'Nenhum peso a digitar — cronometre apenas o tempo.',
+  'Replace exercise': 'Substituir exercício',
+  'Replaced with “{0}”': 'Substituído por “{0}”',
+  'Show the body weight card on Home.': 'Mostra o cartão de peso corporal no Início.',
+  'Week of {0}': 'Semana de {0}',
+  'Weekly average': 'Média semanal',
 }
