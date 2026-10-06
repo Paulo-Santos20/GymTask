@@ -17,6 +17,7 @@ import {
   beatsWeight,
 } from './lib/exercises.js'
 import { appleHealthSupported, bodyweightPayload, openHealth, workoutPayload } from './lib/apple-health.js'
+import { weeklyWeights } from './lib/bodyweight.js'
 import { activeProfile, exAvailable, ALL_EQUIPMENT, newProfile } from './lib/equipment.js'
 import {
   fmtDate,
@@ -138,9 +139,9 @@ import { isFav, toggleFav, sortFavouritesFirst } from './lib/favourites.js'
 import { buildSessionEntries, buildPlannedEntry, builtOutOfProgression } from './lib/session-start.js'
 import { joinSessionNoProg } from './lib/session-noprog.js'
 import { buildCombinedEntries, deriveSessionName } from './lib/session-merge.js'
-import { workoutsOn, backfillStart, backfillEnd, completeBackfill, sessionHistory } from './lib/backfill.js'
+import { workoutsOn, backfillStart, backfillEnd, completeBackfill, historyAsOf, sessionHistory } from './lib/backfill.js'
 import { speedUnitOf, speedLabel, toSpeed, fromSpeed } from './lib/speed.js'
-import { moveWorkout, sameWorkout, startTimeOf, durationMinOf, setWorkoutDuration } from './lib/workout-date.js'
+import { moveWorkout, sameWorkout, startTimeOf, durationMinOf, setWorkoutDuration, rebuildPrHistory } from './lib/workout-date.js'
 import { editCompletedSession, editLeftEmpty, editChangesNothing } from './lib/session-edit.js'
 import { stampWorkout } from './lib/sync-merge.js'
 import { saveSessionAsRoutine } from './lib/session-routines.js'
@@ -453,10 +454,6 @@ function BwSheet({ required, onDone, close }) {
     openHealth(bodyweightPayload({ d: todayISO(), w: n, t: Date.now() }, unit))
   }
   const recent = [...st.bodyweight].reverse().slice(0, 3)
-  const delEntry = d =>
-    update(s => {
-      s.bodyweight = s.bodyweight.filter(b => b.d !== d)
-    })
   return (
     <>
       {/* This sheet opens `locked` — swipe/backdrop/Escape/Android-back all no-op on it (see
@@ -526,28 +523,16 @@ function BwSheet({ required, onDone, close }) {
           <h4 className="sec">{t('Recent weigh-ins')}</h4>
           <div className="list" style={{ gap: 0 }}>
             {recent.map(b => (
-              <div
-                key={b.d}
-                className="row between"
-                style={{ padding: '9px 2px', borderBottom: '1px solid var(--sep)' }}
-              >
-                <span className="small muted">{fmtDate(b.d, true)}</span>
-                <span className="row" style={{ gap: 12 }}>
-                  <b>
-                    {fmtNum(b.w)} {unit}
-                  </b>
-                  <button
-                    className="iconbtn"
-                    style={{ width: 32, height: 30, borderRadius: 8, fontSize: 15, color: 'var(--red)' }}
-                    onClick={() => delEntry(b.d)}
-                    aria-label={t('delete')}
-                  >
-                    <Icon name="trash" />
-                  </button>
-                </span>
-              </div>
+              <WeighInRow key={b.d} b={b} unit={unit} />
             ))}
           </div>
+          {st.bodyweight.length > recent.length && (
+            <div className="row" style={{ justifyContent: 'flex-end', marginTop: 6 }}>
+              <Button size="sm" variant="ghost" trailingIcon="chevronRight" onClick={weighInsSheet}>
+                {t('All weigh-ins')}
+              </Button>
+            </div>
+          )}
         </>
       )}
     </>
@@ -557,6 +542,121 @@ export function bwSheet(opts = {}) {
   const h = ui().openSheet(close => <BwSheet {...opts} close={close} />, { locked: !!opts.required })
   return h
 }
+
+// One weigh-in with its delete button, in the log sheet's recent three and in the full list.
+// The full list asks first (`confirm`): it is months of history scrolled through on a phone, and a
+// stray tap on one of its trash buttons took a past weigh-in with nothing to bring it back. The log
+// sheet's three are the ones just typed, where taking back a typo in one tap is the point.
+function WeighInRow({ b, unit, confirm = false }) {
+  const delEntry = () =>
+    update(s => {
+      s.bodyweight = s.bodyweight.filter(x => x.d !== b.d)
+    })
+  const ask = () =>
+    confirmSheet({
+      title: t('Delete weigh-in?'),
+      message: `${fmtDate(b.d, true)} · ${fmtNum(b.w)} ${unit}`,
+      confirmText: t('Delete'),
+      danger: true,
+      onConfirm: delEntry,
+    })
+  return (
+    <div className="row between" style={{ padding: '9px 2px', borderBottom: '1px solid var(--sep)' }}>
+      <span className="small muted">{fmtDate(b.d, true)}</span>
+      <span className="row" style={{ gap: 12 }}>
+        <b>
+          {fmtNum(b.w)} {unit}
+        </b>
+        <button
+          className="iconbtn"
+          style={{ width: 32, height: 30, borderRadius: 8, fontSize: 15, color: 'var(--red)' }}
+          onClick={confirm ? ask : delEntry}
+          aria-label={t('Delete weigh-in')}
+        >
+          <Icon name="trash" />
+        </button>
+      </span>
+    </div>
+  )
+}
+
+/* ============================ weigh-ins ============================ */
+// Every weigh-in, week by week (Discord 'Weight'): each week under its mean and how far that
+// moved from the week before, the numbers behind the curve on the card. The chart plots the
+// weekly means, since the swing from one morning to the next is what makes a single weigh-in
+// hard to read. The weeks start on the profile's first day of the week.
+function WeighIns() {
+  const st = useStore(s => s.S)
+  const ws = weekStartOf(st)
+  const weeks = useMemo(() => weeklyWeights(st.bodyweight, ws), [st.bodyweight, ws])
+  const points = useMemo(
+    () =>
+      [...weeks].reverse().map(w => ({
+        t: new Date(w.key + 'T12:00:00').getTime(),
+        y: Math.round(w.avg * 100) / 100,
+        d: w.key,
+      })),
+    [weeks],
+  )
+  const n = weeks.reduce((sum, w) => sum + w.n, 0)
+  if (!n)
+    return (
+      <>
+        <h3>{t('Weigh-ins')}</h3>
+        <div className="empty">
+          <div className="ico">
+            <Icon name="scale" />
+          </div>
+          {t('No entries yet — log your weight to start the curve.')}
+        </div>
+      </>
+    )
+  return (
+    <>
+      <h3 style={{ marginBottom: 2 }}>{t('Weigh-ins')}</h3>
+      <div className="muted small" style={{ marginBottom: 10 }}>
+        {t(n === 1 ? '{0} weigh-in' : '{0} weigh-ins', n)}
+      </div>
+      <div className="chart">
+        <LineChart points={points} h={140} unit={st.unit} goal={st.targetW} />
+      </div>
+      <div className="small dim" style={{ marginTop: 6 }}>
+        {t('Weekly average')}
+      </div>
+      {weeks.map(w => {
+        // Only a change the display can show: at one decimal, 0.02 kg is "0", and an arrow over a
+        // zero says something moved when, as far as the screen goes, nothing did.
+        const moved = w.delta != null && fmtNum(Math.abs(w.delta)) !== fmtNum(0)
+        return (
+          <div key={w.key} data-week={w.key}>
+            <div className="row between" style={{ margin: '16px 2px 4px', gap: 8 }}>
+              <span className="small" style={{ fontWeight: 600 }}>
+                {t('Week of {0}', fmtDate(w.key))}
+              </span>
+              <span className="small row" style={{ gap: 8 }}>
+                {moved && (
+                  <span className="row" style={{ gap: 2, fontWeight: 500, color: bwDeltaColor(w.delta, w.avg) }}>
+                    <Icon name={w.delta > 0 ? 'arrowUp' : 'arrowDown'} style={{ fontSize: 12 }} />
+                    {fmtNum(Math.abs(w.delta))}
+                  </span>
+                )}
+                <span className="muted" style={{ whiteSpace: 'nowrap' }}>
+                  {t('Average {0}', fmtNum(w.avg) + ' ' + st.unit)}
+                </span>
+              </span>
+            </div>
+            <div className="list" style={{ gap: 0 }}>
+              {w.entries.map(b => (
+                <WeighInRow key={b.d} b={b} unit={st.unit} confirm />
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </>
+  )
+}
+export const weighInsSheet = () => ui().openSheet(close => <WeighIns close={close} />)
 
 /* ============================ import from another app ============================ */
 // Shows what a parsed export would actually do before anything is written. An import is
@@ -2253,7 +2353,9 @@ function ProgressionFields({ ex, mode, c, setC, routine, unit, perSide }) {
   const stride = mode === 'reps' && perSide ? 2 : 1
   const range = active === 'double' ? normalizeRepRange(c.reps, c.repsMin, stride) : null
   const epleyEligible = mode === 'reps' && !isBw({ ...c, id: ex.id }) && (active === 'linear' || active === 'double')
-  const deloadPercent = Math.round((Number(c.deloadFactor) > 0 ? Number(c.deloadFactor) : 0.9) * 100)
+  const deloadPercent = Math.round(
+    (c.deloadFactor != null && Number.isFinite(Number(c.deloadFactor)) ? Number(c.deloadFactor) : 0.9) * 100,
+  )
   const setRule = v =>
     setC(x => {
       const next = { ...x, prog: v || undefined }
@@ -2320,8 +2422,10 @@ function ProgressionFields({ ex, mode, c, setC, routine, unit, perSide }) {
               label={t('Deload 1RM (%)')}
               value={deloadPercent}
               step={5}
+              min={50}
+              max={95}
               decimal={false}
-              onChange={v => setC(x => ({ ...x, deloadFactor: Math.max(0.5, Math.min(0.95, Number(v) / 100)) }))}
+              onChange={v => setC(x => ({ ...x, deloadFactor: Number(v) / 100 }))}
             />
           )}
         </div>
@@ -2335,7 +2439,17 @@ function ProgressionFields({ ex, mode, c, setC, routine, unit, perSide }) {
   )
 }
 
-function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
+// The drop-set and rest-pause fields take what is typed and are held to their minimums once left
+// (Stepper `min`). A sheet saved from a field still being typed in is held to them here: an
+// emptied weight drop would otherwise plan drops at the same weight.
+const intensifierToSave = x =>
+  x.type === 'dropset'
+    ? { ...x, count: Math.max(1, Math.round(x.count) || 0), pct: Math.max(5, Number(x.pct) || 0) }
+    : x.type === 'restpause'
+      ? { ...x, totalReps: Math.max(1, Math.round(x.totalReps) || 0), restSec: Math.max(5, Number(x.restSec) || 0) }
+      : x
+
+function ExConfig({ ex, existing, onSave, onDelete, onReplace, close, routine, initial, saveLabel }) {
   const st = useStore(s => s.S)
   const cardio = isCardio(ex.id)
   const speedUnit = speedUnitOf(st)
@@ -2448,7 +2562,7 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
       if (bw && !(out.weight > 0) && c.repsMax > 0) out.repsMax = Math.max(reps, Math.round(c.repsMax))
       // Every set in this exercise becomes a drop-set/rest-pause (buildSets stamps the rows) —
       // decided here, in the plan, not re-decided live each time you train it.
-      if (c.intensifier && c.intensifier.type) out.intensifier = c.intensifier
+      if (c.intensifier && c.intensifier.type) out.intensifier = intensifierToSave(c.intensifier)
       onSave(out)
     }
   }
@@ -2532,12 +2646,16 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
               decimal={false}
               onChange={v => setC(x => ({ ...x, sec: v }))}
             />
-            <Stepper
-              label={t('Weight ({0})', st.unit)}
-              value={c.weight}
-              step={2.5}
-              onChange={v => setC(x => ({ ...x, weight: v }))}
-            />
+            {/* A bodyweight hold's load is the "Added" row below — showing both put two fields on
+            one value. */}
+            {!bw && (
+              <Stepper
+                label={t('Weight ({0})', st.unit)}
+                value={c.weight}
+                step={2.5}
+                onChange={v => setC(x => ({ ...x, weight: v }))}
+              />
+            )}
           </>
         ) : (
           <>
@@ -2633,7 +2751,13 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
             icon="figureStrength"
             iconTint="var(--acc)"
             title={t('Bodyweight')}
-            subtitle={bw ? t('No weight to enter — just log the reps.') : t('Ask for a weight on every set.')}
+            subtitle={
+              bw
+                ? mode === 'time'
+                  ? t('No weight to enter — just time the hold.')
+                  : t('No weight to enter — just log the reps.')
+                : t('Ask for a weight on every set.')
+            }
           >
             <Switch checked={bw} onChange={v => setC(x => ({ ...x, bodyweight: v, weight: v ? 0 : x.weight }))} />
           </Row>
@@ -2744,15 +2868,17 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
                 label={t('Drops')}
                 value={c.intensifier.count}
                 step={1}
+                min={1}
                 decimal={false}
-                onChange={v => setC(x => ({ ...x, intensifier: { ...x.intensifier, count: Math.max(1, v) } }))}
+                onChange={v => setC(x => ({ ...x, intensifier: { ...x.intensifier, count: v } }))}
               />
               <Stepper
                 label={t('Weight drop (%)')}
                 value={c.intensifier.pct}
                 step={5}
+                min={5}
                 decimal={false}
-                onChange={v => setC(x => ({ ...x, intensifier: { ...x.intensifier, pct: Math.max(5, v) } }))}
+                onChange={v => setC(x => ({ ...x, intensifier: { ...x.intensifier, pct: v } }))}
               />
             </div>
           )}
@@ -2762,15 +2888,17 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
                 label={t('Rest-pause reps')}
                 value={c.intensifier.totalReps}
                 step={1}
+                min={1}
                 decimal={false}
-                onChange={v => setC(x => ({ ...x, intensifier: { ...x.intensifier, totalReps: Math.max(1, v) } }))}
+                onChange={v => setC(x => ({ ...x, intensifier: { ...x.intensifier, totalReps: v } }))}
               />
               <Stepper
                 label={t('Rest (s)')}
                 value={c.intensifier.restSec}
                 step={5}
+                min={5}
                 decimal={false}
-                onChange={v => setC(x => ({ ...x, intensifier: { ...x.intensifier, restSec: Math.max(5, v) } }))}
+                onChange={v => setC(x => ({ ...x, intensifier: { ...x.intensifier, restSec: v } }))}
               />
             </div>
           )}
@@ -2812,8 +2940,11 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
         value={c.note || ''}
         onChange={e => setC(x => ({ ...x, note: e.target.value }))}
       />
+      {/* What saving does, when it is neither of the two usual things: the routine editor's
+          Replace (#110) seeds this sheet with the slot it replaces, and saving puts the exercise
+          into that slot. */}
       <Button variant="primary" disabled={progressionStepInvalid} onClick={save}>
-        {existing ? t('Save') : t('Add to routine')}
+        {saveLabel || (existing ? t('Save') : t('Add to routine'))}
       </Button>
       {ex.custom && (
         <>
@@ -2826,6 +2957,23 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
             }}
           >
             {t('Edit or delete this exercise')}
+          </Button>
+        </>
+      )}
+      {/* The routine editor's counterpart to a workout's Swap (#110): another exercise in this
+          slot, with the slot's sets, reps, weight, rule and note kept (lib/routines.js). What was
+          changed on this sheet and not saved is left behind, as closing it would. */}
+      {onReplace && (
+        <>
+          <div style={{ height: 8 }} />
+          <Button
+            icon="shuffle"
+            onClick={() => {
+              close()
+              onReplace()
+            }}
+          >
+            {t('Replace exercise')}
           </Button>
         </>
       )}
@@ -2846,7 +2994,7 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
     </>
   )
 }
-export const exConfigSheet = (ex, existing, onSave, onDelete, routine, initial) =>
+export const exConfigSheet = (ex, existing, onSave, onDelete, routine, initial, onReplace, saveLabel) =>
   ui().openSheet(close => (
     <ExConfig
       ex={ex}
@@ -2854,7 +3002,9 @@ export const exConfigSheet = (ex, existing, onSave, onDelete, routine, initial) 
       initial={initial}
       onSave={onSave}
       onDelete={onDelete}
+      onReplace={onReplace}
       routine={routine}
+      saveLabel={saveLabel}
       close={close}
     />
   ))
@@ -2901,19 +3051,35 @@ export const glyphPicker = (current, onPick) => {
 // RPE sees the same buttons labelled on its own scale (toScale), coloured identically — the
 // colour is the effort, not the number, so 0 RIR and 10 RPE are both the "went to failure" end.
 function EffortPicker({ kind, value, onPick, close }) {
-  // Local mirror so the ticked preset and the exact field track typing live; the store is
-  // written on every change through onPick, the same as the stepper did.
+  // Local mirror so the ticked preset and the exact field track typing live.
   const [v, setV] = useState(value ?? null)
+  // The exact field used to write through on every change, and onPick concludes the set (issue
+  // #64): it ticks the set, beeps and starts the rest. Since stepEffort(kind, null, 1) returns
+  // the band's minimum, one tap of + — or typing the `1` of `10` — was a committed rating, fired
+  // under the sheet you were still typing into, and on the last set of the last exercise it
+  // stacked workoutCompleteSheet on top of the picker. So typing moves the mirror only, and the
+  // rating is written once, when the sheet goes away: Done, the backdrop, a swipe or Escape all
+  // unmount this. A preset row still commits on the spot, which is what makes it one tap.
+  const typed = useRef(value ?? null)
+  const done = useRef(false)
   const set = nv => {
+    typed.current = nv
     setV(nv)
-    onPick(nv)
   }
+  useEffect(
+    () => () => {
+      if (done.current) return
+      if (typed.current !== (value ?? null)) onPick(typed.current)
+    },
+    [],
+  )
   // `v` is in the profile's own scale (whatever sits on the set: s.rir or s.rpe). Compare in
   // RIR so the tick lands on the right preset on either scale, and so a typed RPE colours the
   // same as the RIR it equals.
   const curRir = rirOf(kind === 'rpe' ? { rpe: v } : { rir: v })
   const curColor = effortColor(curRir)
   const commit = nv => {
+    done.current = true
     close()
     onPick(nv)
   }
@@ -2976,6 +3142,13 @@ function EffortPicker({ kind, value, onPick, close }) {
       {v != null && (
         <>
           <div style={{ height: 10 }} />
+          {/* Only after the exact field has moved the value off what is stored: the preset rows
+              close themselves, so this row exists for the one path that does not. */}
+          {v !== (value ?? null) && (
+            <Button icon="check" onClick={() => commit(v)}>
+              {t('Done')}
+            </Button>
+          )}
           <Button variant="ghost" className="dim" icon="xmark" onClick={() => commit(null)}>
             {t('Clear rating')}
           </Button>
@@ -3155,6 +3328,14 @@ function DayOverride({ iso, close }) {
   // one here collapses a combined day to it (docs/COMBINE_ROUTINES.md §8). The check marks
   // show everything currently planned for the day.
   const effIds = effectiveRoutineIds(st, iso)
+  // A planned day in the past with nothing logged was missed — or trained and never logged,
+  // like a run you forgot to start the app for (#284). Logging it opens "Log a past workout" on
+  // that date with the day's routines picked, where the time and the duration can still change.
+  const missed = iso < todayISO() && effIds.length > 0 && !workoutsOn(st, iso).length
+  const logIt = () => {
+    close()
+    logPastWorkoutSheet({ iso, routineIds: effIds })
+  }
   const set = v => {
     update(s => {
       if (!v) delete s.dayPlan[iso]
@@ -3178,6 +3359,13 @@ function DayOverride({ iso, close }) {
         <br />
         {t('Sick, missed a day or want a different session? Pick what to train instead.')}
       </div>
+      {missed && (
+        <div style={{ marginBottom: 14 }}>
+          <Button variant="primary" icon="checkCircle" onClick={logIt}>
+            {t('Log this workout')}
+          </Button>
+        </div>
+      )}
       <div className="list">
         {st.routines.map(r => (
           <div key={r.id} className="item" {...tappable(() => set(r.id))}>
@@ -3876,24 +4064,40 @@ export function beginWorkout(routineIds, bw) {
 // The same screen as a live session, pointed at another day. `backfill` on the active
 // session is what tells the workout screen to drop the clock and the rest timers, and tells
 // the finish path to file the workout where its date belongs instead of at the end.
-function LogPastWorkout({ close }) {
+// `initial` is a missed day of the plan (#284): its date, and the routines planned for it. A
+// combined day is offered as the one session it plans, next to each routine on its own.
+const PLANNED_DAY = '__planned-day'
+function LogPastWorkout({ initial, close }) {
   const st = useStore(s => s.S)
   const yesterday = new Date()
   yesterday.setDate(yesterday.getDate() - 1)
-  const [date, setDate] = useState(isoOf(yesterday))
+  const planned = []
+    .concat(initial?.routineIds || [])
+    .map(id => st.routines.find(r => r.id === id))
+    .filter(Boolean)
+  const [date, setDate] = useState(initial?.iso || isoOf(yesterday))
   const [time, setTime] = useState('18:00')
   const [dur, setDur] = useState(60)
-  const [routineId, setRoutineId] = useState('')
+  const [routineId, setRoutineId] = useState(planned.length > 1 ? PLANNED_DAY : planned[0]?.id || '')
   const today = todayISO()
-  const options = [{ value: '', label: t('Freestyle') }, ...st.routines.map(r => ({ value: r.id, label: r.name }))]
+  const options = [
+    { value: '', label: t('Freestyle') },
+    ...(planned.length > 1 ? [{ value: PLANNED_DAY, label: deriveSessionName(planned.map(r => r.name)) }] : []),
+    ...st.routines.map(r => ({ value: r.id, label: r.name })),
+  ]
 
   const go = replaceId => {
     close()
-    beginBackfill({ iso: date, time, durationMin: dur, routineId: routineId || null, replaceId })
+    const routineIds = routineId === PLANNED_DAY ? planned.map(r => r.id) : routineId ? [routineId] : []
+    beginBackfill({ iso: date, time, durationMin: Math.max(1, dur), routineIds, replaceId })
   }
   const submit = () => {
     if (!date || date > today) {
       toast(t('Pick a day up to today'))
+      return
+    }
+    if (!(dur >= 1)) {
+      toast(t('Enter how long it took — at least 1 minute.'))
       return
     }
     const existing = workoutsOn(st, date)
@@ -3935,12 +4139,19 @@ function LogPastWorkout({ close }) {
       </Row>
       <Stepper
         label={t('Duration')}
-        unit="min"
+        unit={t('min')}
         value={dur}
         step={5}
+        min={0}
         decimal={false}
-        onChange={v => setDur(Math.max(1, Math.round(v)))}
+        invalid={!(dur >= 1)}
+        onChange={v => setDur(Math.round(v))}
       />
+      {!(dur >= 1) && (
+        <div className="small" style={{ color: 'var(--red)', marginTop: 6 }}>
+          {t('Enter how long it took — at least 1 minute.')}
+        </div>
+      )}
       <div style={{ height: 8 }} />
       <SelectRow icon="dumbbell" title={t('Routine')} value={routineId} options={options} onChange={setRoutineId} />
       <div style={{ height: 18 }} />
@@ -3976,18 +4187,25 @@ function SameDayChoice({ iso, existing, onReplace, onAdd, close }) {
     </div>
   )
 }
-export function logPastWorkoutSheet() {
+// History's button hands this its click event; only a day from the plan counts as `initial`.
+export function logPastWorkoutSheet(initial) {
   if (S().active) {
     toast(t('Finish the current workout first.'))
     return
   }
-  ui().openSheet(close => <LogPastWorkout close={close} />)
+  const from = typeof initial?.iso === 'string' ? initial : null
+  ui().openSheet(close => <LogPastWorkout initial={from} close={close} />)
 }
-// Backfill stays single-routine (the LogPastWorkout UI is one picker), but it emits the new
-// shape: a one-element (or empty) routine list, per-entry rid, no top-level routineId.
-function beginBackfill({ iso, time, durationMin, routineId, replaceId }) {
+  // Backfill stays single-routine (the LogPastWorkout UI is one picker), but it emits the new
+  // shape: a one-element (or empty) routine list, per-entry rid, no top-level routineId.
+  // One routine from the picker, or every routine of a missed combined day.
+// Only from the history before that day (historyAsOf): a session logged later must not hand its
+// progression back to the day it skipped.
+function beginBackfill({ iso, time, durationMin, routineIds, replaceId }) {
   const st = S()
-  const { entries, routineIds: rids, routines } = buildCombinedEntries(st, routineId ? [routineId] : [])
+  const start = backfillStart(iso, time)
+  const past = historyAsOf(st, { d: iso, start, replaceId })
+  const { entries, routineIds: rids, routines } = buildCombinedEntries(past, routineIds || [])
   update(s => {
     s.active = {
       id: uid(),
@@ -4609,8 +4827,10 @@ function doFinishWorkout() {
   const past = !!A.backfill
   const prs = []
   const e1prs = []
-  // A workout logged into the past cannot claim records against the history that came after
-  // it, so a backfilled session reports none and leaves the confirmed weights alone.
+  // A workout logged into the past is held against the history before it, the way an edit of a
+  // saved one is (rebuildPrHistory, below): it gains a badge it leads with, and a later session
+  // it outdoes loses its own. It used to report none at all while the editor's Save awarded them
+  // (QA 1.3.9). The confirmed weights are left alone either way.
   if (!past)
     A.entries.forEach(e => {
       const loads = e.sets
@@ -4630,9 +4850,23 @@ function doFinishWorkout() {
     snapshotFor: e => (EXIDX[e.id]?.custom ? exerciseMuscleSnapshot(EXIDX[e.id]) : null),
   })
   w.vol = workoutVolume(w)
+  let shown = w
   update(s => {
     if (past) {
-      s.workouts = completeBackfill(s.workouts, A, w)
+      // Its start and end are in the past; the stamp says when it was logged, which is what a
+      // merge after a reset elsewhere asks of it (lib/sync-merge.js sinceReset).
+      stampWorkout(w)
+      const replaced = A.backfill.replaceId ? s.workouts.find(x => x.id === A.backfill.replaceId) : null
+      const touched = [
+        ...new Set(
+          [...(replaced?.entries || []), ...w.entries]
+            .map(e => e?.id)
+            .filter(id => id != null),
+        ),
+      ]
+      s.workouts = rebuildPrHistory(completeBackfill(s.workouts, A, w), touched, w)
+      shown = s.workouts.find(x => x === w || (w.id != null && x.id === w.id)) || w
+      prs.push(...[...(shown.prs || [])])
     } else {
       w.entries.forEach(e => {
         const mx = bestWeightForEntry(e)
@@ -4646,7 +4880,7 @@ function doFinishWorkout() {
   beep(snd(), 880, 0.15)
   beep(snd(), 1100, 0.15, 0.18)
   beep(snd(), 1320, 0.3, 0.36)
-  ui().openSheet(close => <FinishSummary w={w} prs={prs} e1prs={e1prs} close={close} />, {
+  ui().openSheet(close => <FinishSummary w={shown} prs={prs} e1prs={e1prs} close={close} />, {
     kind: 'center',
     locked: true,
   })
