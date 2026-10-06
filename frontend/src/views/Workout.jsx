@@ -1724,15 +1724,36 @@ function ActiveWorkout() {
     // This tap may be the only one before the hold's countdown beeps (a timed first exercise):
     // get the audio context running while it still counts as a gesture (iOS, #152).
     unlock(S.sound)
-    useUI.getState().startWork(e.sets[i].sec || 45, exerciseNameFor(exOr(e.id)), elapsed => {
+    // `sec` on a timed row is both the plan and the log, so writing what a part-held set managed
+    // would otherwise become the next hold's target — 3 seconds of a 30 second plank, and every
+    // hold after it is 3 seconds. planSec keeps the plan aside until the row is held to the end,
+    // ticked, or given a duration you typed yourself, and it never reaches S.workouts
+    // (lib/finish-workout.js).
+    const plan = (!e.sets[i].done && e.sets[i].planSec) || e.sets[i].sec || 45
+    useUI.getState().startWork(plan, exerciseNameFor(exOr(e.id)), (elapsed, { abandoned = false, chimed = false } = {}) => {
+      // A hold a rest displaced (useUI.abandonWork: a set ticked on another row, or another
+      // exercise) keeps its seconds and nothing else. It is not a finish: the row stays unticked
+      // and starts no rest, because the rest that displaced the hold is already counting down —
+      // and the plan it was held against is put aside so the row still knows what it is asking for.
+      if (abandoned) {
+        mutEntry(idx, en => {
+          if (en.sets[i].planSec == null && !en.sets[i].done) en.sets[i].planSec = plan
+          en.sets[i].sec = elapsed
+        })
+        return
+      }
       mutEntry(idx, en => {
         en.sets[i].sec = elapsed
+        delete en.sets[i].planSec
       })
-      if (!useStore.getState().S.active.entries[idx].sets[i].done) toggle(idx, i)
+      if (!useStore.getState().S.active.entries[idx].sets[i].done) toggle(idx, i, undefined, { quiet: chimed })
     })
   }
 
-  const toggle = (idx, i, side) => {
+  // `quiet`: the hold that ticks this set has just ended with the chime and its buzz pattern
+  // (store/useUI.js). The tick's own beep would sound over the chime's first note and clip it,
+  // and its short buzz would cut the pattern off: a new vibrate call replaces the running one.
+  const toggle = (idx, i, side, { quiet = false } = {}) => {
     // Ticking a set ends the typing in that row: drop the keyboard before the rest timer, the
     // effort sheet or the next exercise moves in. WebKit keeps the input focused across the
     // button tap, and a focused input with its keyboard gone is what leaves the tab bar
@@ -1753,9 +1774,12 @@ function ActiveWorkout() {
       if (side) e.sets[i] = toggleSide(e.sets[i], side)
       else e.sets[i].done = !e.sets[i].done
       checked = e.sets[i].done
+      if (checked && e.sets[i].planSec != null) delete e.sets[i].planSec
       if (e.sets[i].done) {
-        beep(S.sound, 1040, 0.12)
-        vibrate(30)
+        if (!quiet) {
+          beep(S.sound, 1040, 0.12)
+          vibrate(30)
+        }
         // The unit that owns the ticked set — not the marked one. Since !92 the marker no longer
         // follows a finished exercise, and in list mode any exercise can be worked on, so judging
         // the marker's unit here declared the workout complete after one set elsewhere.

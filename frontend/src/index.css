@@ -436,6 +436,9 @@ h4.sec{
 }
 .item:active{background:var(--surface-2)}
 .routine-list{position:relative}
+/* One column at every width (#277), whatever page it is on: the reorder measures its rows top
+   to bottom, and the desktop grid sat it in two columns on a computer. */
+#app .list.routine-list{display:flex;flex-direction:column}
 .routine-drag-row{touch-action:pan-y;-webkit-touch-callout:none;position:relative;transition:transform var(--fast) var(--ease)}
 .routine-list.is-reordering{user-select:none;-webkit-user-select:none}
 .routine-list.is-reordering .routine-drag-row{transition:none}
@@ -544,6 +547,16 @@ body.chips-dragging *{cursor:inherit}
 .search>svg{
   position:absolute;left:11px;top:50%;transform:translateY(-50%);z-index:1;
   width:16px;height:16px;stroke:var(--label-3);fill:none;stroke-width:2.1;stroke-linecap:round;
+}
+/* The live result count (Library and the exercise picker, from GitLab !31): a pill at the end
+   of the field while a search or filter narrows the list. The field makes room for it only while
+   it is there, so a long placeholder is not cut short for nothing. */
+.search.has-count .input{padding-inline-end:62px}
+.search .search-count{
+  position:absolute;inset-inline-end:9px;top:50%;transform:translateY(-50%);
+  font-size:12px;font-weight:600;line-height:1.4;color:var(--label-2);
+  background:var(--surface-3);padding:2px 8px;border-radius:99px;
+  font-variant-numeric:tabular-nums;pointer-events:none;user-select:none;
 }
 
 /* --- switch --- */
@@ -1289,10 +1302,10 @@ body.chips-dragging *{cursor:inherit}
   bottom:calc(96px + var(--sab));z-index:200;
   background:color-mix(in srgb,var(--surface-2) 88%,transparent);
   -webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);
-  border-radius:99px;padding:11px 20px;font-size:15px;font-weight:500;
+  border-radius:var(--r-xl);padding:11px 20px;font-size:15px;font-weight:500;
   box-shadow:0 10px 30px -6px rgba(0,0,0,.5);
   opacity:0;pointer-events:none;transition:opacity var(--med),transform var(--med) var(--ease);
-  max-width:88vw;text-align:center;
+  width:max-content;max-width:88vw;text-align:center;
 }
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
@@ -1422,7 +1435,7 @@ body.chips-dragging *{cursor:inherit}
   .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
   .cols>*{min-width:0}
   #app .list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  #modal-root .list,.narrow .list{display:flex;flex-direction:column}
+  #modal-root .list,#app .narrow .list{display:flex;flex-direction:column}
   .narrow{max-width:640px;margin:0 auto}
   .tiles{grid-template-columns:repeat(4,1fr)}
   .cols .tiles,.center .tiles{grid-template-columns:1fr 1fr}   /* a 300px dialog has no room for four */

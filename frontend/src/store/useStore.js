@@ -5,7 +5,8 @@ import { t } from '../lib/i18n.js'
 import { registerCustom } from '../lib/exercises.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { guestAllowed } from '../lib/guest.js'
-import { mergeStates, localExtras, mergeStampedMap } from '../lib/sync-merge.js'
+import { mergeStates, localExtras, mergeStampedMap, inUnitOf, stampRoutines, stampCustomEx, entryKey, keepReset, mergeResetIds, resetIdsOf } from '../lib/sync-merge.js'
+import { convertStateUnit } from '../lib/units.js'
 import { saveCoachDevice, coachDeviceSettings } from '../lib/coach-device.js'
 import { saveWorkoutEdit, deleteEditedWorkout } from '../lib/session-edit.js'
 
@@ -178,6 +179,14 @@ export const useStore = create((set, get) => {
     }
   }
   const writeSync = (rev, ts) => localStorage.setItem(SYNC_KEY, JSON.stringify({ rev, ts: ts || 0 }))
+  // A change the server has not seen: owed by a failed push, made during boot, or simply newer
+  // than the marker's timestamp. Read by importConflict to count this device's own unsent work.
+  const owes = () =>
+    localStorage.getItem('gym_dirty') === '1' ||
+    pushPending ||
+    pushTm !== null ||
+    !!pushing ||
+    (get().S._ts || 0) > (readSync()?.ts || 0)
   // What the banner shows a signed-in user: `offline` when the server could not be reached at
   // all, `pending` while a change is still owed to it (either way, or a push the server refused).
   const setSync = patch => {
@@ -263,14 +272,25 @@ export const useStore = create((set, get) => {
   // conditional on exactly the document that was merged. The merged copy is stamped — it is a
   // real change this device now holds — while `ts` in the marker stays old, so a pull that
   // happens before the push lands still sees it as unsent.
+  // The workout running on this device, carried from its copy into the one replacing it — in
+  // that copy's unit: a merge or a pull can bring the other device's switch to lb along, and a
+  // session left in kg would then log kg numbers under an lb label. A switch that only changed
+  // the label (`unitSet.convert === false`) relabels the session as it relabels the history.
+  const carryActive = (from, to) => {
+    const a = from?.active || null
+    const fu = from?.unit || 'kg'
+    const tu = to?.unit || 'kg'
+    return !a || fu === tu ? a : inUnitOf({ unit: fu, active: a }, to).active
+  }
   const mergeInto = (local, remote, rev) => {
     const merged = Object.assign(clone(DEF), mergeStates(local, remote))
-    merged.active = local.active || null
+    merged.active = carryActive(local, merged)
     persist(merged, false)
     writeSync(rev, readSync()?.ts || 0)
   }
   // Take the server's copy as this device's own, timestamp and all (see persist).
   const adopt = (next, rev) => {
+    next.active = carryActive(get().S, next)
     persist(next, false, false)
     writeSync(rev, next._ts)
   }
@@ -304,7 +324,7 @@ export const useStore = create((set, get) => {
     const S = get().S
     const remote = Object.assign(clone(DEF), state, { active: S.active || null })
     const merged = Object.assign(clone(DEF), mergeStates(S, remote))
-    merged.active = S.active || null
+    merged.active = carryActive(S, merged)
     if (JSON.stringify(merged) === JSON.stringify(S)) return // our own write, seen before its ack
     persist(merged, true) // merged copy is this device's now; the write rides the 1.5 s debounce
     writeSync(rev, sync.ts || 0) // the push that follows is conditional on exactly the merged doc
@@ -467,16 +487,67 @@ export const useStore = create((set, get) => {
     },
 
     // Mutate a draft of S via producer fn, then persist + schedule sync.
+    // Mutate a draft of S via producer fn, then persist + schedule sync. Every routine the change
+    // touched carries the time of it, for a conflict to keep the version edited last.
     update(mut, push = true) {
-      const S = clone(get().S)
+      const prev = get().S
+      const S = clone(prev)
       mut(S)
+      stampRoutines(prev.routines, S.routines)
+      stampCustomEx(prev.customEx, S.customEx)
       persist(S, push)
     },
     // A replace that is meant to reach the server (backup import, reset) is a deliberate
-    // overwrite, not a change to merge: the push it arms goes without a baseRev.
+    // overwrite, not a change to merge: the push it arms goes without a baseRev. It never takes
+    // the reset stamp back (keepReset).
     replaceState(S, push = false) {
       if (push) forceNext = true
-      persist(clone(S), push)
+      persist(keepReset(get().S, clone(S)), push)
+    },
+    // Before a backup replaces this copy (Settings — Import): the workouts the server holds that
+    // the backup does not — logged since it was made, or on another device meanwhile. The import
+    // is a deliberate replace and deletes them from the profile; the confirm says so and offers
+    // to merge them in instead (importBackup). null when there are none, when nobody is signed
+    // in, or when the server cannot be asked — the replace then goes as it always has.
+    async importConflict(backup) {
+      if (!get().user) return null
+      let res
+      try {
+        res = await api('/api/data')
+      } catch {
+        return null
+      }
+      const state = res?.state
+      if (!state) return null
+      const key = w => entryKey('workouts', w)
+      const inBackup = new Set((Array.isArray(backup?.workouts) ? backup.workouts : []).filter(Boolean).map(key))
+      const server = (Array.isArray(state.workouts) ? state.workouts : []).filter(Boolean)
+      const onServer = new Set(server.map(key))
+      const workouts = server.filter(w => !inBackup.has(key(w))).length
+      // This device's own workouts the server has not received yet go the same way, and count too.
+      const mine = owes()
+        ? (get().S.workouts || []).filter(w => w && !inBackup.has(key(w)) && !onServer.has(key(w))).length
+        : 0
+      return workouts + mine
+        ? { workouts: workouts + mine, state, rev: res.rev, local: mine > 0 || owes() }
+        : null
+    },
+    // A backup in place of this copy. With `mergeWith` — importConflict's answer — the server's
+    // copy is merged in instead of replaced (with this device's changes not yet on it, when there
+    // are any): the backup's settings and plan, every entry of all of them (mergeStates with the
+    // backup preferred, in the backup's unit), pushed against that revision like any other change,
+    // so a workout logged meanwhile elsewhere, or here, is not lost either.
+    importBackup(backup, { mergeWith } = {}) {
+      const next = Object.assign(clone(DEF), backup)
+      if (!mergeWith?.state || !get().user) {
+        get().replaceState(next, !!get().user)
+        return
+      }
+      const others = mergeWith.local ? mergeStates(get().S, mergeWith.state) : mergeWith.state
+      const merged = keepReset(get().S, Object.assign(clone(DEF), mergeStates(next, others, { prefer: 'a' })))
+      merged.active = next.active || null
+      persist(merged, true)
+      if (mergeWith.rev != null) writeSync(mergeWith.rev, 0)
     },
 
     // An edit of a saved workout (lib/session-edit.js) is saved or dropped like any other change:
@@ -502,6 +573,47 @@ export const useStore = create((set, get) => {
         removed = deleteEditedWorkout(S)
       })
       return removed
+    },
+    // Settings — unit. `convert` walks every stored weight into the new unit (lib/units.js); off,
+    // only the label changes. Either way the choice is stamped (`unitSet`), so a merge with a
+    // copy still in the old unit brings that copy over rather than mixing the two
+    // (lib/sync-merge.js), and a conversion goes to the server at once, as an ordinary
+    // conditional push: another device still logging in the old unit meets it on its very next
+    // push, and a copy it pushed first is converted before it is merged in.
+    setUnit(to, { convert = true } = {}) {
+      const S0 = get().S
+      if ((S0.unit || 'kg') === to) return null
+      const S = clone(convert ? convertStateUnit(S0, to) : { ...S0, unit: to })
+      S.unitSet = { at: Date.now(), convert }
+      persist(S, true)
+      return convert && get().ready ? get().pushState() : null
+    },
+    // Settings — Reset everything: the empty copy, stamped with when (`resetAt`). Pushed as a
+    // replace, and the stamp is what makes it hold: a device that has not seen the reset and
+    // still pushes a change of its own gets the 409, and its merge keeps only what that device
+    // made after the reset instead of bringing the whole profile back (lib/sync-merge.js).
+    //
+    // With it goes `resetIds`, the names of every entry the reset wiped: this copy's, the earlier
+    // resets' (a copy older than those too is still judged right), and the server's once it
+    // answers — it may hold entries this device never pulled. A device that has not seen the
+    // reset loses exactly those, and keeps whatever else it holds, whatever its dates say.
+    // Resolves once the server's names are in (or could not be had).
+    resetEverything() {
+      const cur = get().S
+      const S = clone(DEF)
+      S.resetAt = Math.max(Date.now(), (Number(cur.resetAt) || 0) + 1)
+      S.resetIds = mergeResetIds(cur.resetIds, resetIdsOf(cur))
+      get().replaceState(S, !!get().user)
+      if (!get().user) return Promise.resolve()
+      return api('/api/data')
+        .then(res => {
+          const now = get().S
+          if (!res?.state || now.resetAt !== S.resetAt) return
+          const ids = mergeResetIds(now.resetIds, mergeResetIds(res.state.resetIds, resetIdsOf(res.state)))
+          if (JSON.stringify(ids) === JSON.stringify(now.resetIds)) return
+          persist(Object.assign(clone(now), { resetIds: ids }), true)
+        })
+        .catch(() => {})
     },
 
     isGuest: () => localStorage.getItem('gym_guest') === '1',
@@ -597,7 +709,10 @@ export const useStore = create((set, get) => {
           if (rev == null) {
             localStorage.removeItem(SYNC_KEY)
             const restored = restoredStateFor(S, state, dirty)
-            if (restored) persist(restored, false, false)
+            if (restored) {
+              restored.active = carryActive(S, restored)
+              persist(restored, false, false)
+            }
             else if (hasData(S)) await get().pushState()
             return
           }
@@ -683,7 +798,7 @@ export const useStore = create((set, get) => {
       }
       if (keep) {
         const merged = Object.assign(clone(DEF), mergeStates(state, S, { prefer: 'a' }))
-        merged.active = S.active || null
+        merged.active = carryActive(S, merged)
         persist(merged, false)
         if (rev != null) writeSync(rev, 0)
         else localStorage.removeItem(SYNC_KEY)

@@ -74,7 +74,7 @@ describe('adoptProfile — sign-in takes the server profile', () => {
     expect(S.restSec).toBe(60)
     expect(S.workouts.map(w => w.id)).toEqual(['w1'])
     expect(S.routines.map(x => x.id)).toEqual(['r1'])
-    expect(S.active).toEqual({ id: 'running' }) // the in-progress session stays with the device
+    expect(S.active).toMatchObject({ id: 'running' }) // the in-progress session stays with the device, in the profile's unit
     expect(puts()).toHaveLength(0)
     expect(sync()).toEqual({ rev: 4, ts: 100 })
     expect(r).toEqual({ adopted: true, added: false })

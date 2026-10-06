@@ -5,7 +5,7 @@ import { EXDB, BODYPARTS, allExercises, equipmentOf, searchExercises } from '../
 import { MUSCLE_NAME } from '../lib/muscles.js'
 import { activeProfile, exAvailable } from '../lib/equipment.js'
 import { bestWeightFor } from '../lib/history.js'
-import { fmtNum } from '../lib/format.js'
+import { fmtNum, exCount } from '../lib/format.js'
 import { t, exerciseNameFor } from '../lib/i18n.js'
 import { Thumb } from '../components/Media.jsx'
 import { exerciseDetailSheet, addToRoutineSheet, customExSheet } from '../sheets.jsx'
@@ -37,6 +37,9 @@ export default function Library() {
   const f = sortFavouritesFirst(eqOn ? eqFiltered.filter(e => e.eq === eqOn) : eqFiltered, S)
   useRevealActiveChip(bpStrip, bp)
   useRevealActiveChip(eqStrip, eqOn)
+  // A live count at the end of the search field while a search or filter narrows the list
+  // (idea and first version: GitLab !31) — how many are left, before scrolling to find out.
+  const narrowed = !!(q.trim() || bp || eqOn)
 
   return (
     <>
@@ -49,7 +52,7 @@ export default function Library() {
           {t('By muscle')}
         </Button>
       </div>
-      <div className="search" style={{ marginBottom: 10 }}>
+      <div className={'search' + (narrowed ? ' has-count' : '')} style={{ marginBottom: 10 }}>
         <svg viewBox="0 0 24 24">
           <circle cx="11" cy="11" r="7" />
           <path d="m21 21-4.3-4.3" />
@@ -63,6 +66,11 @@ export default function Library() {
             setShown(40)
           }}
         />
+        {narrowed && (
+          <span className="search-count" role="status" aria-label={exCount(f.length)}>
+            {fmtNum(f.length)}
+          </span>
+        )}
       </div>
       {profile && (
         <div className="small dim row" style={{ margin: '-4px 2px 10px', gap: 6, alignItems: 'center' }}>
