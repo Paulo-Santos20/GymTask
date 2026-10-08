@@ -10,7 +10,7 @@ import { importCodeFromImage } from '../lib/scan.js'
 import { hasConsent } from '../lib/coach.js'
 import { DEMO } from '../lib/demo.js'
 import { fileToDataUrl, MENU_SYSTEM, parseMenu, parseEstimate } from '../lib/photo.js'
-import { photoEstimate, photoAsk } from '../lib/coach-api.js'
+import { photoEstimate, photoAsk, menuFromText } from '../lib/coach-api.js'
 import { todayISO, isoOf, fmtDate, fmtNum, uid, weekStartOf } from '../lib/format.js'
 import { LB_TO_KG } from '../lib/recovery.js'
 import { buildCombinedSeries } from '../lib/combined-chart.js'
@@ -63,6 +63,7 @@ export default function Nutrition() {
   const [menuState, setMenuState] = useState('idle') // idle | loading | error
   const [menuDishes, setMenuDishes] = useState([])
   const [menuDropped, setMenuDropped] = useState(() => new Set())
+  const [menuText, setMenuText] = useState('')
   const menuRef = useRef(null)
   const toast = useUI(s => s.toast)
 
@@ -194,6 +195,7 @@ export default function Nutrition() {
     setMenuState('idle')
     setMenuDishes([])
     setMenuDropped(new Set())
+    setMenuText('')
   }
   const closeAdd = () => {
     setAdding(null)
@@ -206,6 +208,7 @@ export default function Nutrition() {
     setMenuState('idle')
     setMenuDishes([])
     setMenuDropped(new Set())
+    setMenuText('')
   }
   // A suggestion tap only prefills the form for that section - confirmAdd stays the only
   // writer to the diary, the same contract the barcode flow follows above.
@@ -331,6 +334,29 @@ export default function Nutrition() {
     if (next.has(d)) next.delete(d)
     else next.add(d)
     setMenuDropped(next)
+  }
+  // The typed cardápio: same chips, same context path. The AI turns the written list into
+  // dishes (menuFromText) and they MERGE with anything a menu photo already read — the
+  // text box doubles as "add the dishes the photo missed". Consent-gated like every
+  // other AI path: typed or not, the menu still leaves the phone.
+  const interpretText = async ev => {
+    ev.preventDefault()
+    const raw = menuText.trim()
+    if (!raw) return
+    if (!hasConsent(S)) {
+      toast(t('Share your data with the Coach first'))
+      return
+    }
+    setMenuState('loading')
+    try {
+      const dishes = await menuFromText(raw)
+      if (!dishes.length) throw new Error('no dishes')
+      setMenuDishes(prev => [...new Set([...prev, ...dishes])].slice(0, 15))
+      setMenuText('')
+      setMenuState('idle')
+    } catch {
+      setMenuState('error')
+    }
   }
   const confirmAdd = () => {
     const scale = grams / 100
@@ -547,6 +573,22 @@ export default function Nutrition() {
                         </Button>
                       )}
                     </div>
+                    {!DEMO && (
+                      <form onSubmit={interpretText} style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                        <input
+                          type="text"
+                          className="field"
+                          style={{ flex: 1, minWidth: 0 }}
+                          value={menuText}
+                          onChange={e => setMenuText(e.target.value)}
+                          placeholder={t('Type the menu…')}
+                          aria-label={t('Type the menu…')}
+                        />
+                        <Button variant="tinted" icon="list" type="submit">
+                          {t('Interpret the menu')}
+                        </Button>
+                      </form>
+                    )}
                     <input
                       ref={fileRef}
                       type="file"

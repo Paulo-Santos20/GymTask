@@ -183,3 +183,46 @@ describe('photoAsk menu + context', () => {
     expect(out).toContain('Sopa')
   })
 })
+
+describe('menuFromText dispatch', () => {
+  it('a server-mode phone posts { task: menu, text } and parses the dish list', async () => {
+    stubFetch({ status: 200, body: { ok: true, results: ['Feijoada', 'Salada'] } })
+
+    const out = await coachApi.menuFromText('feijoada, salada')
+
+    expect(fetchCalls).toHaveLength(1)
+    expect(fetchCalls[0].url).toMatch(/\/api\/coach\/photo$/)
+    expect(JSON.parse(fetchCalls[0].opts.body)).toEqual({ task: 'menu', text: 'feijoada, salada' })
+    expect(out).toEqual(['Feijoada', 'Salada'])
+  })
+
+  it('BYOK spends its own key: text-only prompt, no image part', async () => {
+    useStore.setState({ coachLocal: { mode: 'byok', provider: 'groq', model: null, baseUrl: null } })
+    await setApiKey('gsk_photo_test')
+    stubFetch({
+      status: 200,
+      body: { choices: [{ message: { content: JSON.stringify({ dishes: ['Sopa'] }) } }] },
+    })
+    const { MENU_SYSTEM } = await import('./photo.js')
+
+    const out = await coachApi.menuFromText('sopa de legumes')
+
+    const body = JSON.parse(fetchCalls[0].opts.body)
+    expect(body.model).toBe('qwen/qwen3.8-27b')
+    // the adapter normalises a string prompt into one text part — no image part anywhere
+    expect(body.messages[1].content).toEqual([
+      { type: 'text', text: MENU_SYSTEM + '\nThe menu lists:\n' + 'sopa de legumes' },
+    ])
+    expect(out).toEqual(['Sopa'])
+  })
+
+  it('blank text is a no-op and the demo never sends anything', async () => {
+    stubFetch({ status: 200, body: { ok: true, results: [] } })
+    expect(await coachApi.menuFromText('   ')).toEqual([])
+    expect(fetchCalls).toHaveLength(0)
+
+    mocks.demo = true
+    await expect(coachApi.menuFromText('feijoada')).rejects.toThrow(/demo/)
+    expect(fetchCalls).toHaveLength(0)
+  })
+})

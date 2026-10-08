@@ -892,6 +892,7 @@ export const PT_BR_OVERRIDES = {
   'Reading the menu…': 'Lendo o cardápio…',
   'What did you eat?': 'O que você comeu?',
   'Select at least one dish': 'Selecione pelo menos um prato',
+  'Type the menu…': 'Digite o cardápio…',
   'Share your data with the Coach first': 'Compartilhe seus dados com o Treinador primeiro',
   'Your meal photos': 'Suas fotos de refeições',
   'Photos of meals you take, sent to the provider to estimate their macros.':

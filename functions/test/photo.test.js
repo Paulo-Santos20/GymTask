@@ -252,6 +252,32 @@ test('photo: a context string rides the macro prompt and is ignored for task men
   })
 })
 
+test('photo: task "menu" with text only reads the typed cardápio — no image part', async () => {
+  await withEnv({ GROQ_API_KEY: 'gsk_photo' }, async () => {
+    fetchCalls = []
+    fetchReply = {
+      status: 200,
+      body: { choices: [{ message: { content: JSON.stringify({ dishes: ['Feijoada', 'Salada'] }) } }] },
+    }
+    const res = await call(coach, { body: { task: 'menu', text: 'feijoada com arroz, salada de frango' } })
+    assert.equal(res.statusCode, 200, res.body)
+    const body = JSON.parse(fetchCalls[0].opts.body)
+    assert.equal(typeof body.messages[1].content, 'string', 'text-only rides a plain string content')
+    assert.ok(body.messages[1].content.includes('feijoada com arroz'), 'the typed menu reaches the prompt')
+    assert.deepEqual(parsed(res).results, ['Feijoada', 'Salada'])
+  })
+})
+
+test('photo: task "menu" without image AND without text -> 400 naming both', async () => {
+  await withEnv({ GROQ_API_KEY: 'gsk_photo' }, async () => {
+    fetchCalls = []
+    const res = await call(coach, { body: { task: 'menu' } })
+    assert.equal(res.statusCode, 400, res.body)
+    assert.match(parsed(res).error || '', /image or text/)
+    assert.equal(fetchCalls.length, 0)
+  })
+})
+
 test('photo: missing GROQ_API_KEY -> 400 naming it, no upstream call', async () => {
   await withEnv({ GROQ_API_KEY: undefined }, async () => {
     fetchCalls = []

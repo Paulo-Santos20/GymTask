@@ -5,12 +5,12 @@
 UI translation packs for the t() string layer. Every key is the English source string
 (`t('Save')` → `'Salvar'`); there is no message-id numbering.
 
-- `pt.js` — European Portuguese base pack (1568 entries). Not shipped as a runtime locale:
+- `pt.js` — European Portuguese base pack (1570 entries). Not shipped as a runtime locale:
   `LANGS` in `lib/i18n-core.js` only exposes `pt-BR`, so nothing ever loads it via `setLang`.
   It exists as the base layer of `pt-BR.js` and as the key-set reference for tests.
 - `pt-BR.js` — the app's only real locale. `import pt from './pt.js'`, exports
-  `PT_BR_OVERRIDES` (874 Brazilian-specific entries) and
-  `export default { ...pt, ...PT_BR_OVERRIDES }` (pt-BR.js:1136), i.e. base + override merge.
+  `PT_BR_OVERRIDES` (875 Brazilian-specific entries) and
+  `export default { ...pt, ...PT_BR_OVERRIDES }` (pt-BR.js:1137), i.e. base + override merge.
 
 ## Design
 

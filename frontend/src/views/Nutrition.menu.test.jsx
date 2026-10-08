@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   fileToDataUrl: vi.fn(),
   photoEstimate: vi.fn(),
   photoAsk: vi.fn(),
+  menuFromText: vi.fn(),
   demo: false,
 }))
 
@@ -35,7 +36,11 @@ vi.mock('../lib/photo.js', async importOriginal => ({
   ...(await importOriginal()),
   fileToDataUrl: mocks.fileToDataUrl,
 }))
-vi.mock('../lib/coach-api.js', () => ({ photoEstimate: mocks.photoEstimate, photoAsk: mocks.photoAsk }))
+vi.mock('../lib/coach-api.js', () => ({
+  photoEstimate: mocks.photoEstimate,
+  photoAsk: mocks.photoAsk,
+  menuFromText: mocks.menuFromText,
+}))
 vi.mock('../lib/demo.js', () => ({
   get DEMO() {
     return mocks.demo
@@ -110,6 +115,7 @@ beforeEach(() => {
   mocks.fileToDataUrl.mockReset()
   mocks.photoEstimate.mockReset()
   mocks.photoAsk.mockReset()
+  mocks.menuFromText.mockReset()
   mocks.demo = false
   document.body.innerHTML = ''
 })
@@ -222,5 +228,89 @@ describe('menu photo -> dishes -> meal photo', () => {
     expect(host.textContent).toContain('Could not read that menu')
     expect(panel.querySelectorAll('.chip')).toHaveLength(0)
     expect(mealPhotoButton(host)).toBeTruthy()
+  })
+})
+
+describe('typed menu -> AI -> dishes', () => {
+  const interpretForm = panel => panel.querySelector('form')
+
+  async function typeAndSubmit(panel, text) {
+    const form = interpretForm(panel)
+    expect(form).toBeTruthy()
+    const input = form.querySelector('input[type="text"]')
+    expect(input).toBeTruthy()
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
+      setter.call(input, text)
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => {
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+  }
+
+  it('without Coach consent the submit asks for sharing and nothing leaves the device', async () => {
+    setConsent(false)
+    const host = render()
+    const panel = openPanel(host)
+
+    await typeAndSubmit(panel, 'feijoada, salada')
+
+    expect(mocks.toast).toHaveBeenCalledWith('Share your data with the Coach first')
+    expect(mocks.menuFromText).not.toHaveBeenCalled()
+  })
+
+  it('a consented typed menu becomes chips and clears the input', async () => {
+    setConsent(true)
+    mocks.menuFromText.mockResolvedValue(['Feijoada', 'Suco de laranja'])
+
+    const host = render()
+    const panel = openPanel(host)
+    await typeAndSubmit(panel, 'feijoada com arroz, suco')
+
+    expect(mocks.menuFromText).toHaveBeenCalledWith('feijoada com arroz, suco')
+    const chips = [...panel.querySelectorAll('.chip')]
+    expect(chips.map(c => c.textContent)).toEqual(['Feijoada', 'Suco de laranja'])
+    expect(panel.querySelector('form input[type="text"]').value).toBe('')
+  })
+
+  it('typed dishes MERGE with what a menu photo already read', async () => {
+    setConsent(true)
+    mocks.fileToDataUrl.mockResolvedValue('data:image/jpeg;base64,QUJD')
+    mocks.photoAsk.mockResolvedValueOnce(MENU_JSON)
+    mocks.menuFromText.mockResolvedValue(['Feijoada', 'Pudim'])
+
+    const host = render()
+    const panel = openPanel(host)
+    await act(async () => {
+      menuButton(host).click()
+    })
+    await chooseFile(panel, 'Menu photo', 'menu.jpg')
+    await typeAndSubmit(panel, 'feijoada, pudim')
+
+    const chips = [...panel.querySelectorAll('.chip')].map(c => c.textContent)
+    expect(chips).toEqual(['Feijoada', 'Salada de frango', 'Sopa de legumes', 'Pudim'])
+  })
+
+  it('a failed read shows the fallback line and the panel stays usable', async () => {
+    setConsent(true)
+    mocks.menuFromText.mockRejectedValue(new Error('provider down'))
+
+    const host = render()
+    const panel = openPanel(host)
+    await typeAndSubmit(panel, 'feijoada')
+
+    expect(host.textContent).toContain('Could not read that menu')
+    expect(panel.querySelectorAll('.chip')).toHaveLength(0)
+    expect(panel.querySelector('form input[type="text"]').value).toBe('feijoada')
+  })
+
+  it('the demo build hides the whole typed-menu form — a demo never sends a menu', async () => {
+    mocks.demo = true
+    setConsent(true)
+    const host = render()
+    const panel = openPanel(host)
+    expect(interpretForm(panel)).toBeNull()
+    expect(mocks.menuFromText).not.toHaveBeenCalled()
   })
 })

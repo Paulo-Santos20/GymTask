@@ -453,17 +453,27 @@ async function coachPhoto(req, res) {
   const body = bodyOf(req)
   if (body === null) return send(req, res, 400, { ok: false, error: 'body must be valid JSON' })
   const image = typeof body.image === 'string' ? body.image : ''
-  if (!image)
+  const isMenu = body.task === 'menu'
+  // The cardápio reader also takes the menu TYPED in: task:'menu' answers from `text` when
+  // no photo is attached (same prompt, same dish-list answer). Text is capped well under
+  // the photo body budget so a paste cannot ride the image allowance.
+  const menuText = isMenu && !image && typeof body.text === 'string' ? body.text.trim().slice(0, 2000) : ''
+  if (!image && !menuText)
     return send(req, res, 400, {
       ok: false,
-      error: 'image is required - send { "image": "data:image/jpeg;base64,..." }',
+      error: isMenu
+        ? 'image or text is required - send { "image": "data:image/jpeg;base64,..." } or { "task": "menu", "text": "Feijoada, Salada" }'
+        : 'image is required - send { "image": "data:image/jpeg;base64,..." }',
     })
-  if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image))
+  if (image && !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image))
     return send(req, res, 400, { ok: false, error: 'image must be a base64 data URL (data:image/jpeg;base64,...)' })
-  const isMenu = body.task === 'menu'
   const prompt = isMenu ? MENU_PROMPT : PHOTO_PROMPT
   const context = !isMenu && typeof body.context === 'string' ? body.context.trim().slice(0, 400) : ''
-  const userText = context ? prompt + '\nThe meal contains: ' + context : prompt
+  const userText = menuText
+    ? prompt + '\nThe menu lists:\n' + menuText
+    : context
+      ? prompt + '\nThe meal contains: ' + context
+      : prompt
   const key = process.env.GROQ_API_KEY
   if (!key)
     return send(req, res, 400, {
@@ -488,10 +498,14 @@ async function coachPhoto(req, res) {
           { role: 'system', content: prompt },
           {
             role: 'user',
-            content: [
-              { type: 'text', text: userText },
-              { type: 'image_url', image_url: { url: image } },
-            ],
+            // Text-only menu reads ride a plain string content; every image path keeps the
+            // multimodal array the vision docs (and the existing tests) pin.
+            content: menuText
+              ? userText
+              : [
+                  { type: 'text', text: userText },
+                  { type: 'image_url', image_url: { url: image } },
+                ],
           },
         ],
       }),

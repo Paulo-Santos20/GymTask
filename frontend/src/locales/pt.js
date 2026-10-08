@@ -1564,6 +1564,8 @@ export default {
   'Could not read that menu': 'Não foi possível ler esse cardápio',
   'What did you eat?': 'O que comeste?',
   'Select at least one dish': 'Seleciona pelo menos um prato',
+  'Type the menu…': 'Escreve o cardápio…',
+  'Interpret the menu': 'Interpretar o cardápio',
   'Share your data with the Coach first': 'Partilha os teus dados com o Treinador primeiro',
   'Your meal photos': 'As tuas fotos de refeições',
   'Photos of meals you take, sent to the provider to estimate their macros.':

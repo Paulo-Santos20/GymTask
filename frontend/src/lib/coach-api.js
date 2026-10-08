@@ -11,7 +11,7 @@ import { DEMO } from './demo.js'
 import { t } from './i18n.js'
 import { nutritionSnapshot } from './coach.js'
 import { getApiKey } from './coach-secrets.js'
-import { PHOTO_MODEL, PHOTO_SYSTEM, parseEstimate } from './photo.js'
+import { PHOTO_MODEL, PHOTO_SYSTEM, MENU_SYSTEM, parseEstimate, parseMenu } from './photo.js'
 import { useStore } from '../store/useStore.js'
 import { useNutritionStore } from '../store/nutritionStore.js'
 import { useUI } from '../store/useUI.js'
@@ -374,6 +374,35 @@ export const photoAsk = async (image, { system = PHOTO_SYSTEM, menu = false, con
   return data && data.results
 }
 export const photoEstimate = async image => ({ results: parseEstimate(await photoAsk(image)) })
+// The cardápio READ FROM TEXT: same MENU_SYSTEM prompt and parseMenu answer as the photo
+// menu, no image on the wire. Same consent/demo backstops as photoAsk — typed or not, the
+// menu still leaves the phone for the provider.
+export const menuFromText = async text => {
+  if (DEMO) throw new Error('menu reads are disabled in the demo')
+  const body = String(text || '').trim()
+  if (!body) return []
+  const device = useStore.getState().coachLocal
+  if (device && device.mode === 'byok' && device.provider === 'groq') {
+    const key = await getApiKey()
+    if (key) {
+      const { default: groq } = await import('../../../api/coach/core/adapters/groq.js')
+      const out = await groq.invoke({
+        cfg: { providerOptions: { groq: { baseUrl: device.baseUrl || undefined } } },
+        prompt: [{ type: 'text', text: MENU_SYSTEM + '\nThe menu lists:\n' + body }],
+        env: { GROQ_API_KEY: key },
+        model: PHOTO_MODEL,
+        timeoutMs: 45000,
+      })
+      if (out.code !== 0) throw new Error(out.stderr || 'the provider refused the request')
+      return parseMenu(out.text)
+    }
+  }
+  const data = await server('/api/coach/photo', {
+    method: 'POST',
+    body: JSON.stringify({ task: 'menu', text: body }),
+  })
+  return parseMenu(data && data.results)
+}
 // The room: anonymous medians across the profiles on this instance that opted in. Only a
 // server has a room; a phone with its own key and the demo both answer locally.
 export const cohortStats = async () =>
