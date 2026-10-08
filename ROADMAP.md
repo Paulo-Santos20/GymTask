@@ -37,7 +37,11 @@ verdes; Actions ✅, demo no GitHub Pages ✅, bundle da Vercel no ar com os fea
   - Nutritionix: `NUTRITIONIX_APP_ID` + `NUTRITIONIX_APP_KEY` (plano gratuito)
   - VAPID: `VITE_FIREBASE_VAPID_KEY` (push diário, opcional)
 - **Deploy Vercel** — ✅ projeto já importado com **Root Directory = `frontend/`** (obrigatório: sem isso a Vercel tenta registrar os ~240 `.js` de `api/` como Serverless Functions e o plano Hobby estoura no limite de 12; as functions de verdade rodam no Firebase) e build verde no ar desde 2026-09-28; bundle de produção já serve os features desta rodada (verificado ao vivo em 2026-10-05). Env `VITE_FIREBASE_*` já no ar (8 production - 6 `VITE_FIREBASE_*` + `VITE_IMG_BASE`/`VITE_GIF_BASE` - e 6 preview, adicionadas via CLI/API em 2026-09-28/29); **falta**: `VITE_NUTRITION_PROXY_URL` (depende do deploy das functions — ver [docs/DEPLOY_VERCEL.md](docs/DEPLOY_VERCEL.md)) e adicionar o domínio em Authentication → Authorized domains.
-- **Deploy Firebase** — rules ✅ no ar; falta `firebase deploy --only functions` (espera `XAI_API_KEY`/`NUTRITIONIX_*` em `functions/.env`).
+- **Deploy Firebase** — rules ✅ no ar; `firebase deploy --only functions` **adiado por
+  decisão (2026-10-08)**: exige Blaze e o billing está travado (perfil de pagamento com
+  CPF alheio não dá pra trocar/fechar; Google limita a 1 PF por país). Sem Blaze nada
+  quebra: coach/foto/cardápio BYOK Groq é client-side; a function destrava modo servidor,
+  Nutritionix e jobs agendados. `functions/.env` já tem `GROQ_API_KEY` nesta máquina.
 - **Demo no GitHub Pages** — ✅ no ar em https://paulo-santos20.github.io/GymTask/ (Pages habilitado com build via Actions em 2026-10-05; workflow `pages.yml` verde; só redeploya quando `frontend/**` muda).
 - **Dependabot** — 2 PRs de dependências criados antes do fix do job `functions` falharam no CI antigo; re-base/merge quando quiser (o fix `31885c1` resolve o teste; as versões propostas são só bumps de frontend).
 

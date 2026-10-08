@@ -184,8 +184,15 @@ NUTRITIONIX_APP_KEY=...
    → URL da function `nutritionProxy` (pós-deploy das functions) e adicionar o domínio
    Vercel em Authentication → Authorized domains.
 7. **Firebase**: ~~trocar placeholder no `.firebaserc`~~ ✅ (`gymtask-ce4b6`);
-   ~~`firestore.rules` deploy~~ ✅ (no ar). **Falta**: `firebase deploy --only functions`
-   (espera `XAI_API_KEY`/`NUTRITIONIX_*` em `functions/.env`).
+   ~~`firestore.rules` deploy~~ ✅ (no ar). **Deploy das functions adiado por decisão
+   (2026-10-08)**: exige plano Blaze; o billing do projeto está bloqueado (conta `015760-…`
+   "Pagamento do Firebase" criada mas `open: false`; o Google permite só 1 perfil PF por
+   país e o perfil existente tem CPF que não é o do usuário). **Enquanto isso**: tudo que
+   existe funciona no Spark — coach chat/foto/cardápio BYOK Groq é 100% client-side
+   (`coach-api.js`), nutrição usa OFF/USDA. O Blaze só destrava modo servidor do coach,
+   `nutritionProxy` (Nutritionix), rotina semanal e lembrete diário. Quando o billing
+   abrir: `functions/.env` já está gravado nesta máquina (gitignored, `GROQ_API_KEY`);
+   falta `XAI_API_KEY`/`NUTRITIONIX_*` opcionais → `firebase deploy --only functions`.
 8. ~~**README/docs do repo**~~ ✅ — reescritos para GymTask (Vercel/Firebase) por `bg_d2e34ae5`
    (`README.md`, `ROADMAP.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `SECURITY.md`, `docs/*.md`).
 9. ~~**`api/openapi.yaml`**: surface do coach**~~ ✅ — tags `coach`/`functions`, 10 rotas coach
