@@ -5,12 +5,12 @@ import { useStore } from '../store/useStore.js'
 import { adaptiveTDEE, MIN_PAIRED_DAYS } from '../lib/tdee-adaptive.js'
 import { searchFoods } from '../lib/foods.js'
 import { suggestFoods, mealForHour } from '../lib/meal-suggest.js'
-import { searchExternal } from '../lib/foodApis.js'
+import { searchExternal, lookupBarcode } from '../lib/foodApis.js'
 import { importCodeFromImage } from '../lib/scan.js'
 import { hasConsent } from '../lib/coach.js'
 import { DEMO } from '../lib/demo.js'
-import { fileToDataUrl } from '../lib/photo.js'
-import { photoEstimate } from '../lib/coach-api.js'
+import { fileToDataUrl, MENU_SYSTEM, parseMenu, parseEstimate } from '../lib/photo.js'
+import { photoEstimate, photoAsk } from '../lib/coach-api.js'
 import { todayISO, isoOf, fmtDate, fmtNum, uid, weekStartOf } from '../lib/format.js'
 import { LB_TO_KG } from '../lib/recovery.js'
 import { buildCombinedSeries } from '../lib/combined-chart.js'
@@ -58,6 +58,12 @@ export default function Nutrition() {
   const [photoState, setPhotoState] = useState('idle') // idle | loading | error
   const [photoHits, setPhotoHits] = useState([])
   const photoRef = useRef(null)
+  // Menu-assisted estimate: a cardápio photo -> the dishes the AI read -> the user taps
+  // out what they did NOT eat -> the meal photo goes with the kept names as context.
+  const [menuState, setMenuState] = useState('idle') // idle | loading | error
+  const [menuDishes, setMenuDishes] = useState([])
+  const [menuDropped, setMenuDropped] = useState(() => new Set())
+  const menuRef = useRef(null)
   const toast = useUI(s => s.toast)
 
   const profile = useNutritionStore(s => s.profile)
@@ -185,6 +191,9 @@ export default function Nutrition() {
     setOnlineState('idle')
     setPhotoState('idle')
     setPhotoHits([])
+    setMenuState('idle')
+    setMenuDishes([])
+    setMenuDropped(new Set())
   }
   const closeAdd = () => {
     setAdding(null)
@@ -194,6 +203,9 @@ export default function Nutrition() {
     setOnlineState('idle')
     setPhotoState('idle')
     setPhotoHits([])
+    setMenuState('idle')
+    setMenuDishes([])
+    setMenuDropped(new Set())
   }
   // A suggestion tap only prefills the form for that section - confirmAdd stays the only
   // writer to the diary, the same contract the barcode flow follows above.
@@ -206,15 +218,17 @@ export default function Nutrition() {
     setPicked(f)
     setGrams(100)
   }
-  // A decoded barcode goes through the SAME external search the query box uses (searchExternal
-  // → Open Food Facts/USDA, lib/foodApis.js). A hit prefills the entry for a one-tap confirm;
-  // a miss drops the code into the search field so the panel settles into its own existing
-  // "No matches for {0}" / error state — the flow a typed query already lands in.
+  // A decoded barcode is a product CODE, not a search term: lookupBarcode hits the OFF
+  // product endpoint for that exact EAN/UPC first (the text search used to come back empty
+  // for bare codes) and only then falls back to the shared external search. A hit prefills
+  // the entry for a one-tap confirm; a miss drops the code into the search field so the
+  // panel settles into its own existing "No matches for {0}" / error state — the flow a
+  // typed query already lands in.
   const lookupCode = async value => {
     const code = String(value || '').trim()
     if (!code) return
     try {
-      const found = await searchExternal(code)
+      const found = await lookupBarcode(code)
       if (found.length) pick(found[0])
       else setQuery(code)
     } catch {
@@ -266,11 +280,18 @@ export default function Nutrition() {
     ev.target.value = ''
     if (!file) return
     if (!hasConsent(S)) return
+    const kept = menuDishes.filter(d => !menuDropped.has(d))
+    if (menuDishes.length && !kept.length) {
+      toast(t('Select at least one dish'))
+      return
+    }
     setPhotoState('loading')
     setPhotoHits([])
     try {
       const image = await fileToDataUrl(file)
-      const out = await photoEstimate(image)
+      const out = kept.length
+        ? { results: parseEstimate(await photoAsk(image, { context: kept.join(', ') })) }
+        : await photoEstimate(image)
       const results = (out && out.results) || []
       if (!results.length) throw new Error('no foods')
       setPhotoHits(results)
@@ -278,6 +299,38 @@ export default function Nutrition() {
     } catch {
       setPhotoState('error')
     }
+  }
+  // The menu read: one photo of the cardápio in, the dish list the user prunes below.
+  const startMenu = () => {
+    if (!hasConsent(S)) {
+      toast(t('Share your data with the Coach first'))
+      return
+    }
+    menuRef.current?.click()
+  }
+  const onMenuFile = async ev => {
+    const file = ev.target.files && ev.target.files[0]
+    ev.target.value = ''
+    if (!file) return
+    if (!hasConsent(S)) return
+    setMenuState('loading')
+    setMenuDishes([])
+    setMenuDropped(new Set())
+    try {
+      const image = await fileToDataUrl(file)
+      const dishes = parseMenu(await photoAsk(image, { system: MENU_SYSTEM, menu: true }))
+      if (!dishes.length) throw new Error('no dishes')
+      setMenuDishes(dishes)
+      setMenuState('idle')
+    } catch {
+      setMenuState('error')
+    }
+  }
+  const toggleDish = d => {
+    const next = new Set(menuDropped)
+    if (next.has(d)) next.delete(d)
+    else next.add(d)
+    setMenuDropped(next)
   }
   const confirmAdd = () => {
     const scale = grams / 100
@@ -488,6 +541,11 @@ export default function Nutrition() {
                           {t('Photo of the meal')}
                         </Button>
                       )}
+                      {!DEMO && (
+                        <Button variant="tinted" icon="image" onClick={startMenu}>
+                          {t('Menu photo')}
+                        </Button>
+                      )}
                     </div>
                     <input
                       ref={fileRef}
@@ -507,6 +565,38 @@ export default function Nutrition() {
                         aria-label={t('Photo of the meal')}
                         onChange={onPhotoFile}
                       />
+                    )}
+                    {!DEMO && (
+                      <input
+                        ref={menuRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        hidden
+                        aria-label={t('Menu photo')}
+                        onChange={onMenuFile}
+                      />
+                    )}
+                    {menuState === 'loading' && <div className="nut-st">{t('Reading the menu…')}</div>}
+                    {menuState === 'error' && <div className="nut-st err">{t('Could not read that menu')}</div>}
+                    {menuDishes.length > 0 && (
+                      <Section title={t('What did you eat?')}>
+                        <div className="nut-pad">
+                          <div className="nut-chips">
+                            {menuDishes.map(d => (
+                              <button
+                                key={d}
+                                type="button"
+                                className={'chip' + (menuDropped.has(d) ? '' : ' on')}
+                                aria-pressed={!menuDropped.has(d)}
+                                onClick={() => toggleDish(d)}
+                              >
+                                {d}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </Section>
                     )}
                     {photoState === 'loading' && <div className="nut-st">{t('Analyzing the photo…')}</div>}
                     {photoState === 'error' && <div className="nut-st err">{t('Could not analyze that photo')}</div>}

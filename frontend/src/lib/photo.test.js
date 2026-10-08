@@ -4,7 +4,7 @@
 // touches the network or the DOM (fileToDataUrl is exercised through the view's module mock,
 // the same seam scan-web uses).
 import { describe, expect, it } from 'vitest'
-import { PHOTO_MODEL, PHOTO_SYSTEM, fitWithin, parseEstimate } from './photo.js'
+import { MENU_SYSTEM, PHOTO_MODEL, PHOTO_SYSTEM, fitWithin, parseEstimate, parseMenu } from './photo.js'
 
 describe('fitWithin', () => {
   it('scales a landscape photo to the max edge keeping the aspect ratio', () => {
@@ -82,4 +82,28 @@ it('names the approved vision model and the JSON contract the prompt pins', () =
   expect(PHOTO_MODEL).toBe('qwen/qwen3.8-27b')
   expect(PHOTO_SYSTEM).toMatch(/foods/)
   expect(PHOTO_SYSTEM).toMatch(/confidence/)
+})
+
+describe('parseMenu', () => {
+  it('parses the model JSON text into a clean dish list', () => {
+    const out = parseMenu(JSON.stringify({ dishes: ['Feijoada', '  ', '  feijoada ', 'Salada de frango', 42, null] }))
+    expect(out).toEqual(['Feijoada', 'Salada de frango'])
+  })
+
+  it('accepts the server string array and caps at 15', () => {
+    expect(parseMenu(['Prato 1', 'Prato 2'])).toEqual(['Prato 1', 'Prato 2'])
+    expect(parseMenu(Array.from({ length: 20 }, (_, i) => 'Dish ' + i))).toHaveLength(15)
+  })
+
+  it('answers empty for garbage instead of throwing', () => {
+    expect(parseMenu('not json')).toEqual([])
+    expect(parseMenu(null)).toEqual([])
+    expect(parseMenu({ dishes: 'nope' })).toEqual([])
+    expect(parseMenu([])).toEqual([])
+  })
+
+  it('pins the cardápio prompt contract the server copy mirrors', () => {
+    expect(MENU_SYSTEM).toMatch(/dishes/)
+    expect(MENU_SYSTEM).toMatch(/cardápio/)
+  })
 })

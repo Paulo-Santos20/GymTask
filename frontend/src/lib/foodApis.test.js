@@ -4,7 +4,14 @@
 // results" — while a single failing source still fails soft against the survivors.
 // Network is fully stubbed (vi.stubGlobal('fetch', ...) — the pattern from coach-local.test.js).
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { searchUSDA, searchOFF, searchNutritionix, searchExternal, nutritionixProxy } from './foodApis.js'
+import {
+  searchUSDA,
+  searchOFF,
+  searchNutritionix,
+  searchExternal,
+  lookupBarcode,
+  nutritionixProxy,
+} from './foodApis.js'
 
 const jsonRes = data => ({ ok: true, json: async () => data })
 
@@ -103,6 +110,59 @@ describe('searchOFF', () => {
       name: 'Suco de Laranja',
       per100g: { kcal: 100, protein: 5, carbs: 0, fat: 0 },
     })
+  })
+})
+
+describe('lookupBarcode', () => {
+  it('a numeric EAN goes to the OFF product endpoint first — the exact product, one fetch', async () => {
+    fetchMock.mockResolvedValue(
+      jsonRes({
+        status: 1,
+        product: {
+          product_name: 'Granola 400 g',
+          nutriments: { 'energy-kcal_100g': 450, proteins_100g: 10, carbohydrates_100g: 60, fat_100g: 15 },
+        },
+      }),
+    )
+
+    const out = await lookupBarcode('7891000100103')
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).toContain('/api/v2/product/7891000100103.json')
+    expect(out).toEqual([
+      { source: 'off', name: 'Granola 400 g', per100g: { kcal: 450, protein: 10, carbs: 60, fat: 15 } },
+    ])
+  })
+
+  it('a product the endpoint does not know falls through to the shared search', async () => {
+    fetchMock.mockImplementation(url =>
+      Promise.resolve(
+        String(url).includes('/api/v2/product/')
+          ? jsonRes({ status: 0, status_verbose: 'product not found' })
+          : String(url).includes('nal.usda.gov')
+            ? jsonRes({
+                foods: [{ description: 'Granola', foodNutrients: [{ nutrientId: 1008, value: 450 }] }],
+              })
+            : jsonRes({ products: [] }),
+      ),
+    )
+
+    const out = await lookupBarcode('7899999999999')
+
+    expect(out).toHaveLength(1)
+    expect(out[0].source).toBe('usda')
+    expect(fetchMock.mock.calls[0][0]).toContain('/api/v2/product/7899999999999.json')
+    expect(fetchMock.mock.calls[1][0]).toContain('nal.usda.gov')
+  })
+
+  it('a non-numeric code and blank input skip the product endpoint', async () => {
+    fetchMock.mockResolvedValue(jsonRes({ foods: [], products: [] }))
+    await lookupBarcode('')
+    await lookupBarcode('   ')
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    await lookupBarcode('ABC-123')
+    expect(fetchMock.mock.calls[0][0]).not.toContain('/api/v2/product/')
   })
 })
 

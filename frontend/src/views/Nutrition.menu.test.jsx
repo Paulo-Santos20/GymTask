@@ -1,10 +1,10 @@
 // @vitest-environment happy-dom
-// RF10 (roadmap-features todo 10): photo -> macro estimate in the add-food panel. The plan's
-// QA pair, red first: consent OFF -> the tap asks for sharing and NOTHING leaves the device;
-// consent ON -> the photo goes through lib/photo + coach-api (both stubbed here, no network),
-// the candidates land as rows, one tap prefills the existing grams form and confirmAdd is
-// still the only writer. Demo build -> the button does not exist (a demo never sends photos).
-// Mock seam mirrors Nutrition.barcode.test.jsx (useUI/foodApis/scan/CameraScan + css).
+// The menu-assisted estimate: a cardápio photo -> the dishes the AI read as chips (all on)
+// -> the user taps out what they did NOT eat -> the meal photo goes through photoAsk with
+// the kept names as context, and the candidates land in the SAME pick/confirmAdd form.
+// Consent OFF -> nothing leaves the device, same backstop as the plain meal photo.
+// photo.js keeps its real MENU_SYSTEM/parseMenu/parseEstimate (only fileToDataUrl is
+// stubbed); coach-api's photoAsk/photoEstimate are module-mocked, no network.
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -31,11 +31,9 @@ vi.mock('../lib/foodApis.js', () => ({ searchExternal: mocks.searchExternal, loo
 vi.mock('../lib/scan.js', () => ({ importCodeFromImage: mocks.importCodeFromImage }))
 vi.mock('../components/CameraScan.jsx', () => ({ default: function FakeCamera() {} }))
 vi.mock('../nutrition.css', () => ({}))
-vi.mock('../lib/photo.js', () => ({
+vi.mock('../lib/photo.js', async importOriginal => ({
+  ...(await importOriginal()),
   fileToDataUrl: mocks.fileToDataUrl,
-  MENU_SYSTEM: 'MENU_SYSTEM',
-  parseMenu: () => [],
-  parseEstimate: () => [],
 }))
 vi.mock('../lib/coach-api.js', () => ({ photoEstimate: mocks.photoEstimate, photoAsk: mocks.photoAsk }))
 vi.mock('../lib/demo.js', () => ({
@@ -47,17 +45,15 @@ vi.mock('../lib/demo.js', () => ({
 import Nutrition from './Nutrition.jsx'
 import { useNutritionStore } from '../store/nutritionStore.js'
 import { useStore } from '../store/useStore.js'
+import { MENU_SYSTEM } from '../lib/photo.js'
 import { todayISO } from '../lib/format.js'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
-const CANDIDATE = {
-  name: 'Arroz com frango',
-  source: 'photo',
-  grams: 300,
-  per100g: { kcal: 150, protein: 15, carbs: 20, fat: 3 },
-  confidence: 0.87,
-}
+const MENU_JSON = JSON.stringify({ dishes: ['Feijoada', 'Salada de frango', 'Sopa de legumes'] })
+const MEAL_JSON = JSON.stringify({
+  foods: [{ name: 'Feijoada', grams: 250, kcal: 400, protein: 25, carbs: 30, fat: 18, confidence: 0.8 }],
+})
 
 function setConsent(on) {
   const s = useStore.getState().S || {}
@@ -87,12 +83,14 @@ function openPanel(host) {
   return host.querySelector('.nut-add')
 }
 
-const photoButton = host => [...host.querySelectorAll('button')].find(b => b.textContent.includes('Photo of the meal'))
+const menuButton = host => [...host.querySelectorAll('button')].find(b => b.textContent.includes('Menu photo'))
+const mealPhotoButton = host =>
+  [...host.querySelectorAll('button')].find(b => b.textContent.includes('Photo of the meal'))
 
-async function choosePhoto(panel) {
-  const input = panel.querySelector('input[capture]')
+async function chooseFile(panel, label, name) {
+  const input = [...panel.querySelectorAll('input[type="file"]')].find(i => i.getAttribute('aria-label') === label)
   expect(input).toBeTruthy()
-  const file = new File(['x'], 'meal.jpg', { type: 'image/jpeg' })
+  const file = new File(['x'], name, { type: 'image/jpeg' })
   Object.defineProperty(input, 'files', { value: [file], configurable: true })
   await act(async () => {
     input.dispatchEvent(new Event('change', { bubbles: true }))
@@ -107,6 +105,7 @@ beforeEach(() => {
   mocks.toast.mockClear()
   mocks.openSheet.mockClear()
   mocks.searchExternal.mockReset()
+  mocks.lookupBarcode.mockReset()
   mocks.importCodeFromImage.mockReset()
   mocks.fileToDataUrl.mockReset()
   mocks.photoEstimate.mockReset()
@@ -120,94 +119,108 @@ afterEach(() => {
   })
 })
 
-describe('meal photo estimate', () => {
+describe('menu photo -> dishes -> meal photo', () => {
   it('without Coach consent the tap asks for sharing and nothing leaves the device', async () => {
     setConsent(false)
     const host = render()
     openPanel(host)
 
-    const btn = photoButton(host)
-    expect(btn).toBeTruthy()
     await act(async () => {
-      btn.click()
+      menuButton(host).click()
     })
 
     expect(mocks.toast).toHaveBeenCalledWith('Share your data with the Coach first')
     expect(mocks.fileToDataUrl).not.toHaveBeenCalled()
-    expect(mocks.photoEstimate).not.toHaveBeenCalled()
+    expect(mocks.photoAsk).not.toHaveBeenCalled()
   })
 
-  it('a consented photo prefills an editable entry and one tap adds it', async () => {
+  it('reads the menu, prunes a dish, and the meal photo carries only the kept names', async () => {
     setConsent(true)
     mocks.fileToDataUrl.mockResolvedValue('data:image/jpeg;base64,QUJD')
-    mocks.photoEstimate.mockResolvedValue({ results: [CANDIDATE] })
+    mocks.photoAsk.mockResolvedValueOnce(MENU_JSON).mockResolvedValueOnce(MEAL_JSON)
 
     const host = render()
     const panel = openPanel(host)
-    const btn = photoButton(host)
-    expect(btn).toBeTruthy()
+
     await act(async () => {
-      btn.click()
+      menuButton(host).click()
+    })
+    await chooseFile(panel, 'Menu photo', 'menu.jpg')
+
+    expect(mocks.photoAsk).toHaveBeenNthCalledWith(1, 'data:image/jpeg;base64,QUJD', {
+      system: MENU_SYSTEM,
+      menu: true,
     })
 
-    const file = await choosePhoto(panel)
-    expect(mocks.fileToDataUrl).toHaveBeenCalledWith(file)
-    expect(mocks.photoEstimate).toHaveBeenCalledWith('data:image/jpeg;base64,QUJD')
+    const chips = [...panel.querySelectorAll('.chip')]
+    expect(chips.map(c => c.textContent)).toEqual(['Feijoada', 'Salada de frango', 'Sopa de legumes'])
+    chips.forEach(c => expect(c.className).toContain('on'))
 
-    const row = [...panel.querySelectorAll('.lrow')].find(r => r.textContent.includes('Arroz com frango'))
+    // tap out what was NOT eaten
+    await act(async () => {
+      chips[0].click()
+    })
+    expect([...panel.querySelectorAll('.chip')][0].className).not.toContain('on')
+
+    await chooseFile(panel, 'Photo of the meal', 'meal.jpg')
+
+    expect(mocks.photoAsk).toHaveBeenNthCalledWith(2, 'data:image/jpeg;base64,QUJD', {
+      context: 'Salada de frango, Sopa de legumes',
+    })
+
+    const row = [...panel.querySelectorAll('.lrow')].find(r => r.textContent.includes('Feijoada'))
     expect(row).toBeTruthy()
-    expect(row.textContent).toContain('87%')
     await act(async () => {
       row.click()
     })
-
     const pick = host.querySelector('.nut-pick')
-    expect(pick).toBeTruthy()
-    expect(pick.textContent).toContain('Arroz com frango')
     const add = [...pick.querySelectorAll('button')].find(b => b.textContent.includes('Add'))
-    expect(add).toBeTruthy()
     await act(async () => {
       add.click()
     })
 
     const entry = useNutritionStore.getState().log[todayISO()][0]
-    expect(entry).toMatchObject({
-      meal: 'cafe',
-      name: 'Arroz com frango',
-      source: 'photo',
-      grams: 300,
-      kcal: 450,
-      protein: 45,
-      carbs: 60,
-      fat: 9,
-    })
+    expect(entry).toMatchObject({ name: 'Feijoada', source: 'photo', grams: 250, kcal: 400 })
   })
 
-  it('a failed estimate (429 or offline) shows the fallback line and manual entry stays open', async () => {
+  it('dropping every dish blocks the meal photo with a toast — no wasted vision call', async () => {
     setConsent(true)
     mocks.fileToDataUrl.mockResolvedValue('data:image/jpeg;base64,QUJD')
-    mocks.photoEstimate.mockRejectedValue(Object.assign(new Error('rate limit'), { status: 429 }))
+    mocks.photoAsk.mockResolvedValueOnce(MENU_JSON)
 
     const host = render()
     const panel = openPanel(host)
     await act(async () => {
-      photoButton(host).click()
+      menuButton(host).click()
     })
-    await choosePhoto(panel)
+    await chooseFile(panel, 'Menu photo', 'menu.jpg')
 
-    expect(host.textContent).toContain('Could not analyze that photo')
-    expect(useNutritionStore.getState().log[todayISO()] ?? []).toHaveLength(0)
+    for (const chip of [...panel.querySelectorAll('.chip')]) {
+      await act(async () => {
+        chip.click()
+      })
+    }
+    await chooseFile(panel, 'Photo of the meal', 'meal.jpg')
+
+    expect(mocks.toast).toHaveBeenCalledWith('Select at least one dish')
+    expect(mocks.photoAsk).toHaveBeenCalledTimes(1)
     expect(host.querySelector('.nut-add')).toBeTruthy()
-    expect(photoButton(host)).toBeTruthy()
   })
 
-  it('the demo build never shows the photo button, so a demo never sends a photo', async () => {
-    mocks.demo = true
+  it('an unreadable menu shows the fallback line and the panel stays usable', async () => {
     setConsent(true)
+    mocks.fileToDataUrl.mockResolvedValue('data:image/jpeg;base64,QUJD')
+    mocks.photoAsk.mockRejectedValueOnce(new Error('no menu'))
+
     const host = render()
-    openPanel(host)
-    expect(photoButton(host)).toBeUndefined()
-    expect(host.querySelector('input[capture]')).toBeNull()
-    expect(mocks.photoEstimate).not.toHaveBeenCalled()
+    const panel = openPanel(host)
+    await act(async () => {
+      menuButton(host).click()
+    })
+    await chooseFile(panel, 'Menu photo', 'menu.jpg')
+
+    expect(host.textContent).toContain('Could not read that menu')
+    expect(panel.querySelectorAll('.chip')).toHaveLength(0)
+    expect(mealPhotoButton(host)).toBeTruthy()
   })
 })

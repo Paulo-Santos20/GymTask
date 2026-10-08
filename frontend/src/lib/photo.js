@@ -11,6 +11,12 @@ export const PHOTO_SYSTEM =
   '{"foods":[{"name":string,"grams":number,"kcal":number,"protein":number,"carbs":number,"fat":number,"confidence":number}]}. ' +
   'grams is the estimated portion size of that item; kcal, protein, carbs and fat are TOTALS for that portion. ' +
   'confidence is between 0 and 1. List at most 5 foods you can actually see, with Portuguese (pt-BR) names.'
+// The cardápio reader behind the same photo route (task: 'menu' on the server, the BYOK
+// path's system text on the phone). Byte-copied into functions/index.js like PHOTO_SYSTEM.
+export const MENU_SYSTEM =
+  'You read a menu photo (a cardápio). Reply ONLY with JSON: ' +
+  '{"dishes":[string]}. List each distinct dish or meal option you can read, ' +
+  'with Portuguese (pt-BR) names, at most 15. No descriptions, no prices.'
 
 const MAX_EDGE = 1024
 const JPEG_QUALITY = 0.7
@@ -84,22 +90,43 @@ function toEntry(f) {
   }
 }
 
+/** Model JSON text -> value, tolerating the fences/wrap prose models sometimes add. */
+function parseJsonText(text) {
+  try {
+    return JSON.parse(text)
+  } catch {
+    const s = text.indexOf('{')
+    const e = text.lastIndexOf('}')
+    try {
+      return s >= 0 && e > s ? JSON.parse(text.slice(s, e + 1)) : null
+    } catch {
+      return null
+    }
+  }
+}
+
+/** Model JSON text | server string array -> dish names, trimmed, deduped, ≤ 15. */
+export function parseMenu(input) {
+  let value = input
+  if (typeof value === 'string') value = parseJsonText(value)
+  const dishes = Array.isArray(value) ? value : value && Array.isArray(value.dishes) ? value.dishes : []
+  const out = []
+  const seen = new Set()
+  for (const d of dishes) {
+    if (typeof d !== 'string') continue
+    const name = d.trim().slice(0, 60)
+    const key = name.toLowerCase()
+    if (!name || seen.has(key)) continue
+    seen.add(key)
+    out.push(name)
+  }
+  return out.slice(0, 15)
+}
+
 /** Model JSON text | server result array | {foods}/{results} -> editable candidates, ≤ 5. */
 export function parseEstimate(input) {
   let value = input
-  if (typeof value === 'string') {
-    try {
-      value = JSON.parse(value)
-    } catch {
-      const s = value.indexOf('{')
-      const e = value.lastIndexOf('}')
-      try {
-        value = s >= 0 && e > s ? JSON.parse(value.slice(s, e + 1)) : null
-      } catch {
-        value = null
-      }
-    }
-  }
+  if (typeof value === 'string') value = parseJsonText(value)
   const foods = Array.isArray(value)
     ? value
     : value && Array.isArray(value.foods)

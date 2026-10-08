@@ -208,6 +208,50 @@ test('photo: happy path wires Groq vision JSON mode and normalises the foods', a
   })
 })
 
+test('photo: task "menu" swaps in the cardápio prompt and answers a clean dish list', async () => {
+  await withEnv({ GROQ_API_KEY: 'gsk_photo' }, async () => {
+    fetchCalls = []
+    fetchReply = {
+      status: 200,
+      body: {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({ dishes: ['Feijoada', '  ', '  feijoada ', 'Salada', 42, null] }),
+            },
+          },
+        ],
+      },
+    }
+    const res = await call(coach, { body: { image: IMG, task: 'menu' } })
+    assert.equal(res.statusCode, 200, res.body)
+    const body = JSON.parse(fetchCalls[0].opts.body)
+    assert.ok(/dishes/.test(body.messages[0].content), 'the menu prompt names the dishes contract')
+    assert.deepEqual(parsed(res).results, ['Feijoada', 'Salada'], 'trimmed, deduped, junk dropped')
+  })
+})
+
+test('photo: a context string rides the macro prompt and is ignored for task menu', async () => {
+  await withEnv({ GROQ_API_KEY: 'gsk_photo' }, async () => {
+    fetchCalls = []
+    fetchReply = { status: 200, body: UPSTREAM_OK }
+    const res = await call(coach, { body: { image: IMG, context: 'Arroz, Frango' } })
+    assert.equal(res.statusCode, 200, res.body)
+    const user = JSON.parse(fetchCalls[0].opts.body).messages[1].content
+    assert.ok(user[0].text.includes('Arroz, Frango'), 'the kept dish names reach the prompt')
+
+    fetchCalls = []
+    fetchReply = {
+      status: 200,
+      body: { choices: [{ message: { content: JSON.stringify({ dishes: ['Sopa'] }) } }] },
+    }
+    const menu = await call(coach, { body: { image: IMG, task: 'menu', context: 'should be ignored' } })
+    assert.equal(menu.statusCode, 200, menu.body)
+    const menuUser = JSON.parse(fetchCalls[0].opts.body).messages[1].content
+    assert.ok(!menuUser[0].text.includes('should be ignored'), 'context belongs to the macro prompt only')
+  })
+})
+
 test('photo: missing GROQ_API_KEY -> 400 naming it, no upstream call', async () => {
   await withEnv({ GROQ_API_KEY: undefined }, async () => {
     fetchCalls = []

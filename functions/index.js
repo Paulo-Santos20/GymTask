@@ -385,6 +385,14 @@ const PHOTO_PROMPT =
   '{"foods":[{"name":string,"grams":number,"kcal":number,"protein":number,"carbs":number,"fat":number,"confidence":number}]}. ' +
   'grams is the estimated portion size of that item; kcal, protein, carbs and fat are TOTALS for that portion. ' +
   'confidence is between 0 and 1. List at most 5 foods you can actually see, with Portuguese (pt-BR) names.'
+// Byte-identical copy of MENU_SYSTEM in frontend/src/lib/photo.js — the cardápio reader
+// behind the same route (body task: 'menu'). Two allowlisted prompts, never an arbitrary
+// system text: the server key is not a prompt playground. The optional body.context
+// (kept dish names from a menu scan) is appended to the MACRO prompt only.
+const MENU_PROMPT =
+  'You read a menu photo (a cardápio). Reply ONLY with JSON: ' +
+  '{"dishes":[string]}. List each distinct dish or meal option you can read, ' +
+  'with Portuguese (pt-BR) names, at most 15. No descriptions, no prices.'
 
 /** One model food -> an editable candidate, or null (wrong shape, out of range, junk). */
 function normalisePhotoFood(f) {
@@ -421,6 +429,22 @@ function isPhotoRoute(req) {
   return typeof p === 'string' && p.includes('/api/coach/photo')
 }
 
+/** Menu model answer -> trimmed, deduped dish names, ≤ 15 (mirrors photo.js parseMenu). */
+function normaliseMenuDishes(parsed) {
+  const dishes = parsed && Array.isArray(parsed.dishes) ? parsed.dishes : []
+  const out = []
+  const seen = new Set()
+  for (const d of dishes) {
+    if (typeof d !== 'string') continue
+    const name = d.trim().slice(0, 60)
+    const key = name.toLowerCase()
+    if (!name || seen.has(key)) continue
+    seen.add(key)
+    out.push(name)
+  }
+  return out.slice(0, 15)
+}
+
 async function coachPhoto(req, res) {
   if (preflight(req, res)) return
   if (rateLimited(req, res)) return
@@ -436,6 +460,10 @@ async function coachPhoto(req, res) {
     })
   if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image))
     return send(req, res, 400, { ok: false, error: 'image must be a base64 data URL (data:image/jpeg;base64,...)' })
+  const isMenu = body.task === 'menu'
+  const prompt = isMenu ? MENU_PROMPT : PHOTO_PROMPT
+  const context = !isMenu && typeof body.context === 'string' ? body.context.trim().slice(0, 400) : ''
+  const userText = context ? prompt + '\nThe meal contains: ' + context : prompt
   const key = process.env.GROQ_API_KEY
   if (!key)
     return send(req, res, 400, {
@@ -457,11 +485,11 @@ async function coachPhoto(req, res) {
         max_tokens: 1500,
         response_format: { type: 'json_object' },
         messages: [
-          { role: 'system', content: PHOTO_PROMPT },
+          { role: 'system', content: prompt },
           {
             role: 'user',
             content: [
-              { type: 'text', text: PHOTO_PROMPT },
+              { type: 'text', text: userText },
               { type: 'image_url', image_url: { url: image } },
             ],
           },
@@ -500,6 +528,7 @@ async function coachPhoto(req, res) {
 
   const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content
   const parsed = extractJson(typeof content === 'string' ? content : '')
+  if (isMenu) return send(req, res, 200, { ok: true, results: normaliseMenuDishes(parsed) })
   const foods = parsed && Array.isArray(parsed.foods) ? parsed.foods : []
   const results = foods.map(normalisePhotoFood).filter(Boolean).slice(0, 5)
   return send(req, res, 200, { ok: true, results })

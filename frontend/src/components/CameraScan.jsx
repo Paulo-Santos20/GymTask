@@ -17,6 +17,12 @@ import { Button } from '../components/ui.jsx'
 export default function CameraScan({ onFound, onCancel, formats, hint }) {
   const videoRef = useRef(null)
   const [error, setError] = useState(null)
+  // The sheet render-prop hands a FRESH inline onFound on every parent render (a store tick
+  // anywhere re-renders the sheet), so it must not sit in the effect deps: that stopped and
+  // reopened the camera mid-scan. The latest callback rides a ref; the effect owns the
+  // camera lifetime only.
+  const onFoundRef = useRef(onFound)
+  onFoundRef.current = onFound
 
   useEffect(() => {
     let stream = null,
@@ -64,7 +70,7 @@ export default function CameraScan({ onFound, onCancel, formats, hint }) {
           }
           if (code && !done) {
             stop()
-            onFound(code)
+            onFoundRef.current(code)
             return
           }
         }
@@ -73,7 +79,7 @@ export default function CameraScan({ onFound, onCancel, formats, hint }) {
       tick()
     })()
     return stop
-  }, [onFound])
+  }, [formats])
 
   return (
     <>

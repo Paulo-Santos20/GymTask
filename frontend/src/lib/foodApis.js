@@ -78,6 +78,25 @@ export async function searchUSDA(query) {
   return out
 }
 
+/** One OFF product (search row or product endpoint) -> the shared entry shape, or null. */
+function offEntry(p) {
+  const name = (p?.product_name || p?.generic_name || '').trim()
+  if (!name) return null
+  const n = p.nutriments || {}
+  const kcal = num(n['energy-kcal_100g']) ?? (num(n['energy_100g']) != null ? round1(n['energy_100g'] / 4.184) : null)
+  if (kcal == null && num(n['proteins_100g']) == null) return null
+  return {
+    source: 'off',
+    name,
+    per100g: {
+      kcal: kcal ?? 0,
+      protein: num(n['proteins_100g']) ?? 0,
+      carbs: num(n['carbohydrates_100g']) ?? 0,
+      fat: num(n['fat_100g']) ?? 0,
+    },
+  }
+}
+
 export async function searchOFF(query) {
   const url =
     'https://world.openfoodfacts.org/cgi/search.pl?json=1&action=process&page_size=8' +
@@ -87,23 +106,32 @@ export async function searchOFF(query) {
   const data = await fetchJSON(url)
   const out = []
   for (const p of data.products || []) {
-    const name = (p.product_name || p.generic_name || '').trim()
-    if (!name) continue
-    const n = p.nutriments || {}
-    const kcal = num(n['energy-kcal_100g']) ?? (num(n['energy_100g']) != null ? round1(n['energy_100g'] / 4.184) : null)
-    if (kcal == null && num(n['proteins_100g']) == null) continue
-    out.push({
-      source: 'off',
-      name,
-      per100g: {
-        kcal: kcal ?? 0,
-        protein: num(n['proteins_100g']) ?? 0,
-        carbs: num(n['carbohydrates_100g']) ?? 0,
-        fat: num(n['fat_100g']) ?? 0,
-      },
-    })
+    const e = offEntry(p)
+    if (e) out.push(e)
   }
   return out
+}
+
+// A retail barcode is a product code, not a search term: the text endpoints guess against
+// their whole index (and the DEMO_KEY/OFF search often comes back empty or 503 for a bare
+// EAN), while the v2 product endpoint answers with THAT product. Numeric codes (EAN/UPC,
+// 8-13 digits) go there first; a miss or a non-numeric code falls through to the shared
+// searchExternal so nothing regresses.
+export async function lookupBarcode(code) {
+  const c = String(code || '').trim()
+  if (!c) return []
+  if (/^\d{8,13}$/.test(c)) {
+    try {
+      const data = await fetchJSON(
+        'https://world.openfoodfacts.org/api/v2/product/' + c + '.json?fields=product_name,generic_name,nutriments',
+      )
+      const hit = data && data.status === 1 ? offEntry(data.product) : null
+      if (hit) return [hit]
+    } catch {
+      /* fall through to the shared search */
+    }
+  }
+  return searchExternal(c)
 }
 
 export const nutritionixProxy = () => {

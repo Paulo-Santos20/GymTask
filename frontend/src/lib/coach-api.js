@@ -333,16 +333,21 @@ export const requestMealPlan = async () => {
       : server('/api/coach/mealplan', { method: 'POST', body: JSON.stringify({ nutrition }), sse: true })
 }
 
-/* RF10: one photo -> the vision estimate. The view enforces hasConsent before this is ever
-   called and hides the whole control in the demo; the throw below is the structural
-   backstop behind "a demo never sends a photo". A BYOK phone whose provider is Groq spends
-   its own key through the EXISTING adapter (the phone's key, the phone's request - the
-   array prompt rides chatCompletionsSpec's `content: prompt` unchanged, so JSON mode and
-   the vision parts need no adapter edits); every other keyed configuration posts to the
-   server route on the same VITE_COACH_FUNCTION_URL base every coach request uses. Both
-   paths answer the same editable candidates (lib/photo.js parseEstimate). */
-export const photoEstimate = async image => {
+/* RF10: one photo -> the vision answer, as raw model text (BYOK) or the server's normalised
+   results array. `menu` swaps the prompt for the cardápio reader (photo.js MENU_SYSTEM /
+   the route's task:'menu' branch — two allowlisted prompts, never arbitrary text on the
+   server key); `context` appends the kept dish names to the macro prompt, the
+   menu-assisted estimate. The view enforces hasConsent before this is ever called and
+   hides the whole control in the demo; the throw below is the structural backstop behind
+   "a demo never sends a photo". A BYOK phone whose provider is Groq spends its own key
+   through the EXISTING adapter (the phone's key, the phone's request - the array prompt
+   rides chatCompletionsSpec's `content: prompt` unchanged); every other keyed
+   configuration posts to the server route on the same VITE_COACH_FUNCTION_URL base every
+   coach request uses. Both paths answer candidates parseEstimate accepts and dish lists
+   parseMenu accepts. */
+export const photoAsk = async (image, { system = PHOTO_SYSTEM, menu = false, context = '' } = {}) => {
   if (DEMO) throw new Error('photo estimates are disabled in the demo')
+  const promptText = context ? system + '\nThe meal contains: ' + context : system
   const device = useStore.getState().coachLocal
   if (device && device.mode === 'byok' && device.provider === 'groq') {
     const key = await getApiKey()
@@ -351,7 +356,7 @@ export const photoEstimate = async image => {
       const out = await groq.invoke({
         cfg: { providerOptions: { groq: { baseUrl: device.baseUrl || undefined } } },
         prompt: [
-          { type: 'text', text: PHOTO_SYSTEM },
+          { type: 'text', text: promptText },
           { type: 'image_url', image_url: { url: image } },
         ],
         env: { GROQ_API_KEY: key },
@@ -359,12 +364,16 @@ export const photoEstimate = async image => {
         timeoutMs: 45000,
       })
       if (out.code !== 0) throw new Error(out.stderr || 'the vision provider refused the request')
-      return { results: parseEstimate(out.text) }
+      return out.text
     }
   }
-  const data = await server('/api/coach/photo', { method: 'POST', body: JSON.stringify({ image }) })
-  return { results: parseEstimate(data && data.results) }
+  const body = { image }
+  if (menu) body.task = 'menu'
+  if (context) body.context = context
+  const data = await server('/api/coach/photo', { method: 'POST', body: JSON.stringify(body) })
+  return data && data.results
 }
+export const photoEstimate = async image => ({ results: parseEstimate(await photoAsk(image)) })
 // The room: anonymous medians across the profiles on this instance that opted in. Only a
 // server has a room; a phone with its own key and the demo both answer locally.
 export const cohortStats = async () =>

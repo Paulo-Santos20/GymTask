@@ -132,7 +132,7 @@ NUTRITIONIX_APP_KEY=...
 | — | Card Nutrition no Home | ✅ concluído | link `/nutrition` em `views/Home.jsx`; rota existia desde o módulo |
 | — | Rebrand do prompt do Coach + URLs upstream no `openapi` | ✅ concluído | `system-prompt.js`, `prompts/common.md` (+ `prompts.js` regenerado), `functions/index.js` → "GymTask Coach"; assertion `jobs.test.js:458` ajustada; comentários `config.js:19`/`node-fetch.js:10`; `openapi.yaml` (browse/contact/derived → fork) + `website/api.html` regenerado (16 endpoints); `build-coach-assets.mjs` normaliza CRLF (o `--check` do CI é byte-compare, agora estável entre plataformas); `scripts/` (hevy-id-map comments, tempdir `gytask-pt-br-`). Verificado: jobs 1/1, adapters-http 19/19, `--check` verde, greps `openGym Coach`/`inside openGym` = 0. Mantidos por contrato: `opengym_plan: 1`, salt HKDF `opengym-coach-v1`, UA `opengym-coach/` |
 | — | Rodada de features 2026-10-04/05 (3 planos, 50 todos) | ✅ concluído | audit-fixes (31 + F1–F4): segurança functions (CORS allowlist/rate limit/payload caps + guard de bytes no `PUT /api/data`), `firebase-admin` 12→14, suíte `functions/` e lint Biome no CI, a11y (diálogo/aria-labels `t()`/nomes), perf (React.lazy + vendor split, selectors/memo), ~150 testes novos, FCM diário, dead-code/docs. top5-features (7): TDEE adaptativo, proteína por refeição, landmarks musculares (série + presets + edição), memória do Coach (`recent` + PRs), aderência. roadmap-features (12): barcode, deload, onSnapshot, SSE streaming, gráfico combinado, plano alimentar, receitas, revisão semanal agendada, sugestão de refeição, foto→macros (Groq), Apple Health (Shortcuts), bateria final — ver ROADMAP "Entregue" |
-| — | Build + testes centrais | ✅ **verde** (contagens 2026-10-05, pós-paridade upstream) | `npm run build` exit 0; `npm test` **2526/2526** (218 arquivos, 1 skip); `check-locales` **1563/1563** (2 locales in sync); `check-source-strings --strict` **0** pendências (1158 strings traduzidas); fingerprint `b9e98403…25209f` (inherited **692** / overrides **871**); fatigue-probe ✅; `mcp` **88/88** + `node-loadable`; `api` **205 pass / 0 fail**; `functions` **46/46**; gate Biome ✅ |
+| — | Build + testes centrais | ✅ **verde** (contagens 2026-10-05, pós-nutrição) | `npm run build` exit 0; `npm test` **2540/2540** (219 arquivos, 1 skip); `check-locales` **1568/1568** (2 locales in sync); `check-source-strings --strict` **0** pendências (1163 strings traduzidas); fingerprint `bfe30211…f8b91c` (inherited **694** / overrides **874**); fatigue-probe ✅; `mcp` **88/88** + `node-loadable`; `api` **205 pass / 0 fail**; `functions` **48/48**; gate Biome ✅ |
 | — | Paridade com upstream (merge-base `de7f25c` → upstream `e88062e`; fases 0–6, mídia fora de escopo) | ✅ concluído | merges em `main` + esta rodada: sync core do store portado do upstream (meta por cópia em `WeakMap`, base `gym_sync` + `gym_dirty` para o que se deve ao servidor, listener de `storage` em `gym_sync` → `checkRev(true)`, ação `syncNow()`; teste `useStore.tabs.test.jsx` 10/10), CoachIntake/CoachSetup/CoachChat (fast-failure, demo-failure, cleartext), grip/impressão/progressão/troca de exercício, cartão de peso no Home, nova rotina no Plan, pausa/pronto do descanso, unidade/reset/import sync; **gates de string/locale**: 16 chaves novas em `pt.js` (inherited 676→692), mojibake UTF-8 duplo em 8 arquivos (84 ocorrências — `â€”`→`—` etc. + `Â·`/`Â©`) corrigido na origem, rebrand `Use my self-hosted openGym` → `GymTask` (`CoachSetup.jsx` + teste) |
 | — | Deploy Vercel/PWA | 🟡 configs no ar | Projeto `gymtask-jtu8` linkado (`.vercel/` gitignored); **envs 8 production + 6 preview** (6 `VITE_FIREBASE_*` em ambas + `VITE_IMG_BASE`/`VITE_GIF_BASE` em production) via CLI/API (2026-09-28/29); `rootDirectory=frontend` + build settings (`npm ci`/`npm run build`/`dist`) corrigidos via API PATCH; `vercel.json` **duplicado idêntico** (raiz + `frontend/`) com comandos relativos. Dois erros de build resolvidos: `cd: frontend: No such file or directory` (cwd já era o Root Directory) e limite de **12 Serverless Functions do Hobby** (Root Directory vazia via `api/` ~240 `.js`; agora `api/` fica fora do projeto Vercel — functions ficam no Firebase). Build verde ✅ (`1601e6c` READY 2026-09-28 21:18, headers PWA verificados ao vivo); falta `VITE_NUTRITION_PROXY_URL` |
 | — | Firebase deploy config | ✅ em produção | `firebase.json` (nodejs22), `.firebaserc` → **`gymtask-ce4b6`** (placeholder trocado 2026-09-28), `firestore.rules` **deployed** (`firebase deploy --only firestore:rules` exit 0, rules released) |
@@ -304,7 +304,19 @@ cd functions && npm install
 
 ---
 
-*Última atualização: 2026-10-05 — **paridade com upstream** (fases 0–6 do plano de merge,
+*Última atualização: 2026-10-05 — **nutrição: cardápio→foto→macros + barcode**. Novo fluxo
+"Foto do cardápio" (leitura do cardápio com `MENU_SYSTEM`/`parseMenu`, chips que excluem o
+não comido, e a foto da refeição vai com os pratos mantidos como `context` — rota `/photo`
+ganhou `task:'menu'` e `context`, dois prompts allowlistados no server key), barcode
+consertado (`lookupBarcode` → endpoint de produto OFF v2 para EANs numéricos, antes da
+busca textual; `CameraScan` não reinicia mais a câmera a cada render — `onFound` em ref).
+5 chaves de locale (3 com override pt-BR). **Contagens 2026-10-05 (local)**: frontend
+vitest **2540/2540 (219 arq, 1 skip)**, `npm run build` exit 0, `check-locales`
+**1568/1568**, `check-source-strings --strict` 0 (1163 strings), fingerprint
+`bfe30211…f8b91c` (inherited 694 / overrides 874), fatigue-probe ✅, `functions` **48/48**,
+gate Biome ✅.*
+
+*Anterior (2026-10-05) — **paridade com upstream** (fases 0–6 do plano de merge,
 mídia/Fase 4 fora de escopo por decisão): sync core por aba no store portado, testes
 upstream (grip/impressão/progressão/troca/Coach/weight-card/add-routine), 16 chaves de
 locale, mojibake corrigido + rebrand final. **Contagens 2026-10-05 (local)**: frontend

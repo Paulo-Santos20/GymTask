@@ -137,3 +137,49 @@ describe('photoEstimate dispatch', () => {
     expect(fetchCalls).toHaveLength(0)
   })
 })
+
+describe('photoAsk menu + context', () => {
+  it('menu: the server route gets task "menu" and the raw dish list comes back', async () => {
+    stubFetch({ status: 200, body: { ok: true, results: ['Feijoada', 'Salada'] } })
+    const { MENU_SYSTEM, parseMenu } = await import('./photo.js')
+
+    const out = await coachApi.photoAsk(IMG, { system: MENU_SYSTEM, menu: true })
+
+    expect(fetchCalls).toHaveLength(1)
+    expect(fetchCalls[0].url).toMatch(/\/api\/coach\/photo$/)
+    expect(JSON.parse(fetchCalls[0].opts.body)).toEqual({ image: IMG, task: 'menu' })
+    expect(parseMenu(out)).toEqual(['Feijoada', 'Salada'])
+  })
+
+  it('context: the kept dish names ride the body, and photoEstimate still parses the answer', async () => {
+    stubFetch({
+      status: 200,
+      body: {
+        ok: true,
+        results: [{ name: 'Feijoada', grams: 300, kcal: 500, protein: 30, carbs: 40, fat: 20, confidence: 0.8 }],
+      },
+    })
+
+    const out = await coachApi.photoAsk(IMG, { context: 'Feijoada, Salada de frango' })
+
+    expect(JSON.parse(fetchCalls[0].opts.body)).toEqual({ image: IMG, context: 'Feijoada, Salada de frango' })
+    expect(out).toHaveLength(1)
+    expect(out[0]).toMatchObject({ name: 'Feijoada', grams: 300 })
+  })
+
+  it('BYOK menu keeps the cardápio prompt as the text part — no context leaks into it', async () => {
+    useStore.setState({ coachLocal: { mode: 'byok', provider: 'groq', model: null, baseUrl: null } })
+    await setApiKey('gsk_photo_test')
+    stubFetch({
+      status: 200,
+      body: { choices: [{ message: { content: JSON.stringify({ dishes: ['Sopa'] }) } }] },
+    })
+    const { MENU_SYSTEM } = await import('./photo.js')
+
+    const out = await coachApi.photoAsk(IMG, { system: MENU_SYSTEM, menu: true })
+
+    const body = JSON.parse(fetchCalls[0].opts.body)
+    expect(body.messages[1].content[0].text).toBe(MENU_SYSTEM)
+    expect(out).toContain('Sopa')
+  })
+})

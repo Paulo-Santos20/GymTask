@@ -1559,6 +1559,11 @@ export default {
   'Photo of the meal': 'Foto da refeição',
   'Analyzing the photo…': 'A analisar a foto…',
   'Could not analyze that photo': 'Não foi possível analisar essa foto',
+  'Menu photo': 'Foto do cardápio',
+  'Reading the menu…': 'A ler o cardápio…',
+  'Could not read that menu': 'Não foi possível ler esse cardápio',
+  'What did you eat?': 'O que comeste?',
+  'Select at least one dish': 'Seleciona pelo menos um prato',
   'Share your data with the Coach first': 'Partilha os teus dados com o Treinador primeiro',
   'Your meal photos': 'As tuas fotos de refeições',
   'Photos of meals you take, sent to the provider to estimate their macros.':
