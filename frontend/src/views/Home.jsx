@@ -23,6 +23,7 @@ import {
 } from '../sheets.jsx'
 import LineChart from '../components/LineChart.jsx'
 import Icon from '../components/Icon.jsx'
+import InstallBanner from '../components/InstallBanner.jsx'
 import { Button } from '../components/ui.jsx'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { glyphOf } from '../lib/glyphs.js'
@@ -96,6 +97,7 @@ export default function Home() {
 
   return (
     <div className="narrow">
+      <InstallBanner />
       <div className="hdr">
         <div>
           <h1>{user ? t('Hi {0}', user.name) : 'GymTask'}</h1>

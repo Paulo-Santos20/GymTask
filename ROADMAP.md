@@ -43,7 +43,11 @@ verdes; Actions ✅, demo no GitHub Pages ✅, bundle da Vercel no ar com os fea
   quebra: coach/foto/cardápio BYOK Groq é client-side; a function destrava modo servidor,
   Nutritionix e jobs agendados. `functions/.env` já tem `GROQ_API_KEY` nesta máquina.
 - **Demo no GitHub Pages** — ✅ no ar em https://paulo-santos20.github.io/GymTask/ (Pages habilitado com build via Actions em 2026-10-05; workflow `pages.yml` verde; só redeploya quando `frontend/**` muda).
-- **Dependabot** — 2 PRs de dependências criados antes do fix do job `functions` falharam no CI antigo; re-base/merge quando quiser (o fix `31885c1` resolve o teste; as versões propostas são só bumps de frontend).
+- **Dependabot** — ✅ minors merged em 2026-10-12: #3 (`@anthropic-ai/claude-agent-sdk`
+  0.3.223→0.3.284, `/api`) e #9 (frontend group: react 19.2→19.3, vite 8.1→8.3, happy-dom,
+  zustand, react-router, lean-qr, @vitejs/plugin-react), ambos rebaseados em `main` e
+  squash-merged com CI verde. **Ficam 4 majors para decisão**: #10 (firebase 12→13),
+  #7 (undici 7→8, `/api`), #1 e #2 (node 22→26 em `/api` e `/web`).
 
 ## Ideias futuras
 

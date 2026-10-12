@@ -180,6 +180,16 @@ body.resting #app{padding-bottom:calc(206px + var(--sab))}
 }
 .sync-banner.off{background:color-mix(in srgb,var(--label-3) 18%,var(--surface))}
 .sync-banner .icn,.sync-banner svg{flex:none;font-size:16px;color:var(--label-2)}
+/* install offer: only while the browser has a prompt parked (lib/pwa.js) and not dismissed */
+.pwa-banner{
+  display:flex;align-items:center;gap:10px;width:100%;
+  margin:0 0 12px;padding:10px 12px;border-radius:var(--r);
+  background:color-mix(in srgb,var(--acc) 12%,var(--surface));font-size:13px;line-height:1.35;
+}
+.pwa-copy{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.pwa-copy span{color:var(--label-2);font-size:12.5px}
+.pwa-actions{display:flex;align-items:center;gap:6px;flex:none}
+.pwa-x{border:0;background:none;color:var(--label-3);font-size:13px;padding:6px;cursor:pointer}
 /* large title, the way a nav bar does it */
 .hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:8px 0 18px}
 /* The title block gives way, the button on the right never does: a flex item will not shrink
