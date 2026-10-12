@@ -392,6 +392,8 @@ export default {
   'Export backup (JSON)': 'Exportar cópia (JSON)',
   'Import backup': 'Importar cópia',
   'Auto-backup on changes': 'Cópia automática ao alterar',
+  'With auto-backup on, a backup file downloads when you leave the app, at most once a day.':
+    'Com a cópia automática ligada, é descarregado um ficheiro de cópia quando sais da app, no máximo uma vez por dia.',
   'Saves a dated copy to the Documents folder after finishing a workout or editing a routine — point a sync app at it, or copy it out by hand.':
     'Guarda uma cópia datada na pasta Documentos após terminar um treino ou editar uma rotina — aponta uma app de sincronização para lá, ou copia o ficheiro à mão.',
   'Reset everything?': 'Repor tudo?',

@@ -4,7 +4,8 @@ import { useStore, DEF } from '../store/useStore.js'
 import { workoutControls } from '../lib/workout-controls.js'
 import { speedUnitOf } from '../lib/speed.js'
 import { useUI } from '../store/useUI.js'
-import { ACCENTS, todayISO, localTZ, weekStartOf, MONDAY, SUNDAY } from '../lib/format.js'
+import { downloadBackup } from '../lib/backup-file.js'
+import { ACCENTS, localTZ, weekStartOf, MONDAY, SUNDAY } from '../lib/format.js'
 import { effortOf } from '../lib/history.js'
 import { unlock, playOnSilentSupported } from '../lib/sound.js'
 import { api, IS_ANDROID } from '../lib/api.js'
@@ -69,14 +70,7 @@ export default function Settings() {
   }
 
   const doExport = async () => {
-    const json = JSON.stringify(S, null, 2)
-    const name = 'gytask-backup-' + todayISO() + '.json'
-    const blob = new Blob([json], { type: 'application/json' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = name
-    a.click()
-    URL.revokeObjectURL(a.href)
+    downloadBackup(S)
     toast(t('Backup exported'))
   }
   const doImport = ev => {
@@ -776,7 +770,14 @@ export default function Settings() {
       )}
 
       {/* ---------- data: fill it, bring things over, back it up, wipe it ---------- */}
-      <Section title={t('Data')}>
+      <Section
+        title={t('Data')}
+        footer={
+          S.autoBackup
+            ? t('With auto-backup on, a backup file downloads when you leave the app, at most once a day.')
+            : undefined
+        }
+      >
         <Row
           icon="sparkles"
           iconTint="var(--acc)"
@@ -813,6 +814,15 @@ export default function Settings() {
           title={t('Export backup (JSON)')}
           accessory="chevron"
           onClick={doExport}
+        />
+        <Switch
+          checked={!!S.autoBackup}
+          label={t('Auto-backup on changes')}
+          onChange={v =>
+            update(s => {
+              s.autoBackup = v
+            })
+          }
         />
         <Row icon="trash" iconTint="var(--red)" title={t('Reset everything')} danger onClick={resetEverything} />
       </Section>

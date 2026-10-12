@@ -34,6 +34,29 @@ const KEY = 'gym_state_v1'
 const SYNC_KEY = 'gym_sync'
 const CHECK_MIN_MS = 3000 // rev checks closer together than this are the same event (focus + visibility)
 const POLL_MS = 30000 // while the app is open and signed in, ask the server for its revision this often
+// Auto-backup (S.autoBackup): a full JSON backup downloads when the app is left, at most once
+// per gap — a browser only lets a download happen from a gesture we no longer have by then, so
+// the moment the tab is hidden is the one there is.
+const AUTO_BACKUP_KEY = 'gym_autobackup'
+const AUTO_BACKUP_GAP_MS = 6 * 3600 * 1000
+let autoBackupHooked = false
+function hookAutoBackup() {
+  if (autoBackupHooked || typeof document === 'undefined') return
+  autoBackupHooked = true
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'hidden') return
+    const S = useStore.getState().S
+    if (!S || !S.autoBackup) return
+    const last = Number(localStorage.getItem(AUTO_BACKUP_KEY)) || 0
+    if (Date.now() - last < AUTO_BACKUP_GAP_MS) return
+    try {
+      localStorage.setItem(AUTO_BACKUP_KEY, String(Date.now()))
+    } catch {
+      /* a browser with storage blocked still backs up; only the throttle degrades */
+    }
+    void import('../lib/backup-file.js').then(m => m.downloadBackup(S))
+  })
+}
 export const DEF = {
   unit: 'kg',
   restSec: 90,
@@ -1023,5 +1046,7 @@ export const useStore = create((set, get) => {
     },
   }
 })
+
+hookAutoBackup()
 
 export { hasData }

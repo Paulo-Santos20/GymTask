@@ -414,6 +414,8 @@ export const PT_BR_OVERRIDES = {
 
   // --- drop-sets, auto-backup and server pairing ---
   'Auto-backup on changes': 'Backup automático ao alterar',
+  'With auto-backup on, a backup file downloads when you leave the app, at most once a day.':
+    'Com o backup automático ligado, um arquivo de backup é baixado quando você sai do app, no máximo uma vez por dia.',
   'Saves a dated copy to the Documents folder after finishing a workout or editing a routine — point a sync app at it, or copy it out by hand.':
     'Salva uma cópia datada na pasta Documentos depois de terminar um treino ou editar uma rotina — aponte um aplicativo de sincronização para ela, ou copie o arquivo na mão.',
   'Your server': 'Seu servidor',
