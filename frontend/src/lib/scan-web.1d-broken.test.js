@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 // The other side of decode1D's contract: a missing/broken WASM build (offline install, blocked
 // asset) must answer "no code", never throw into the camera loop. The module factory throws,
 // which is what a failed dynamic import looks like to the caller.
-vi.mock('@sec-ant/zxing-wasm', () => {
+vi.mock('@sec-ant/zxing-wasm/reader', () => {
   throw new Error('wasm gone')
 })
 

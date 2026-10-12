@@ -67,7 +67,9 @@ const ZXING_FORMATS = {
 // Same pixels in, { value, fmt } out for a 1D symbol. Null when the caller asked for no 1D
 // format (the check-in contract is QR-only — jsQR owns it), when the WASM fails to load or
 // throws, or when nothing is found. A stateless call per frame: no scanner to keep alive, and
-// the library's own tryHarder does the stability work a cache would.
+// the library's own tryHarder does the stability work a cache would. readBarcodesFromImageData
+// is the name in the pinned 2.2.0 (the /reader subpath — the package root ships the full
+// reader+writer build and does not export it).
 export async function decode1D(img, formats) {
   if (!img || !img.data || !img.width || !img.height) return null
   const wanted = (formats && formats.length ? formats : ['qr_code']).map(normalizeFmt)
@@ -75,12 +77,12 @@ export async function decode1D(img, formats) {
   if (!zx.length) return null
   let mod
   try {
-    mod = await import('@sec-ant/zxing-wasm')
+    mod = await import('@sec-ant/zxing-wasm/reader')
   } catch {
     return null
   }
   try {
-    const results = (await mod.readBarcodes(img, { formats: zx, tryHarder: true })) || []
+    const results = (await mod.readBarcodesFromImageData(img, { formats: zx, tryHarder: true })) || []
     const hit = results.find(r => zx.includes(r.format))
     return hit ? { value: hit.text, fmt: normalizeFmt(hit.format) } : null
   } catch {
