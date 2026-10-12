@@ -335,6 +335,22 @@ export default function Nutrition() {
     else next.add(d)
     setMenuDropped(next)
   }
+  // Renaming a dish the photo (or the text) read: an inline input over the chips, Enter
+  // commits, blur/Escape discards. The name carries the dish's kept/dropped state over.
+  const [renaming, setRenaming] = useState(null)
+  const [draft, setDraft] = useState('')
+  const commitRename = from => {
+    const name = draft.trim().slice(0, 60)
+    setRenaming(null)
+    if (!from || !name || name === from) return
+    setMenuDishes(prev => [...new Set(prev.map(d => (d === from ? name : d)))].slice(0, 15))
+    setMenuDropped(prev => {
+      if (!prev.size) return prev
+      const next = new Set()
+      for (const d of prev) next.add(d === from ? name : d)
+      return next
+    })
+  }
   // The typed cardápio: same chips, same context path. The AI turns the written list into
   // dishes (menuFromText) and they MERGE with anything a menu photo already read — the
   // text box doubles as "add the dishes the photo missed". Consent-gated like every
@@ -634,19 +650,57 @@ export default function Nutrition() {
                     {menuDishes.length > 0 && (
                       <Section title={t('What did you eat?')}>
                         <div className="nut-pad">
-                          <div className="nut-chips">
-                            {menuDishes.map(d => (
-                              <button
-                                key={d}
-                                type="button"
-                                className={'chip' + (menuDropped.has(d) ? '' : ' on')}
-                                aria-pressed={!menuDropped.has(d)}
-                                onClick={() => toggleDish(d)}
-                              >
-                                {d}
-                              </button>
-                            ))}
-                          </div>
+                          {renaming ? (
+                            <form
+                              className="menu-rename"
+                              onSubmit={ev => {
+                                ev.preventDefault()
+                                commitRename(renaming)
+                              }}
+                            >
+                              <input
+                                className="field"
+                                type="text"
+                                value={draft}
+                                aria-label={t('Dish name')}
+                                autoFocus
+                                onChange={ev => setDraft(ev.target.value)}
+                                onBlur={() => setRenaming(null)}
+                                onKeyDown={ev => {
+                                  if (ev.key === 'Escape') {
+                                    ev.preventDefault()
+                                    setRenaming(null)
+                                  }
+                                }}
+                              />
+                            </form>
+                          ) : (
+                            <div className="nut-chips">
+                              {menuDishes.map(d => (
+                                <span key={d} className="chipwrap">
+                                  <button
+                                    type="button"
+                                    className={'chip' + (menuDropped.has(d) ? '' : ' on')}
+                                    aria-pressed={!menuDropped.has(d)}
+                                    onClick={() => toggleDish(d)}
+                                  >
+                                    {d}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="chipfix"
+                                    aria-label={t('Rename dish')}
+                                    onClick={() => {
+                                      setDraft(d)
+                                      setRenaming(d)
+                                    }}
+                                  >
+                                    ✎
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </Section>
                     )}

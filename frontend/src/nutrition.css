@@ -241,6 +241,24 @@
   gap: 8px;
   justify-content: center;
 }
+/* dish chip + its rename affordance as one unit */
+.chipwrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.chipfix {
+  border: 0;
+  background: none;
+  color: var(--label-3);
+  font-size: 13px;
+  line-height: 1;
+  padding: 4px 2px;
+  cursor: pointer;
+}
+.menu-rename input {
+  width: 100%;
+}
 .nut-note {
   font-size: 12.5px;
   line-height: 1.45;

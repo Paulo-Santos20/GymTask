@@ -329,3 +329,103 @@ describe('typed menu -> AI -> dishes', () => {
     expect(mocks.menuFromText).not.toHaveBeenCalled()
   })
 })
+
+describe('renaming a dish chip', () => {
+  const renameFlow = async (panel, from, to) => {
+    const pencil = [...panel.querySelectorAll('.chipfix')].find(b => {
+      const chip = b.parentElement.querySelector('.chip')
+      return chip && chip.textContent === from
+    })
+    await act(async () => {
+      pencil.click()
+    })
+    const input = panel.querySelector('.menu-rename input')
+    expect(input.value).toBe(from)
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
+      setter.call(input, to)
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    return input
+  }
+
+  it('a renamed chip commits on Enter and keeps its kept/dropped state', async () => {
+    setConsent(true)
+    mocks.fileToDataUrl.mockResolvedValue('data:image/jpeg;base64,QUJD')
+    mocks.photoAsk.mockResolvedValueOnce(MENU_JSON).mockResolvedValueOnce(MEAL_JSON)
+
+    const host = render()
+    const panel = openPanel(host)
+    await act(async () => {
+      menuButton(host).click()
+    })
+    await chooseFile(panel, 'Menu photo', 'menu.jpg')
+
+    // drop the first dish, then rename it — the rename carries the dropped state
+    await act(async () => {
+      panel.querySelector('.chip').click()
+    })
+    const input = await renameFlow(panel, 'Feijoada', 'Feijão tropeiro')
+    await act(async () => {
+      input.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+
+    const chips = [...panel.querySelectorAll('.chip')]
+    expect(chips.map(c => c.textContent)).toEqual(['Feijão tropeiro', 'Salada de frango', 'Sopa de legumes'])
+    expect(chips[0].className).not.toContain('on')
+
+    await chooseFile(panel, 'Photo of the meal', 'meal.jpg')
+    expect(mocks.photoAsk).toHaveBeenNthCalledWith(2, 'data:image/jpeg;base64,QUJD', {
+      context: 'Salada de frango, Sopa de legumes',
+    })
+  })
+
+  it('Escape discards the rename and the dish keeps its name', async () => {
+    setConsent(true)
+    mocks.fileToDataUrl.mockResolvedValue('data:image/jpeg;base64,QUJD')
+    mocks.photoAsk.mockResolvedValueOnce(MENU_JSON)
+
+    const host = render()
+    const panel = openPanel(host)
+    await act(async () => {
+      menuButton(host).click()
+    })
+    await chooseFile(panel, 'Menu photo', 'menu.jpg')
+
+    const input = await renameFlow(panel, 'Feijoada', 'Outro nome')
+    await act(async () => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+    })
+
+    expect(panel.querySelector('.menu-rename')).toBeNull()
+    expect([...panel.querySelectorAll('.chip')].map(c => c.textContent)).toEqual([
+      'Feijoada',
+      'Salada de frango',
+      'Sopa de legumes',
+    ])
+  })
+
+  it('an empty rename is a no-op', async () => {
+    setConsent(true)
+    mocks.fileToDataUrl.mockResolvedValue('data:image/jpeg;base64,QUJD')
+    mocks.photoAsk.mockResolvedValueOnce(MENU_JSON)
+
+    const host = render()
+    const panel = openPanel(host)
+    await act(async () => {
+      menuButton(host).click()
+    })
+    await chooseFile(panel, 'Menu photo', 'menu.jpg')
+
+    const input = await renameFlow(panel, 'Feijoada', '   ')
+    await act(async () => {
+      input.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+
+    expect([...panel.querySelectorAll('.chip')].map(c => c.textContent)).toEqual([
+      'Feijoada',
+      'Salada de frango',
+      'Sopa de legumes',
+    ])
+  })
+})

@@ -1563,6 +1563,8 @@ export default {
   'Reading the menu…': 'A ler o cardápio…',
   'Could not read that menu': 'Não foi possível ler esse cardápio',
   'What did you eat?': 'O que comeste?',
+  'Rename dish': 'Renomear prato',
+  'Dish name': 'Nome do prato',
   'Select at least one dish': 'Seleciona pelo menos um prato',
   'Type the menu…': 'Escreve o cardápio…',
   'Interpret the menu': 'Interpretar o cardápio',
