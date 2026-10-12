@@ -37,8 +37,8 @@ const GOALS = [
 ]
 const RESULT_SRC = { usda: 'USDA', off: 'Open Food Facts', nutritionix: 'Nutritionix' }
 // What the food scanner may decode: retail 1D barcodes plus QR (some packages carry one).
-// The jsQR fallback where BarcodeDetector is missing reads QR only — a platform limit, not a
-// wiring gap (lib/scan-web.js).
+// Where BarcodeDetector is missing (iOS Safari, Firefox), lib/scan-web.js falls back to jsQR for
+// QR and zxing-wasm for these 1D symbologies — the full list reads everywhere now.
 const FOOD_FORMATS = ['qr_code', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39']
 // Per-meal protein floor: 0.3 g per kg of body weight — the lower bound of the 0.3–0.4 g/kg
 // per-meal band, against profile.peso (kg, the same basis targets.protein uses). Displayed in

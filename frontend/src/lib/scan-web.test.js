@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { generate } from 'lean-qr'
-import { decodeImageData } from './scan-web.js'
+import { decodeImageData, decode1D } from './scan-web.js'
 
 // Round trip through the two libraries the browser path relies on: lean-qr draws a code (the
 // same renderer the card view uses), jsQR reads it back. Pixels are built by hand from
@@ -44,5 +44,19 @@ describe('decodeImageData', () => {
     expect(await decodeImageData(blank)).toBeNull()
     expect(await decodeImageData(null)).toBeNull()
     expect(await decodeImageData({ data: null, width: 1, height: 1 })).toBeNull()
+  })
+})
+
+// Smoke test with the REAL zbar-wasm: the module must load and scan under vitest at all —
+// a WASM packaging regression (import specifier, bundler config) fails here, not on a phone.
+describe('decode1D against the real zbar-wasm', () => {
+  it('scans a blank buffer and answers null (no symbol, no throw)', async () => {
+    const blank = { data: new Uint8ClampedArray(64 * 64 * 4).fill(255), width: 64, height: 64 }
+    expect(await decode1D(blank, ['ean_13'])).toBeNull()
+  })
+
+  it('never loads the WASM for a QR-only caller', async () => {
+    const blank = { data: new Uint8ClampedArray(64 * 64 * 4).fill(255), width: 64, height: 64 }
+    expect(await decode1D(blank, ['qr_code'])).toBeNull()
   })
 })

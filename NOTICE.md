@@ -162,10 +162,43 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### Camera scan & photo decode in the browser — `jsQR`
+### Camera scan & photo decode in the browser — `jsQR` and `@sec-ant/zxing-wasm`
 
 In a browser (including the installed PWA), reading a code from the camera or from an imported
-photo uses [**jsQR**](https://github.com/cozmo/jsQR) by Cosmo Wolfe, under the **Apache License
-2.0** (text at <https://www.apache.org/licenses/LICENSE-2.0> and in the package's own `LICENSE`).
-Where the browser has a native `BarcodeDetector`, that is tried first and jsQR is the fallback.
-Video frames are decoded in memory and never uploaded or stored.
+photo uses two third-party packages:
+
+- [**jsQR**](https://github.com/cozmo/jsQR) by Cosmo Wolfe, under the **Apache License
+  2.0** (text at <https://www.apache.org/licenses/LICENSE-2.0> and in the package's own `LICENSE`),
+  decodes QR codes anywhere, including iOS Safari, which has no native `BarcodeDetector`.
+- [**@sec-ant/zxing-wasm**](https://github.com/sec-ant/zxing-wasm) by SEC Ant, under the
+  **MIT License** (reproduced below), decodes the 1D retail symbologies (EAN-13/8, UPC-A/E,
+  Code 128/39/93, ITF) the food barcode scanner needs on those same browsers. It ships as
+  WebAssembly and is loaded on demand — only when a 1D format was asked for and the QR
+  decoders found nothing, so the gym check-in flow never downloads it.
+
+Where the browser has a native `BarcodeDetector`, that is tried first; jsQR and zxing-wasm are
+the fallbacks. Video frames are decoded in memory and never uploaded or stored.
+
+```
+MIT License
+
+Copyright (c) 2022 Florian S.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```

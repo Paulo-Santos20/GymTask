@@ -3,13 +3,17 @@
 // it ourselves: draw the source — an uploaded photo or a live <video> frame — onto an offscreen
 // canvas and decode the pixels.
 //
-// Two decoders, tried in order:
+// Three decoders, tried in order:
 //   1. BarcodeDetector — the browser's own (Chrome/Edge on Android, Samsung Internet). Native
-//      speed and quality when it exists; asked for QR only.
+//      speed and quality when it exists; asked for whatever formats the caller listed.
 //   2. jsQR (Apache-2.0, see NOTICE.md) — pure JS, works everywhere including iOS Safari, which
 //      has no BarcodeDetector. Loaded with a dynamic import so it only ships when someone scans.
+//   3. zxing-wasm (MIT, see NOTICE.md) — the 1D side jsQR cannot do: retail product codes
+//      (EAN/UPC/Code128/39/93/ITF) on iOS Safari and Firefox. Also a dynamic import, and only
+//      reached when jsQR found nothing AND the caller asked for a 1D format, so the check-in
+//      path (QR only) never downloads the WASM.
 //
-// decodeImageData is the pure core (pixels in, string out) and is what the unit test exercises;
+// decodeImageData is the pure QR core (pixels in, string out) and is what the unit test exercises;
 // decodeSource wraps it with the canvas plumbing the browser paths need.
 import { normalizeFmt } from './qr.js'
 
@@ -47,11 +51,48 @@ export async function decodeImageData(img) {
   return hit && hit.data ? { value: hit.data, fmt: 'qrcode' } : null
 }
 
+// The 1D retail symbologies zxing reads, keyed by the token normalizeFmt produces (the same
+// token the BarcodeDetector path stores), with zxing-wasm's format name as the value.
+const ZXING_FORMATS = {
+  ean13: 'EAN-13',
+  ean8: 'EAN-8',
+  upca: 'UPC-A',
+  upce: 'UPC-E',
+  code128: 'Code128',
+  code39: 'Code39',
+  code93: 'Code93',
+  itf: 'ITF',
+}
+
+// Same pixels in, { value, fmt } out for a 1D symbol. Null when the caller asked for no 1D
+// format (the check-in contract is QR-only — jsQR owns it), when the WASM fails to load or
+// throws, or when nothing is found. A stateless call per frame: no scanner to keep alive, and
+// the library's own tryHarder does the stability work a cache would.
+export async function decode1D(img, formats) {
+  if (!img || !img.data || !img.width || !img.height) return null
+  const wanted = (formats && formats.length ? formats : ['qr_code']).map(normalizeFmt)
+  const zx = wanted.map(f => ZXING_FORMATS[f]).filter(Boolean)
+  if (!zx.length) return null
+  let mod
+  try {
+    mod = await import('@sec-ant/zxing-wasm')
+  } catch {
+    return null
+  }
+  try {
+    const results = (await mod.readBarcodes(img, { formats: zx, tryHarder: true })) || []
+    const hit = results.find(r => zx.includes(r.format))
+    return hit ? { value: hit.text, fmt: normalizeFmt(hit.format) } : null
+  } catch {
+    return null
+  }
+}
+
 // Decode from anything drawImage accepts: <video>, <img>, ImageBitmap, canvas. The source is
 // scaled down to at most MAX px on its long edge — plenty for a QR, and it keeps jsQR fast enough
 // to run on every few video frames on a phone. Reuses one canvas across calls. `formats` picks
-// what the native detector may read (default QR only — the check-in contract); the jsQR fallback
-// underneath is QR-only either way.
+// what the native detector may read (default QR only — the check-in contract); underneath it
+// jsQR covers QR everywhere and zbar-wasm covers the 1D formats the caller asked for.
 const MAX = 800
 let _canvas = null
 export async function decodeSource(source, formats) {
@@ -77,7 +118,10 @@ export async function decodeSource(source, formats) {
       /* fall through to jsQR */
     }
   }
-  return decodeImageData(ctx.getImageData(0, 0, w, h))
+  const pixels = ctx.getImageData(0, 0, w, h)
+  const viaQr = await decodeImageData(pixels)
+  if (viaQr) return viaQr
+  return decode1D(pixels, formats)
 }
 
 // A picked File → { value, fmt } | null. createImageBitmap honours EXIF orientation where the
