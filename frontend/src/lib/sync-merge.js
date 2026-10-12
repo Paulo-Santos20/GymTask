@@ -59,10 +59,14 @@
  *     `prefer`: a sign-in adds what a device logged signed out, which is not a copy of this
  *     account's history.
  *
- * Known limit: with no record of what each side deleted, an entry removed on one device inside
- * the conflict window comes back from the other. The window is a few seconds now (the store pulls
- * on resume and every push is conditional), and a resurrected entry beats a lost one. Tombstones
- * would close it.
+ * Known limit closed by tombstones: an entry removed on one device inside the conflict window
+ * used to come back from the other. Every list field now records its deletions in `del`
+ * (`{ field: { key: at } }`, see recordDeletions), the merge drops a key either side deleted,
+ * and the record trims itself to the last 30 days (500 keys per field) — a window far wider
+ * than the conflict one, and small enough for the sync budget.
+ *
+ * The maps that write a clear as a stamped entry (`balanceOverrides`, `loadKind`, `plates`)
+ * never needed this: mergeStampedMap already keeps the clear from the losing side.
  */
 import { beatsWeight } from './exercises.js'
 import { bestWeightForEntry } from './history.js'
@@ -230,6 +234,117 @@ const RESET_LISTS = {
 const RESET_MAPS = ['exNotes', 'barWeights', 'balanceOverrides', 'loadKind', 'plates']
 /** An entry's name in resetIds: a workout's id (or day and start), a weigh-in's day and time, … */
 export const entryKey = (field, x) => String(RESET_LISTS[field](x))
+
+/* ------------------------------- deletion tombstones -------------------------------
+ * The same entry names resetIds keeps, in a live `del` map: `{ workouts: { 'w1|2026-10-08|9': 1699… } }`.
+ * A key either copy deleted is dropped by the merge — with `prefer` too, so signing in does not
+ * resurrect what the server already deleted. The store's single update funnel (useStore.update)
+ * diffs prev against next and calls recordDeletions; a deliberate replace (backup import, reset)
+ * does not go through it and replaces `del` with the file's own, like every other field.
+ * Records older than DEL_KEEP_MS (or past DEL_MAX per field) are dropped by the merge — the
+ * conflict window they exist for is seconds wide. */
+const DEL_LISTS = {
+  workouts: workoutKey,
+  routines: x => x?.id,
+  customEx: x => x?.id,
+  gymCards: x => x?.id,
+  equipProfiles: x => x?.id,
+  bodyweight: bodyweightKey,
+  favEx: x => x,
+}
+const DEL_MAPS = ['exNotes', 'barWeights']
+const DEL_MEDIA = 'media' // flat: `${workoutKey}|${hash}` — one workout's removed photo
+export const DEL_KEEP_MS = 30 * 24 * 3600 * 1000
+export const DEL_MAX = 500
+const TOMBSTONE_FIELDS = [...Object.keys(DEL_LISTS), ...DEL_MAPS, DEL_MEDIA]
+
+const delMap = (S, f) => (S?.del && typeof S.del === 'object' && isMap(S.del[f]) ? S.del[f] : {})
+
+/** trims and caps one field's tombstones, oldest out; returns a fresh map. */
+function trimDel(map, now) {
+  const kept = Object.entries(map)
+    .filter(([, at]) => Number(at) > now - DEL_KEEP_MS)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .slice(0, DEL_MAX)
+  return Object.fromEntries(kept)
+}
+
+/**
+ * The tombstones of every copy given, trimmed and capped — what the merge filters by. A key any
+ * side deleted is deleted, whichever side that was.
+ */
+export function mergeDel(...copies) {
+  const now = Date.now()
+  const out = {}
+  for (const f of TOMBSTONE_FIELDS) {
+    const acc = {}
+    for (const S of copies)
+      for (const [k, at] of Object.entries(delMap(S, f))) acc[k] = Math.max(Number(acc[k]) || 0, Number(at) || 0)
+    if (Object.keys(acc).length) out[f] = trimDel(acc, now)
+  }
+  return out
+}
+
+/**
+ * Writes `next.del`: every key `prev` had and `next` no longer does — the list entries and the
+ * photos taken off a workout both copies share. Runs before persist on every store update, so
+ * no deleting screen has to remember anything. Mutates and returns `next`.
+ */
+export function recordDeletions(next, prev, now = Date.now()) {
+  if (!next || typeof next !== 'object' || !prev || typeof prev !== 'object') return next
+  for (const [f, key] of Object.entries(DEL_LISTS)) {
+    const before = new Set(
+      list(prev[f])
+        .filter(x => x != null)
+        .map(x => String(key(x))),
+    )
+    for (const x of list(next[f])) before.delete(String(key(x)))
+    if (before.size) {
+      if (!next.del) next.del = {}
+      next.del[f] = trimDel({ ...delMap(next, f), ...Object.fromEntries([...before].map(k => [k, now])) }, now)
+    }
+  }
+  for (const f of DEL_MAPS) {
+    const gone = Object.keys(delMap(prev, f)).filter(k => !(k in (isMap(next[f]) ? next[f] : {})))
+    if (gone.length) {
+      if (!next.del) next.del = {}
+      next.del[f] = trimDel({ ...delMap(next, f), ...Object.fromEntries(gone.map(k => [k, now])) }, now)
+    }
+  }
+  // Photos: of a workout both copies share, every hash the prev list had and this one lacks.
+  {
+    const before = new Map(
+      list(prev.workouts).map(w => [
+        workoutKey(w),
+        new Set(
+          list(w?.media)
+            .map(m => m?.hash)
+            .filter(Boolean),
+        ),
+      ]),
+    )
+    for (const w of list(next.workouts)) {
+      const had = before.get(workoutKey(w))
+      if (!had) continue
+      const now$ = new Set(
+        list(w?.media)
+          .map(m => m?.hash)
+          .filter(Boolean),
+      )
+      const gone = [...had].filter(h => !now$.has(h))
+      if (!gone.length) continue
+      if (!next.del) next.del = {}
+      next.del[DEL_MEDIA] = trimDel(
+        {
+          ...delMap(next, DEL_MEDIA),
+          ...Object.fromEntries(gone.map(h => [`${workoutKey(w)}|${h}`, now])),
+        },
+        now,
+      )
+    }
+  }
+  return next
+}
 // Per field, the most names a reset keeps — far more workouts than anyone logs, and a bound on
 // the document all the same. Past it the oldest names go first.
 export const RESET_ID_MAX = 20000
@@ -348,7 +463,21 @@ export function mergeStates(a0, b0, { prefer } = {}) {
   // The unit is the lead's by now; so is the record of choosing it.
   const unitBy = lead || (unitStamp(a) >= unitStamp(b) ? a : b)
   if (unitBy.unitSet) out.unitSet = clone(unitBy.unitSet)
-  out.workouts = unionById(n.workouts, o.workouts, workoutKey).map(clone)
+  // Tombstones of BOTH originals (a0/b0 — not the sinceReset-trimmed copies): a key either
+  // side deleted is gone from the merge, with `prefer` too. `del` itself is merged and trimmed.
+  const gone = mergeDel(a0, b0)
+  const goneF = f => gone[f] || {}
+  const dropList = (xs, f) => {
+    const g = goneF(f)
+    return list(xs).filter(x => x == null || !(String(DEL_LISTS[f](x)) in g))
+  }
+  const dropMap = (m, f) => {
+    const g = goneF(f)
+    return Object.fromEntries(Object.entries(isMap(m) ? m : {}).filter(([k]) => !(k in g)))
+  }
+  out.workouts = unionById(n.workouts, o.workouts, workoutKey)
+    .filter(w => w == null || !(String(workoutKey(w)) in goneF('workouts')))
+    .map(clone)
   // A workout edited after it was logged keeps the version edited last, whichever copy is newer
   // as a whole — the same rule as a routine's. `editedBy` notes, per exercise, the copies whose
   // edit of its sets was kept, for the kept loads below. `prefer` (sign-in) keeps the preferred
@@ -374,7 +503,8 @@ export function mergeStates(a0, b0, { prefer } = {}) {
   }
   // Of a workout both copies have, the kept version's media list gains the other's extras — with
   // `prefer` too: signing in must not drop a photo added while signed out any more than a
-  // conflict may.
+  // conflict may. A hash either side tombstoned is skipped, so a photo taken off on one device
+  // inside the window does not come back with the other's extras.
   {
     const nBy = new Map(list(n.workouts).map(w => [workoutKey(w), w]))
     const oBy = new Map(list(o.workouts).map(w => [workoutKey(w), w]))
@@ -385,12 +515,16 @@ export function mergeStates(a0, b0, { prefer } = {}) {
       if (x && y) {
         mergeWorkoutMedia(w, x)
         mergeWorkoutMedia(w, y)
+        const all = list(w.media)
+        const mediaGone = goneF(DEL_MEDIA)
+        const kept = all.filter(m => !(`${key}|${m?.hash}` in mediaGone))
+        if (kept.length !== all.length) w.media = kept
       }
     }
   }
   out.workouts.sort(byDayStart)
   for (const f of ['routines', 'customEx', 'equipProfiles', 'gymCards']) {
-    if (list(n[f]).length || list(o[f]).length) out[f] = unionById(n[f], o[f]).map(clone)
+    if (list(n[f]).length || list(o[f]).length) out[f] = dropList(unionById(n[f], o[f]), f).map(clone)
   }
   // A routine edited on both sides keeps the version edited last. Taking the newer copy's
   // version dropped a plan edit made on one device whenever the other had since logged a set or
@@ -422,16 +556,34 @@ export function mergeStates(a0, b0, { prefer } = {}) {
       return alt && (alt._ts || 0) > (c._ts || 0) ? clone(alt) : c
     })
   }
-  out.bodyweight = mergeBodyweight(n.bodyweight, o.bodyweight).map(clone)
-  if (list(n.favEx).length || list(o.favEx).length) out.favEx = [...new Set([...list(n.favEx), ...list(o.favEx)])]
+  out.bodyweight = dropList(mergeBodyweight(n.bodyweight, o.bodyweight), 'bodyweight').map(clone)
+  if (list(n.favEx).length || list(o.favEx).length) {
+    const g = goneF('favEx')
+    out.favEx = [...new Set([...list(n.favEx), ...list(o.favEx)])].filter(x => !(String(x) in g))
+  }
   out.exWeights = clone(mergeExWeights(n.exWeights, o.exWeights))
   for (const [id, sources] of editedBy) {
     const kept = correctedExWeight(id, out.workouts, sources)
     if (kept) out.exWeights[id] = clone(kept)
     else delete out.exWeights[id]
   }
+  // A kept load must have a home: an exercise whose every workout is tombstoned loses its PR.
+  // Only keys a tombstoned workout actually carried are candidates — a legacy weight with no
+  // workout anywhere stays, exactly as the union always kept it.
+  {
+    const tombEx = new Set()
+    for (const S of [n, o])
+      for (const w of list(S.workouts))
+        if (String(workoutKey(w)) in goneF('workouts'))
+          for (const e of list(w?.entries)) if (e?.id != null) tombEx.add(String(e.id))
+    if (tombEx.size) {
+      const homed = new Set()
+      for (const w of out.workouts) for (const e of list(w?.entries)) if (e?.id != null) homed.add(String(e.id))
+      for (const id of tombEx) if (!homed.has(id)) delete out.exWeights[id]
+    }
+  }
   for (const f of ['exNotes', 'barWeights']) {
-    if (n[f] || o[f]) out[f] = clone({ ...(o[f] || {}), ...(n[f] || {}) })
+    if (n[f] || o[f]) out[f] = dropMap({ ...(o[f] || {}), ...(n[f] || {}) }, f)
   }
   // The plate-loading choices (lib/plates.js) are stamped the same way: an exercise's loading and
   // a unit's plate inventory are each one choice, made on one device, that a later set logged on
@@ -443,6 +595,8 @@ export function mergeStates(a0, b0, { prefer } = {}) {
   if (resetAt) out.resetAt = resetAt
   if (resetIds) out.resetIds = resetIds
   else delete out.resetIds
+  if (Object.keys(gone).length) out.del = gone
+  else delete out.del
   delete out._rev
   return out
 }

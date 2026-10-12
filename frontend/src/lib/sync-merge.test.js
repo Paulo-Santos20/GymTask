@@ -3,10 +3,12 @@ import {
   keepReset,
   localExtras,
   mergeBodyweight,
+  mergeDel,
   mergeResetIds,
   mergeStampedMap,
   mergeStates,
   newerOf,
+  recordDeletions,
   resetIdsOf,
   RESET_ID_MAX,
   sinceReset,
@@ -875,5 +877,174 @@ describe('localExtras and the weigh-ins of a day both copies have', () => {
         server,
       ).bodyweight,
     ).toBe(0)
+  })
+})
+
+describe('deletion tombstones close the conflict window', () => {
+  const photo = hash => ({
+    kind: 'image',
+    hash: hash.repeat(64),
+    mime: 'image/webp',
+    size: 10,
+    width: 4,
+    height: 3,
+    at: 1,
+  })
+  const NOW = Date.now()
+  const OLD = NOW - 31 * 24 * 3600 * 1000
+  const sqSet = { id: 'sq', target: { mode: 'reps' }, sets: [{ w: 140, r: 5, done: true }] }
+  // A deleted the workout on its copy; B never heard about it (the conflict window) and still
+  // carries the entry the tombstone names.
+  const deletedOn = (at = NOW) => ({
+    workouts: { w1: at },
+    routines: { r1: at },
+    customEx: { c1: at },
+    gymCards: { g1: at },
+    equipProfiles: { e1: at },
+    bodyweight: { '2026-09-01|10': at },
+    favEx: { x: at },
+    exNotes: { sq: at },
+    media: { ['w1|' + 'h'.repeat(64)]: at },
+  })
+
+  it('an entry deleted on one side does not come back from the other, any field', () => {
+    const A = base({
+      _ts: 100,
+      del: deletedOn(),
+      workouts: [workout('w2', '2026-09-02')],
+      routines: [routine('r2')],
+      customEx: [{ id: 'c2', n: 'x' }],
+      gymCards: [{ id: 'g2', value: '2' }],
+      equipProfiles: [{ id: 'e2' }],
+      bodyweight: [{ d: '2026-09-02', w: 80, t: 50 }],
+      favEx: ['y'],
+    })
+    const B = base({
+      _ts: 200,
+      workouts: [workout('w1'), workout('w2', '2026-09-02')],
+      routines: [routine('r1'), routine('r2')],
+      customEx: [
+        { id: 'c1', n: 'gone' },
+        { id: 'c2', n: 'x' },
+      ],
+      gymCards: [
+        { id: 'g1', value: '1' },
+        { id: 'g2', value: '2' },
+      ],
+      equipProfiles: [{ id: 'e1' }, { id: 'e2' }],
+      bodyweight: [
+        { d: '2026-09-01', w: 79, t: 10 },
+        { d: '2026-09-02', w: 80, t: 50 },
+      ],
+      favEx: ['x', 'y'],
+      exNotes: { sq: 'B note' },
+    })
+    const m = mergeStates(A, B)
+    expect(ids(m.workouts)).toEqual(['w2'])
+    expect(ids(m.routines)).toEqual(['r2'])
+    expect(m.customEx.map(c => c.id)).toEqual(['c2'])
+    expect(m.gymCards.map(c => c.id)).toEqual(['g2'])
+    expect(m.equipProfiles.map(c => c.id)).toEqual(['e2'])
+    expect(m.bodyweight.map(b => b.d)).toEqual(['2026-09-02'])
+    expect(m.favEx).toEqual(['y'])
+    expect(m.exNotes).toEqual({})
+    // both directions, and with prefer (a sign-in must not resurrect either)
+    for (const m2 of [mergeStates(B, A), mergeStates(A, B, { prefer: 'b' }), mergeStates(B, A, { prefer: 'a' })]) {
+      expect(ids(m2.workouts)).toEqual(['w2'])
+      expect(m2.routines).toEqual([routine('r2')])
+    }
+  })
+
+  it('a photo removed on one side does not come back with the other copy’s extras', () => {
+    const w1 = id => ({ ...workout(id), media: [photo('h')] })
+    const A = base({ _ts: 100, del: { media: { ['w1|' + 'h'.repeat(64)]: NOW } }, workouts: [w1('w1')] })
+    A.workouts[0].media = []
+    const B = base({ _ts: 200, workouts: [w1('w1')] })
+    const m = mergeStates(A, B)
+    expect(m.workouts[0].media || []).toEqual([])
+  })
+
+  it('a PR whose only workout is tombstoned goes with it; a homed one stays', () => {
+    const A = base({
+      _ts: 100,
+      del: { workouts: { w1: NOW } },
+      workouts: [
+        {
+          ...workout('w2', '2026-09-02'),
+          entries: [{ id: 'bp', target: { mode: 'reps' }, sets: [{ w: 60, r: 5, done: true }] }],
+        },
+      ],
+      exWeights: { sq: { w: 100 }, bp: { w: 60 } },
+    })
+    const B = base({
+      _ts: 200,
+      workouts: [
+        { ...workout('w1'), entries: [sqSet] },
+        {
+          ...workout('w2', '2026-09-02'),
+          entries: [{ id: 'bp', target: { mode: 'reps' }, sets: [{ w: 60, r: 5, done: true }] }],
+        },
+      ],
+      exWeights: { sq: { w: 140 }, bp: { w: 60 } },
+    })
+    const m = mergeStates(A, B)
+    expect(m.exWeights).toEqual({ bp: { w: 60 } })
+  })
+
+  it('the merged copy carries both sides’ tombstones, trimmed of the stale ones', () => {
+    const A = base({ _ts: 100, del: { workouts: { w1: NOW, wOld: OLD } } })
+    const B = base({ _ts: 200, del: { workouts: { w1: NOW - 5, wB: NOW }, gymCards: { g9: NOW } } })
+    const m = mergeStates(A, B)
+    expect(Object.keys(m.del.workouts).sort()).toEqual(['w1', 'wB'])
+    expect(m.del.workouts.w1).toBe(NOW)
+    expect(m.del.gymCards).toEqual({ g9: NOW })
+  })
+
+  it('a copy with no del at all merges exactly as before', () => {
+    const A = base({ _ts: 100, workouts: [workout('w1')] })
+    const B = base({ _ts: 200, workouts: [workout('w2', '2026-09-02')] })
+    const m = mergeStates(A, B)
+    expect(ids(m.workouts)).toEqual(['w1', 'w2']) // sorted by day, as always
+    expect(m.del).toBeUndefined()
+  })
+})
+
+describe('recordDeletions', () => {
+  const sqSet = { id: 'sq', target: { mode: 'reps' }, sets: [{ w: 100, r: 5, done: true }] }
+  const NOW = 1_800_000_000_000
+
+  it('tombstones every list entry the update took out, by the merge’s key', () => {
+    const prev = base({
+      workouts: [
+        { id: 'w1', d: '2026-09-01', start: 1, entries: [sqSet], media: [{ hash: 'h'.repeat(64) }] },
+        { id: 'w2', d: '2026-09-02', start: 1, entries: [] },
+      ],
+      routines: [routine('r1'), routine('r2')],
+      customEx: [{ id: 'c1', n: 'a' }],
+    })
+    const next = {
+      ...prev,
+      workouts: [{ id: 'w1', d: '2026-09-01', start: 1, entries: [sqSet] }],
+      routines: [routine('r2')],
+      customEx: [],
+    }
+    const out = recordDeletions(next, prev, NOW)
+    expect(out.del.workouts).toEqual({ w2: NOW })
+    expect(out.del.routines).toEqual({ r1: NOW })
+    expect(out.del.customEx).toEqual({ c1: NOW })
+    // the photo the update took off the workout it kept
+    expect(out.del.media).toEqual({ ['w1|' + 'h'.repeat(64)]: NOW })
+  })
+
+  it('leaves del untouched when nothing was taken out', () => {
+    const prev = base({ workouts: [workout('w1')] })
+    const next = { ...prev, restSec: 60 }
+    expect(recordDeletions(next, prev, NOW).del).toBeUndefined()
+  })
+
+  it('a re-added entry revives: its key is gone from the new copy, so no tombstone is written', () => {
+    const prev = base({ workouts: [workout('w1')], del: { workouts: { w1: NOW } } })
+    const next = { ...prev, workouts: [workout('w1'), workout('w2', '2026-09-02')] }
+    expect(recordDeletions(next, prev, NOW).del).toEqual({ workouts: { w1: NOW } })
   })
 })

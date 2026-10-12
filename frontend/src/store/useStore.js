@@ -16,6 +16,7 @@ import {
   keepReset,
   mergeResetIds,
   resetIdsOf,
+  recordDeletions,
 } from '../lib/sync-merge.js'
 import { convertStateUnit } from '../lib/units.js'
 import { saveCoachDevice, coachDeviceSettings } from '../lib/coach-device.js'
@@ -51,6 +52,9 @@ export const DEF = {
   dayPlan: {},
   exWeights: {},
   workouts: [],
+  // Deletion tombstones, written by recordDeletions on every update (lib/sync-merge.js): what
+  // this device took out, so a merge with an older copy cannot bring it back. Trimmed to 30 days.
+  del: {},
   active: null,
   customEx: [],
   gifSize: 'full',
@@ -605,13 +609,16 @@ export const useStore = create((set, get) => {
 
     // Mutate a draft of S via producer fn, then persist + schedule sync.
     // Mutate a draft of S via producer fn, then persist + schedule sync. Every routine the change
-    // touched carries the time of it, for a conflict to keep the version edited last.
+    // touched carries the time of it, for a conflict to keep the version edited last — and every
+    // entry the change took out leaves a tombstone in `del`, so the other device's copy cannot
+    // bring it back (lib/sync-merge.js). A deliberate replace (import, reset) skips both.
     update(mut, push = true) {
       const prev = get().S
       const S = clone(prev)
       mut(S)
       stampRoutines(prev.routines, S.routines)
       stampCustomEx(prev.customEx, S.customEx)
+      recordDeletions(S, prev)
       persist(S, push)
     },
     // A replace that is meant to reach the server (backup import, reset) is a deliberate
