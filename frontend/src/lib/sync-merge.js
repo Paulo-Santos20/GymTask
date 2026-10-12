@@ -621,6 +621,22 @@ export function keepReset(cur, next) {
   return next
 }
 
+/**
+ * `next` replacing `cur` wholesale (a backup import, a reset) keeps the deletion record:
+ * the tombstones of both, unioned by key with the later stamp, trimmed (mergeDel). Without it
+ * a backup made before a deletion carried no tombstone for the entries it still held — the
+ * import would have taken the older record's word for it and the other device's next merge
+ * could bring the deleted entry back. A deletion stays deleted, whichever copy carries it.
+ * Mutates and returns `next`.
+ */
+export function keepDel(cur, next) {
+  if (!next || typeof next !== 'object') return next
+  const merged = mergeDel(cur, next)
+  if (Object.keys(merged).length) next.del = merged
+  else delete next.del
+  return next
+}
+
 const sameRoutine = (a, b) => JSON.stringify({ ...a, _ts: 0 }) === JSON.stringify({ ...b, _ts: 0 })
 
 /**

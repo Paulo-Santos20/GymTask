@@ -14,6 +14,7 @@ import {
   stampCustomEx,
   entryKey,
   keepReset,
+  keepDel,
   mergeResetIds,
   resetIdsOf,
   recordDeletions,
@@ -623,10 +624,12 @@ export const useStore = create((set, get) => {
     },
     // A replace that is meant to reach the server (backup import, reset) is a deliberate
     // overwrite, not a change to merge: the push it arms goes without a baseRev. It never takes
-    // the reset stamp back (keepReset).
+    // the reset stamp back (keepReset) nor the deletion record (keepDel) — a backup made before
+    // a deletion must not resurrect what it no longer lists.
     replaceState(S, push = false) {
       if (push) forceNext = true
-      persist(keepReset(get().S, clone(S)), push)
+      const prev = get().S
+      persist(keepDel(prev, keepReset(prev, clone(S))), push)
     },
     // Before a backup replaces this copy (Settings — Import): the workouts the server holds that
     // the backup does not — logged since it was made, or on another device meanwhile. The import
@@ -666,7 +669,10 @@ export const useStore = create((set, get) => {
         return
       }
       const others = mergeWith.local ? mergeStates(get().S, mergeWith.state) : mergeWith.state
-      const merged = keepReset(get().S, Object.assign(clone(DEF), mergeStates(next, others, { prefer: 'a' })))
+      const merged = keepDel(
+        get().S,
+        keepReset(get().S, Object.assign(clone(DEF), mergeStates(next, others, { prefer: 'a' }))),
+      )
       merged.active = next.active || null
       persist(merged, true)
       if (mergeWith.rev != null) writeSync(mergeWith.rev, 0)

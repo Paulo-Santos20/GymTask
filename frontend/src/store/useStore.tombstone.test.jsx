@@ -129,4 +129,23 @@ describe('a deletion stays deleted across the conflict window', () => {
     expect(ids(srv.doc)).toEqual(['w1'])
     expect(ids(A.getState().S)).toEqual(['w1'])
   })
+
+  it('an imported backup made before the deletion keeps the tombstone (keepDel)', async () => {
+    const old = { ...clone(DEF), _ts: 100, workouts: [w('w1'), w('w2', '2026-09-02')] }
+    const srv = server({ ...clone(DEF), _ts: 300, workouts: [w('w1')], del: { workouts: { w2: Date.now() } }, _rev: 5 })
+    savedCopy(srv.doc, 5)
+    const A = await openTab()
+    // the user restores the old file (it has no del) — the replace must keep the record
+    A.getState().importBackup(old)
+    expect(typeof A.getState().S.del?.workouts?.w2).toBe('number')
+    // and a stale device merging afterwards still loses w2
+    const B = await openTab()
+    B.setState({ S: { ...B.getState().S, workouts: [w('w1'), w('w2', '2026-09-02')], _ts: 400 } })
+    srv.doc = { ...srv.doc, _rev: 6 }
+    B.getState().update(s => {
+      s.restSec = 33
+    })
+    await B.getState().pushState()
+    expect(ids(srv.doc)).toEqual(['w1'])
+  })
 })

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  keepDel,
   keepReset,
   localExtras,
   mergeBodyweight,
@@ -1046,5 +1047,27 @@ describe('recordDeletions', () => {
     const prev = base({ workouts: [workout('w1')], del: { workouts: { w1: NOW } } })
     const next = { ...prev, workouts: [workout('w1'), workout('w2', '2026-09-02')] }
     expect(recordDeletions(next, prev, NOW).del).toEqual({ workouts: { w1: NOW } })
+  })
+})
+
+describe('keepDel — a replace keeps the deletion record', () => {
+  const NOW = Date.now()
+  const OLD = NOW - 31 * 24 * 3600 * 1000
+
+  it('a backup with no del inherits the copy’s tombstones', () => {
+    const cur = base({ del: { workouts: { w1: NOW } } })
+    const out = keepDel(cur, base({ workouts: [workout('w1'), workout('w2', '2026-09-02')] }))
+    expect(out.del).toEqual({ workouts: { w1: NOW } })
+  })
+
+  it('unions both records, the later stamp winning', () => {
+    const cur = base({ del: { workouts: { w1: NOW - 10, wOld: OLD } } })
+    const next = base({ del: { workouts: { w1: NOW - 20, w9: NOW } } })
+    const out = keepDel(cur, next)
+    expect(out.del.workouts).toEqual({ w1: NOW - 10, w9: NOW })
+  })
+
+  it('leaves no del behind when neither copy has one', () => {
+    expect(keepDel(base(), base()).del).toBeUndefined()
   })
 })
