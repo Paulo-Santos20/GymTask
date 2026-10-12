@@ -292,17 +292,32 @@ describe('typed menu -> AI -> dishes', () => {
     expect(chips).toEqual(['Feijoada', 'Salada de frango', 'Sopa de legumes', 'Pudim'])
   })
 
-  it('a failed read shows the fallback line and the panel stays usable', async () => {
+  it('when the AI fails the typed text is split locally — chips and a heads-up', async () => {
     setConsent(true)
     mocks.menuFromText.mockRejectedValue(new Error('provider down'))
 
     const host = render()
     const panel = openPanel(host)
-    await typeAndSubmit(panel, 'feijoada')
+    await typeAndSubmit(panel, 'feijoada, pudim')
+
+    const chips = [...panel.querySelectorAll('.chip')]
+    expect(chips.map(c => c.textContent)).toEqual(['feijoada', 'pudim'])
+    expect(panel.querySelector('form input[type="text"]').value).toBe('')
+    expect(mocks.toast).toHaveBeenCalledWith('The AI could not read it — I split what you typed')
+    expect(host.textContent).not.toContain('Could not read that menu')
+  })
+
+  it('an AI failure with nothing splittable keeps the error line and the text', async () => {
+    setConsent(true)
+    mocks.menuFromText.mockRejectedValue(new Error('provider down'))
+
+    const host = render()
+    const panel = openPanel(host)
+    await typeAndSubmit(panel, ',')
 
     expect(host.textContent).toContain('Could not read that menu')
     expect(panel.querySelectorAll('.chip')).toHaveLength(0)
-    expect(panel.querySelector('form input[type="text"]').value).toBe('feijoada')
+    expect(panel.querySelector('form input[type="text"]').value).toBe(',')
   })
 
   it('the demo build hides the whole typed-menu form — a demo never sends a menu', async () => {

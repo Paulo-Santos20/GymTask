@@ -123,6 +123,17 @@ export function parseMenu(input) {
   return out.slice(0, 15)
 }
 
+/** Typed cardápio -> dish names, no AI: split on commas/newlines/semicolons, clean via
+ *  parseMenu (trim, dedupe, cap). The fallback when the provider is down — a split list
+ *  beats a dead end. */
+export function splitMenuText(text) {
+  const parts = String(text || '')
+    .split(/[,\n;]+/)
+    .map(s => s.trim())
+    .filter(Boolean)
+  return parseMenu(parts)
+}
+
 /** Model JSON text | server result array | {foods}/{results} -> editable candidates, ≤ 5. */
 export function parseEstimate(input) {
   let value = input

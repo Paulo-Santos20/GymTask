@@ -9,7 +9,7 @@ import { searchExternal, lookupBarcode } from '../lib/foodApis.js'
 import { importCodeFromImage } from '../lib/scan.js'
 import { hasConsent } from '../lib/coach.js'
 import { DEMO } from '../lib/demo.js'
-import { fileToDataUrl, MENU_SYSTEM, parseMenu, parseEstimate } from '../lib/photo.js'
+import { fileToDataUrl, MENU_SYSTEM, parseMenu, parseEstimate, splitMenuText } from '../lib/photo.js'
 import { photoEstimate, photoAsk, menuFromText } from '../lib/coach-api.js'
 import { todayISO, isoOf, fmtDate, fmtNum, uid, weekStartOf } from '../lib/format.js'
 import { LB_TO_KG } from '../lib/recovery.js'
@@ -355,7 +355,17 @@ export default function Nutrition() {
       setMenuText('')
       setMenuState('idle')
     } catch {
-      setMenuState('error')
+      // ponytail: provider down -> split the text locally (photo.js splitMenuText); a comma
+      // list is what the user typed anyway. No retry ladder, add if this proves too lossy.
+      const local = splitMenuText(raw)
+      if (local.length) {
+        setMenuDishes(prev => [...new Set([...prev, ...local])].slice(0, 15))
+        setMenuText('')
+        setMenuState('idle')
+        toast(t('The AI could not read it — I split what you typed'))
+      } else {
+        setMenuState('error')
+      }
     }
   }
   const confirmAdd = () => {

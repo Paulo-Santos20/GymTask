@@ -1566,6 +1566,7 @@ export default {
   'Select at least one dish': 'Seleciona pelo menos um prato',
   'Type the menu…': 'Escreve o cardápio…',
   'Interpret the menu': 'Interpretar o cardápio',
+  'The AI could not read it — I split what you typed': 'A IA não conseguiu ler — separei o que você digitou',
   'Share your data with the Coach first': 'Partilha os teus dados com o Treinador primeiro',
   'Your meal photos': 'As tuas fotos de refeições',
   'Photos of meals you take, sent to the provider to estimate their macros.':

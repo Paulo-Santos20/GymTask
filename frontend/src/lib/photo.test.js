@@ -4,7 +4,7 @@
 // touches the network or the DOM (fileToDataUrl is exercised through the view's module mock,
 // the same seam scan-web uses).
 import { describe, expect, it } from 'vitest'
-import { MENU_SYSTEM, PHOTO_MODEL, PHOTO_SYSTEM, fitWithin, parseEstimate, parseMenu } from './photo.js'
+import { MENU_SYSTEM, PHOTO_MODEL, PHOTO_SYSTEM, fitWithin, parseEstimate, parseMenu, splitMenuText } from './photo.js'
 
 describe('fitWithin', () => {
   it('scales a landscape photo to the max edge keeping the aspect ratio', () => {
@@ -105,5 +105,22 @@ describe('parseMenu', () => {
   it('pins the cardápio prompt contract the server copy mirrors', () => {
     expect(MENU_SYSTEM).toMatch(/dishes/)
     expect(MENU_SYSTEM).toMatch(/cardápio/)
+  })
+})
+
+describe('splitMenuText', () => {
+  it('splits a typed cardápio on commas, newlines and semicolons', () => {
+    expect(splitMenuText('feijoada, arroz;\nsalada')).toEqual(['feijoada', 'arroz', 'salada'])
+  })
+
+  it('trims, dedupes case-insensitively and caps at 15 like parseMenu', () => {
+    expect(splitMenuText('  Feijoada , feijoada ')).toEqual(['Feijoada'])
+    expect(splitMenuText(Array.from({ length: 20 }, (_, i) => 'D' + i).join(', '))).toHaveLength(15)
+  })
+
+  it('answers empty for nothing splittable, never throws', () => {
+    expect(splitMenuText('')).toEqual([])
+    expect(splitMenuText(null)).toEqual([])
+    expect(splitMenuText(',,\n;')).toEqual([])
   })
 })
