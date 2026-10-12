@@ -238,7 +238,8 @@ NUTRITIONIX_APP_KEY=...
 - Testes apagados pelo strip: `e2e-apikey.test.js`, `server-admin-delete.test.js`,
   `server-admin-state.test.js` (+ `Admin*.test.js`, `audit.test.js`) — comportamento removido
   junto, handlers órfãos em `server.js` devem ser flagrados/limpos pelo agente de rebrand.
-- Strings em inglês fora do pacote de locale (`'Live demo…'`, `'Start the demo'`) — pré-existentes.
+- ~~Strings em inglês fora do pacote de locale (`'Live demo…'`, `'Start the demo'`)~~
+  ✅ traduzidas em `pt.js`/`pt-BR.js` (verificado 2026-10-08; `check-source-strings --strict` = 0).
 - ✅ **Fechado (2026-09-28): `sign()` e `SESSION_DAYS` removidos de `server.js`** — `sign()` tinha
   zero callers e `SESSION_DAYS` não era mais lido (a expiração da sessão vem do próprio token).
   Docs de sessão atualizados: `openapi.yaml` ("Sessions last 90 days"), bloco "Session length"
@@ -307,7 +308,9 @@ cd functions && npm install
 - ✅ **Firestore real-time** (RF3) — `onSnapshot` no `lib/api.js`, sync instantâneo entre
   dispositivos (substitui o pull/push manual).
 - **Multi-perfil familiar** no mesmo Firebase project — ⬜ não feito.
-- **Backup/export**: dump completo do Firestore para JSON (portabilidade — espírito "you own your data") — ⬜ não feito.
+- **Backup/export**: ✅ **local** entregue (`Settings.jsx:813` exporta o estado inteiro em JSON
+  com import/merge em `useStore.importBackup`); ⬜ **dump do Firestore** (conta inteira
+  server-side) segue pendente — espera o deploy das functions (Blaze).
 
 ---
 

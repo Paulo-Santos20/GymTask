@@ -44,9 +44,10 @@ export const CREDENTIAL_HOME = process.env.COACH_CREDENTIAL_DIR || '/coach-auth'
 export const COACH_DISABLED = /^(1|true|yes|on)$/i.test(process.env.COACH_DISABLED || '')
 
 // Providers this build can drive. `runtime` is what the adapter runs. Adding one is an adapter
-// file plus a row here — nothing else in the codebase branches on provider identity. The real
-// providers arrive with their adapters; this PR ships only the in-repo fixture, so an instance
-// can be exercised end to end without an AI account.
+// file plus a row here — nothing else in the codebase branches on provider identity. `apiKeyEnv`
+// / `oauthEnv` name the variable jobEnv injects the credential as; the runtime reads it from its
+// environment and from nothing else, which is what makes the sanitised env the only channel a
+// credential can travel down.
 export const PROVIDERS = {
   fixture: { label: 'Fixture (testing)', runtime: 'Fixture', apiKeyEnv: null, oauthEnv: null },
   // `apiKeyEnv` / `oauthEnv` name the variable jobEnv injects the credential as; the runtime

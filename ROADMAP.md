@@ -68,7 +68,7 @@ verdes; Actions ✅, demo no GitHub Pages ✅, bundle da Vercel no ar com os fea
 - **Escrita no Google Fit / Apple Health** — ✅ Apple Health (RF11 — ponte via Atalhos do iOS: peso e treinos); Google Fit fica pendente
 - **Widgets** (Android/iOS) do treino do dia — não feito
 - **Modo social**: compartilhar prints de evolução / PRs — não feito
-- **Vídeos dos exercícios** (dataset CDN já parametrizado por `VITE_IMG_BASE`/`VITE_GIF_BASE`) — não feito
+- ✅ **Vídeos dos exercícios** (dataset CDN parametrizado por `VITE_IMG_BASE`/`VITE_GIF_BASE`) — `components/Media.jsx` toca o GIF com toggle full/mini/off (`gifSize`); resolve a URL em `lib/exercises.js:157`
 
 ### Infra
 
