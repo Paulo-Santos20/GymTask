@@ -16,6 +16,7 @@ Inventory (consumers by grep of import sites):
 | `Toast.jsx`, `SyncBanner.jsx` | Transient toast line; offline/pending-sync banner with tap-to-retry | `App.jsx` |
 | `RestTimer.jsx`, `TimerFlash.jsx` | Rest + timed-set countdown bar (fixed above tab bar); theme-flip alert flash | `App.jsx`, driven by `useUI` |
 | `TabBar.jsx` | 4 tabs + centre Start/Resume button (resolves today's routines) | `App.jsx` |
+| `InstallBanner.jsx` | PWA install prompt (beforeinstallprompt; iOS gets a share-sheet note instead — `lib/pwa.js`) + per-dismissal storage | `App.jsx`; `InstallBanner.test.jsx` |
 | `ErrorBoundary.jsx` | Per-route render guard with "Reload" / "Discard the running workout" | `App.jsx` |
 | `Media.jsx` | Exercise demo animation (autoplay GIF, tap-to-pause, minimize/expand persisted to `gifSize`, failure fallbacks) + `Thumb` thumbnail | `Workout`, `Library`, `RoutineEdit`, `sheets.jsx` |
 | `LineChart.jsx` | SVG line chart: hover tooltip, `goal` line, `invert` y-axis, per-point `m`/`note` | `Stats`, `Home`, `CoachChat`, `sheets.jsx` |
@@ -23,10 +24,11 @@ Inventory (consumers by grep of import sites):
 | `BodyMap.jsx` | Front/back muscle SVG shaded l0–l4 (same steps as the heatmap) + `BodyMapLegend`; ~90 KB geometry lazy-`import()`ed and cached | `Stats`, `RoutineEdit`, `MuscleExplorer`, `sheets.jsx` |
 | `MuscleExplorer.jsx` | Muscle map + body-part/equipment/favourites filter + paginated catalogue; `onPick` makes it a picker | `views/Muscles.jsx` (full), `sheets.jsx` `ExercisePicker` (select mode) |
 | `SwipeToDelete.jsx` | Horizontal reveal-delete with axis lock; coexists with RoutineEdit's drag-reorder | `RoutineEdit.jsx` |
-| `QrCanvas.jsx`, `CameraScan.jsx` | Check-in QR render (lean-qr, pixelated CSS scale); live getUserMedia QR decode with in-place errors | `CheckIn.jsx` |
+| `QrCanvas.jsx`, `CameraScan.jsx` | Check-in QR render (lean-qr, pixelated CSS scale); live getUserMedia barcode decode (QR + 1D via `lib/scan-web.js`) with in-place errors | `CheckIn.jsx`, Nutrition food scanner |
 | `Stepper.jsx` | 3-line shim re-exporting the `ui.jsx` implementation | legacy import site (`sheets.jsx` imports `Stepper.jsx`) |
 
-Tests sit beside their subject: `ui`, `Modals`, `LineChart`, `Heatmap`, `BodyMap`, `Media`.
+Tests sit beside their subject: `ui`, `Modals` (+ dialog/Android-back), `LineChart`, `Heatmap`,
+`BodyMap`, `Media`, `TabBar`, `Toast`, `InstallBanner`, `RestTimer` (ready state).
 
 ## Design
 

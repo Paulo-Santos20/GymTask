@@ -46,16 +46,26 @@ npx vitest run -t "some test name"           # single test by name
 # MCP server tests
 cd mcp && npm test
 
+# API tests (node:test) and Cloud Functions tests
+cd api && npm test
+cd functions && npm test
+
+# Lint/format gate (Biome, config at the repo root — one check covers every folder)
+npm run lint
+
 # Production build (what Vercel runs with root frontend/)
 cd frontend && npm run build
 ```
 
-There is no linter/formatter configured (no ESLint/Prettier config in the repo) and no
-TypeScript — match the existing style by hand.
+Formatting and linting come from **Biome** (`biome.json` at the repo root, dep in the root
+`package.json`); run `npm run lint` (check) or `npm run format` (write) from the root. There
+is no TypeScript — match the existing style by hand.
 
-CI is `.github/workflows/test.yml` on GitHub (repo: Paulo-Santos20/GymTask): runs the
-frontend/api/mcp tests on Node 22. The GitLab/Gitea CI files and the mirror + docker-publish
-workflows were deleted.
+CI is `.github/workflows/test.yml` on GitHub (repo: Paulo-Santos20/GymTask), on Node 22:
+frontend job (`npm test`, `npm run build`, `check-locales`, `check-source-strings --strict`,
+fatigue probe, Biome), `mcp` (tests + `check:node-loadable`), `functions`, `api` (tests +
+coach-assets `--check` + `check-core-loadable`) and `api-image` (Docker builds that boot and
+serve). The GitLab/Gitea CI files and the mirror + docker-publish workflows were deleted.
 
 ## Architecture
 

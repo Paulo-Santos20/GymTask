@@ -50,15 +50,18 @@ legacy from upstream, not the deploy target.
 
 ## What CI does with your pull request
 
-A pull request runs the frontend, MCP and api test suites through GitHub Actions
-(`.github/workflows/test.yml`, Node 22). **Tests must pass (`cd frontend && npm test`)**
-before merge.
+A pull request runs the frontend, MCP, api and functions test suites through GitHub Actions
+(`.github/workflows/test.yml`, Node 22), plus the frontend build, the locale gates
+(`check-locales`, `check-source-strings --strict`), the Biome lint gate and a Docker image
+smoke test. **Tests must pass (`cd frontend && npm test`)** before merge.
 
 ## Good first issues
 
-- Nutrition extras (barcode scan, meal suggestions, recipes)
-- More starter plans
-- Accessibility passes on the workout and chart screens
+- Workout widgets (Android/iOS)
+- Google Fit export (Apple Health is done)
+- Multi-profile support in one Firebase project
+- Exercise video/looping on the library sheets
+- Social mode (share progress prints / PRs via Web Share API)
 
 ## Where to ask what
 

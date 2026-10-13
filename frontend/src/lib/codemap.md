@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-Domain layer: 69 plain `.js` modules + 3 JSON data files with every rule the UI only displays —
+Domain layer: 87 plain `.js` modules + 3 JSON data files with every rule the UI only displays —
 training logic, nutrition, exercise catalogue, coach state, persistence, import/export. No React
 (three exceptions), no store writes: pure functions of state `S` committed by views/`src/store/*`.
 
@@ -29,7 +29,10 @@ training logic, nutrition, exercise catalogue, coach state, persistence, import/
 - **Session lifecycle:** `session-start.buildSessionEntries`, `session-merge`, `backfill`,
   `finish-workout.buildCompletedWorkout`, `workout-date` (move a logged session to another
   date/time: re-files history in date order, keeps session length, re-derives PR badges),
-  plus `active-workout-order`, `active-exercise-swap`,
+  `session-edit` (#143 edit a logged workout), `session-noprog`/`session-routines` (exclude a
+  session from progression; routine helpers `routines.js`), `workout-keys` (hardware keys on
+  the workout screen), `workout-text` (copy a finished workout as text), `progression-copy`
+  (policy display names), plus `active-workout-order`, `active-exercise-swap`,
   `workout-controls`, `rep-range`, `effort` (RIR summary/histogram), `bar` (`plateSplit`),
   `plates` (plate/stack weights loaded from `S.plates`), `starter`, `plan-share`
   (`buildPlanBundle`/`parsePlan`) → mostly `sheets.jsx`.
@@ -45,8 +48,11 @@ training logic, nutrition, exercise catalogue, coach state, persistence, import/
   `isBodyweightEq`/`isAssisted`/`betterWeight`), muscle metadata batches
   (`exercise-muscle-batch-1/2`, olympic `.json`), plus `equipment`/`favourites`/`glyphs`/`body-paths`.
 - **Nutrition:** `tdee.js` (Mifflin-St Jeor `calcBMR`, `ACTIVITY_FACTORS`, `GOAL_ADJUST`,
-  `calcMacros`, `getTargets` → `nutritionStore`), `foods.js` (~209-row BR table, `searchFoods`),
-  `foodApis.js` (`searchUSDA`/`searchOFF`/`searchNutritionix` proxy, `searchExternal` → `Nutrition.jsx`).
+  `calcMacros`, `getTargets` → `nutritionStore`), `tdee-adaptive.js` (maintenance estimate
+  from weigh-in × intake pairs), `foods.js` (~209-row BR table, `searchFoods`),
+  `foodApis.js` (`searchUSDA`/`searchOFF`/`searchNutritionix` proxy, `searchExternal` → `Nutrition.jsx`),
+  `meal-suggest.js` (RF9, macros-left chips, local only), `photo.js` (RF10 photo→macros client
+  half), `combined-chart.js` (RF5, one date axis over bodyweight × kcal × volume).
 - **Coach:** `coach.js` proposal domain (`canonicalPlan`/`planHash`, `validateProposal`,
   `applyChangeSet`/`CHANGE_TYPES`, `pushSnapshot`/`revertLast`, chat/log caps); `coach-api.js`
   façade demo/BYOK/server; `coach-local.js` BYOK runtime (`ADAPTERS = { anthropic, openai,
@@ -55,6 +61,12 @@ training logic, nutrition, exercise catalogue, coach state, persistence, import/
 - **Persistence/sync/IO:** `api.js` (see Integration), `firebase.js` (only `firebase/*` importer),
   `sync-merge.js` (`mergeStates`, `unionById`, `localExtras`), `import-csv.js` (`parseWorkoutCSV`,
   `parseImport`, `mergeImport` — FitNotes/Strong/Hevy), `import-hevy.js`.
+- **Platform/misc:** `backup-file.js` (whole-profile JSON download, used by the Settings export
+  row and the auto-backup), `pwa.js` (beforeinstallprompt; iOS has none — share-sheet note),
+  `mobile.js` (VITE_MOBILE flag + print hook only; Capacitor shell is out of scope),
+  `clipboard.js`, `apple-health.js` (RF11, Shortcuts bridge), `adherence.js` (weekly sessions
+  vs plan days), `hevy-id-map.js` (generated id↔catalogue map), `structuralBalance*.js`
+  (Poliquin/Thibaudeau ratio tables → `strength-exercises`/view).
 - **UI plumbing:** `format` (dates/weeks/`fmtNum`/`uid`), `i18n-core`/`i18n`, `units`
   (`convertStateUnit`), `speed` (cardio speed stored as km/h; display follows the profile
   unit, km/h or mph), `sound`, `push`, `wakelock`, `viewport-guard`, `use-sheet-keyboard`,
@@ -64,7 +76,7 @@ training logic, nutrition, exercise catalogue, coach state, persistence, import/
 
 - **Pure framework-free functions + co-located unit tests (CONTRIBUTING.md rule):** anything
   deciding what you lift next or reading a logged session back is a pure helper here with its
-  vitest file beside it (`*.test.js`/`*.jsx` — 75 of them, `npm test` in `frontend/`; never
+  vitest file beside it (`*.test.js`/`*.jsx` — 101 of them, `npm test` in `frontend/`; never
   documented individually).
 - **No framework imports** except `use-sheet-keyboard.js`/`wakelock.js` (React hooks) and
   `i18n.js` (`useLang` via `useSyncExternalStore`).

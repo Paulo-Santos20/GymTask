@@ -94,7 +94,7 @@ export async function decode1D(img, formats) {
 // scaled down to at most MAX px on its long edge — plenty for a QR, and it keeps jsQR fast enough
 // to run on every few video frames on a phone. Reuses one canvas across calls. `formats` picks
 // what the native detector may read (default QR only — the check-in contract); underneath it
-// jsQR covers QR everywhere and zbar-wasm covers the 1D formats the caller asked for.
+// jsQR covers QR everywhere and zxing-wasm covers the 1D formats the caller asked for.
 const MAX = 800
 let _canvas = null
 export async function decodeSource(source, formats) {

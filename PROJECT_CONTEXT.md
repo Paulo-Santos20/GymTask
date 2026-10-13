@@ -177,6 +177,9 @@ them, so its reported volume/1RM figures pick up the fix automatically too.
 
 ## i18n
 
+> **Fork note:** this document describes the upstream pass. This fork (GymTask) kept only
+> `locales/pt.js` + `locales/pt-BR.js` (rebrand strip); the ten other locales and `es.js` are gone.
+
 All new strings are translated in `locales/es.js` (the other ten locales fall back to English via
 `t()`, which is safe but not localized — nobody's asked for those yet).
 

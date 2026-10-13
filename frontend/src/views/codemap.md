@@ -21,8 +21,10 @@ Route map (App.jsx:144-168; views not in `TabBar` are reached by in-screen links
 | `Stats.jsx` | `/stats` |
 | `History.jsx` | `/history` |
 | `Nutrition.jsx` | `/nutrition` |
+| `Recipes.jsx` | mounted *inside* Nutrition (the recipe section), not its own route |
 | `Library.jsx` | `/library` |
 | `Muscles.jsx` | `/muscles` |
+| `StructuralBalance.jsx` | `/structural-balance` (lazy; linked from Stats, TabBar highlights the stats tab) |
 | `Settings.jsx` | `/settings` |
 | `CoachChat.jsx` | `/coach` (TabBar hidden while on it) |
 | `CoachIntake.jsx` | `/coach/intake` |
@@ -44,14 +46,15 @@ TabBar tabs: home, plan, (start → /workout), stats, library.
 - **State**: `store/useStore.js` exposes one big `S` state tree (persisted to Firestore /
   localStorage by `boot()`) plus actions (`update`, `replaceState`, `signOut`, `adoptProfile`);
   `store/useUI.js` holds transient UI (sheets, toasts, rest/work timers); `store/nutritionStore.js`
-  is a separate persisted slice (`profile`, `targets`, `log`, `lastRemoved`). Views read with
+  is a separate persisted slice (`profile`, `targets`, `log`, `recipes`, `lastRemoved`). Views read with
   selectors (`useStore(s => s.S)`) and mutate only through `update(s => …, true)` (immer draft).
 - **Config/confirmation sheets** are *not* defined in views; views call into `sheets.jsx`
   (`startFlow`, `exercisePicker`, `exConfigSheet`, `finishWorkout`, `confirmSheet`,
   `bwSheet`, `menuSheet`, `workoutDetailSheet`, …). Views that need a bespoke sheet open it via
   `useUI.getState().openSheet(...)`.
 - **Co-located vitest tests**: `*.test.jsx` files next to each screen (`Workout.*`,
-  `Settings.*`, `Stats.*`, `Plan.*`, `RoutineEdit.*`, `CheckIn.*`, `Home.*`, `starter-entry`,
+  `Settings.*`, `Stats.*`, `Plan.*`, `RoutineEdit.*`, `CheckIn.*`, `Home.*`, `Nutrition.*`,
+  `Coach*`, `Library.*`, `Muscles.*`, `StructuralBalance.*`, `Login.*`, `starter-entry`,
   `week-start`); pure helpers are exported from the view files for them (`moveGymCard`,
   `removeActiveExercise`, `reorderRoutineUnit`, `FATIGUE_LEVELS`).
 - **Styling** is class-name CSS (`index.css`, plus `nutrition.css` imported by Nutrition and
@@ -72,10 +75,11 @@ TabBar tabs: home, plan, (start → /workout), stats, library.
 - **Home.jsx**: derives today from `effectiveRoutines(S, todayISO())` / `S.dayPlan` overrides;
   week strip (`weekStartOf`, per-day dots plan/ovr/done) with `weekOffset` local state; the
   today-row calls `startFlow(ids)` (weigh-in → session) or resumes `S.active`; quick-tap cards to
-  `/checkin` and `/nutrition`; body-weight card (`lastBW`, `bwSheet`, `goalSheet`, `LineChart`)
-  and streak card (`streakWeeks`, `calendarSheet`); empty-state onboarding
+  `/checkin` and `/nutrition`; body-weight card (`lastBW`, `bwSheet`, `goalSheet`, `LineChart`),
+  streak card (`streakWeeks`, `calendarSheet`) and weekly-adherence chip (`weeklyAdherence` —
+  done vs planned this week); `InstallBanner` on top (PWA install); empty-state onboarding
   (`starterPlanSheet` / `/plan`).
-- **Workout.jsx** (largest screen, ~1140 lines): `S.active ? <ActiveWorkout/> : <StartChooser/>`.
+- **Workout.jsx** (largest screen, ~2240 lines): `S.active ? <ActiveWorkout/> : <StartChooser/>`.
   - `StartChooser` — today's routines via `effectiveRoutineIds`, other routines, freestyle
     (`startFlow([])`), all through `sheets.jsx startFlow`.
   - `ActiveWorkout` — reads `S.active = { id, name, entries[], cur, start, d, backfill?, note?,
@@ -100,40 +104,56 @@ TabBar tabs: home, plan, (start → /workout), stats, library.
     rest timers (`restSecFor`, `warmupRestSecFor`, `restAfterSet`), superset stepping
     (`supersetFlowStep`, `nextUnfinishedUnit`) and `workoutCompleteSheet()`.
     `startTimed` uses `useUI.startWork` to log actual hold duration.
-  - A 20s heartbeat POSTs `/api/activity` for the admin dashboard (signed-in only).
+  - A 20s heartbeat POSTs `/api/activity` (live-workout presence; ephemeral, never stored,
+    signed-in only).
   - Header: discard (confirm → `s.active = null`), elapsed clock (`Elapsed` isolated so the tree
     doesn't re-render every second), ⋮ menu (rename, add routine, layout), finish
     (`finishWorkout` sheet). Exercise ops: add (`exercisePicker` + `exConfigSheet`), swap, move
     (`moveActiveWorkoutUnit`), remove (`removeActiveExercise` exports the shared splice).
-- **Nutrition.jsx**: local state `date` (day nav: `shift(±1)`, future disabled, Today button),
-  `adding` (meal key with open add-panel), `query`/`picked`/`grams`, debounced (350 ms) external
-  search via `searchExternal` (`onlineState`: idle|loading|done|error, offline = explicit error).
-  Reads `useNutritionStore`: `profile`, `targets`, `log`, `totalsFor(date)`, `lastRemoved` →
-  rendered calorie summary (kcal vs target, over/remaining) + macro bars (protein/carbs/fat).
-  Four `MEALS` sections (café/almoço/lanche/jantar → breakfast/lunch/snack/dinner) each with rows
+- **Nutrition.jsx** (hub for the whole food module): local state `date` (day nav: `shift(±1)`,
+  future disabled, Today button), `adding` (meal key with open add-panel), `query`/`picked`/`grams`,
+  debounced (350 ms) external search via `searchExternal` (`onlineState`: idle|loading|done|error,
+  offline = explicit error). Reads `useNutritionStore`: `profile`, `targets`, `log`,
+  `totalsFor(date)`, `lastRemoved` → rendered calorie summary (kcal vs target, over/remaining) +
+  macro bars (protein/carbs/fat). Four `MEALS` sections (café/almoço/lanche/jantar) each with rows
   and an "Add food" panel: local `searchFoods` first, then online (USDA/OFF/Nutritionix, source
   badge), pick → grams stepper → portion preview → `addEntry(date, …)` (per-100 g scaled).
   Remove shows an undo strip (`removeEntry` / `undoRemove` / `clearRemoved` on date change).
-  Bottom **TDEE profile form**: weight/height/age steppers, sex segmented, activity and goal chips
-  → `setProfile`, footer shows `targets.bmr` / `targets.tdee` (Mifflin-St Jeor, computed in
-  `store/nutritionStore.js`).
+  Flows layered on top of the same diary: **barcode scan** (RF1 — `CameraScan` decodes retail 1D
+  + QR, `lookupBarcode` hits the OFF product endpoint, pre-fills the form), **photo → macros**
+  (RF10 — consent-gated `photoEstimate`, plus menu-assisted variants: a cardápio photo or typed
+  menu goes through `menuFromText`/`parseMenu`, the user taps out what they did NOT eat, the meal
+  photo goes with the kept dishes as context), **meal suggestions** (RF9 — `suggestFoods` chips
+  from the day's remaining macros + `mealForHour`), **recipes** (`Recipes.jsx` mounted as a
+  section: CRUD over `recipes`, per-portion logging via `addRecipeToDiary`) and the **combined
+  chart** (RF5 — `buildCombinedSeries` overlays bodyweight × kcal × weekly volume on one date
+  axis). **Adaptive maintenance** (`adaptiveTDEE`, informational only) is shown next to the
+  formula TDEE; tapping Apply stores `profile.kcalTarget`, which then drives the targets
+  (`deriveTargets` in the store). Bottom **TDEE profile form**: weight/height/age steppers, sex
+  segmented, activity and goal chips → `setProfile`, footer shows `targets.bmr` / `targets.tdee`
+  (Mifflin-St Jeor, computed in `store/nutritionStore.js`).
 - **Stats.jsx**: analytics hub. Tiles (workouts/month/streak/30d weight delta), 12-month
   `Heatmap`, `MuscleBalance` card (Segmented: balance | fatigue | strength → `BodyMap` with
   thresholds `FATIGUE_LEVELS`/`STRENGTH_LEVELS`, window 7/30/90/all, hard-sets toggle, per-muscle
   exercise rows with est. 1RM decay), `EffortCard` (weekly avg line + histogram, gated by
   `hasEffort`), body-weight `LineChart` with range, exercise progress picker (`exHist` derived
   from `S.workouts`, metric segmented top-set / est. 1RM `e1rmSeries` / effort, `repsOnly`
-  fallback), recent workouts (`WorkoutRow` → `workoutDetailSheet`).
+  fallback), recent workouts (`WorkoutRow` → `workoutDetailSheet`), link to
+  `/structural-balance`.
+- **StructuralBalance.jsx**: Poliquin/Thibaudeau/ATG ratio tables (`lib/structuralBalanceTemplates`)
+  against the user's own est. 1RMs (`lib/structuralBalance.js`), per-pair verdicts and guidance.
 - **Settings.jsx**: sections — Account (sign-out / sign-out-everywhere / guest / demo),
   AI Coach (row → `/coach/setup` mode picker),
   General (lang, kg↔lb with convert-or-relabel sheet, weight decimals, week start, check-in
-  switch), During a workout (weigh-in, workout view cards/list/compact, `WorkoutControlsSheet`
-  toggles for steppers/set shortcuts/pair buttons/exercise buttons, rest timers, keep-awake,
-  animations size, sounds, RIR/RPE effort + help sheet), Notifications (`PushCard`),
-  Equipment (`EquipmentCard` profiles), Appearance (theme/body/accent), Data (starter plan,
-  imports FitNotes/Strong/Hevy/Apple Health, JSON export/import, reset — `replaceState(DEF)`),
-  Tip + version. Local sub-components in the same file: `WorkoutControlsSheet`, `effortHelpSheet`,
-  `PushCard`, `EquipmentCard`.
+  switch, volume landmarks MEV/MAV per muscle `S.muscleTargets`), During a workout (weigh-in, workout view
+  cards/list/compact, `WorkoutControlsSheet` toggles for steppers/set shortcuts/pair
+  buttons/exercise buttons, rest timers, keep-awake, animations size, sounds, RIR/RPE effort +
+  help sheet), Notifications (`PushCard`), Apple Health (iOS Shortcuts setup via
+  `lib/apple-health.js`), Equipment (`EquipmentCard` profiles), Appearance (theme/body/accent),
+  Data (starter plan, imports FitNotes/Strong/Hevy + body weight from Apple Health, JSON
+  backup export/import via `lib/backup-file.js`, auto-backup switch `S.autoBackup`, reset —
+  `replaceState(DEF)`), Tip + version. Local sub-components in the same file:
+  `WorkoutControlsSheet`, `effortHelpSheet`, `PushCard`, `EquipmentCard`.
 - **Plan.jsx**: week schedule (routine ids per weekday in `S.week`, day sheets
   `dayAssignSheet`/`dayAddRoutineSheet`, inline ✕) + routines list (`S.routines` order, ↑↓ reorder
   via `moveRoutine`, new → `/plan/r/:id`), Coach CTA gated by `coachAvailable(config, user, …)`.
@@ -148,9 +168,10 @@ TabBar tabs: home, plan, (start → /workout), stats, library.
 - **CheckIn.jsx**: membership QR cards (`S.gymCards`), regenerated QR via `QrCanvas`,
   camera/photo import (`importCodeFromImage`), reorder (`moveGymCard`), last-card memory.
 - **CoachIntake.jsx / CoachChat.jsx**: intake is a one-question-per-screen wizard (consent first,
-  `?edit=1` = profile editor) writing `S.coach.profile`; chat polls `useCoachStatus`, threads
-  `S.coach.chat` + live job/pending proposal, applies/undoes via `lib/coach.js`
-  (`applyChangeSet`, `applyCreatedPlan`, `revertLast`), history kept in `S.coach.log`.
+  `?edit=1` = profile editor) writing `S.coach.profile`; chat polls `useCoachStatus`, streams
+  SSE token deltas with a polling fallback (RF4), threads `S.coach.chat` + live job/pending
+  proposal, applies/undoes via `lib/coach.js` (`applyChangeSet`, `applyCreatedPlan`,
+  `revertLast`), history kept in `S.coach.log`.
 - **CoachSetup.jsx**: mode picker at `/coach/setup` — server (`coachLocal.mode='server'`) or
   BYOK (provider chips from `HTTP_PROVIDERS`, key in `coach-secrets`, one lazy
   `import('../lib/coach-local.js')` behind a 3-step prepare line; static core imports limited

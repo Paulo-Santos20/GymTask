@@ -53,7 +53,7 @@ verdes; Actions ✅, demo no GitHub Pages ✅, bundle da Vercel no ar com os fea
 
 ### Nutrição
 
-- ✅ **Scanner de código de barras nos alimentos** (RF1 — câmera/foto → EAN → entrada pré-preenchida; `BarcodeDetector` nativo com fallback jsQR)
+- ✅ **Scanner de código de barras nos alimentos** (RF1 — câmera/foto → EAN → entrada pré-preenchida; `BarcodeDetector` nativo com fallback jsQR (QR) + zxing-wasm (1D))
 - ✅ **Sugestão automática de refeições** (RF9 — chips com os macros restantes do dia no Nutrition)
 - ✅ **Fotos de refeição com estimativa de macros** (RF10 — visão Groq gratuita + categoria de consentimento "foto")
 - ✅ **Receitas com macros por porção** (RF7 — adicionáveis ao diário)

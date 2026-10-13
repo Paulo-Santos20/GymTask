@@ -8,7 +8,7 @@ live-workout presence, the daily reminder tick, and the mount point for the AI C
 reference implementation its HTTP contract is written down in — `openapi.yaml` (3.1, one path
 per registered route) is the source of truth for what this folder serves.
 
-- `server.js` (861 lines, ESM) — everything above: storage, auth, push, routes, dispatch.
+- `server.js` (964 lines, ESM) — everything above: storage, auth, push, routes, dispatch.
 - `push-messages.js` — payload builders only (`dayReminderPush`, `restTimerPush`, `restTickPush`, `testPush`); `restTickTimes` is the pure schedule behind the rest-timer countdown series.
 - `openapi.yaml` — hand-written spec of the HTTP fallback API; `Dockerfile` — two build
   targets; `test/*.test.js` — `npm test` = `node --test test/*.test.js`; `scripts/` — asset
@@ -17,11 +17,11 @@ per registered route) is the source of truth for what this folder serves.
 ## Design
 
 - **Dispatch**: one `routes` object keyed by `'METHOD /path'`
-  (`routes[req.method + ' ' + url.pathname]`, server.js:833). 16 local keys —
+  (`routes[req.method + ' ' + url.pathname]`, server.js:720). 16 local keys —
   `GET /api/health|config|me|data|data/rev|push/public-key|push/status`,
   `POST /api/logout|logout/all|data|push/subscribe|push/unsubscribe|push/test|
   push/rest-timer|push/rest-timer/cancel|activity` — plus `...coachRoutes(...)`, whose
-  `/api/admin/*` keys are excluded at spread time (server.js:818) as defense-in-depth: the
+  `/api/admin/*` keys are excluded at spread time (server.js:933) as defense-in-depth: the
   handlers are deleted from `routes.js` and the admin panel is gone. Unknown key → 404; `HttpError` → its status; anything
   else → logged 500. No framework, no router, no middleware stack.
 - **Storage** (`DATA_DIR`, default `/data`): `db.json` (users, creds, subs),

@@ -90,7 +90,7 @@ nunca chamam `initializeApp` diretamente.
 - `store/nutritionStore.js` — log de refeições por data, persistência `gym_nutrition_v1`
 - UI: `views/Nutrition.jsx` (278 linhas) + `nutrition.css` — navegação de data, resumo calorias/macros,
   undo, add-food (busca local + externa), seletor de porção, formulário TDEE; rota `/nutrition` wired no `App.jsx`
-- i18n: 42 keys em `pt.js` + `PT_BR_OVERRIDES` (censo **752** overrides, inherited 641, fingerprint intacto)
+- i18n: 42 keys em `pt.js` + `PT_BR_OVERRIDES` (censo **879** overrides, inherited 699, fingerprint intacto)
 
 ## 3. Configuração / variáveis de ambiente
 
@@ -132,7 +132,7 @@ NUTRITIONIX_APP_KEY=...
 | — | Card Nutrition no Home | ✅ concluído | link `/nutrition` em `views/Home.jsx`; rota existia desde o módulo |
 | — | Rebrand do prompt do Coach + URLs upstream no `openapi` | ✅ concluído | `system-prompt.js`, `prompts/common.md` (+ `prompts.js` regenerado), `functions/index.js` → "GymTask Coach"; assertion `jobs.test.js:458` ajustada; comentários `config.js:19`/`node-fetch.js:10`; `openapi.yaml` (browse/contact/derived → fork) + `website/api.html` regenerado (16 endpoints); `build-coach-assets.mjs` normaliza CRLF (o `--check` do CI é byte-compare, agora estável entre plataformas); `scripts/` (hevy-id-map comments, tempdir `gytask-pt-br-`). Verificado: jobs 1/1, adapters-http 19/19, `--check` verde, greps `openGym Coach`/`inside openGym` = 0. Mantidos por contrato: `opengym_plan: 1`, salt HKDF `opengym-coach-v1`, UA `opengym-coach/` |
 | — | Rodada de features 2026-10-04/05 (3 planos, 50 todos) | ✅ concluído | audit-fixes (31 + F1–F4): segurança functions (CORS allowlist/rate limit/payload caps + guard de bytes no `PUT /api/data`), `firebase-admin` 12→14, suíte `functions/` e lint Biome no CI, a11y (diálogo/aria-labels `t()`/nomes), perf (React.lazy + vendor split, selectors/memo), ~150 testes novos, FCM diário, dead-code/docs. top5-features (7): TDEE adaptativo, proteína por refeição, landmarks musculares (série + presets + edição), memória do Coach (`recent` + PRs), aderência. roadmap-features (12): barcode, deload, onSnapshot, SSE streaming, gráfico combinado, plano alimentar, receitas, revisão semanal agendada, sugestão de refeição, foto→macros (Groq), Apple Health (Shortcuts), bateria final — ver ROADMAP "Entregue" |
-| — | Build + testes centrais | ✅ **verde** (contagens 2026-10-08, pós-fallback-cardápio) | `npm run build` exit 0; `npm test` **2594/2594** (226 arquivos, 1 skip); `check-locales` **1578/1578** (2 locales in sync); `check-source-strings --strict` **0** pendências (1168 strings traduzidas); fingerprint `d7de576c…d3d4c5` (inherited **698** / overrides **879**); fatigue-probe ✅; `mcp` **88/88** + `node-loadable`; `api` **205 pass / 0 fail**; `functions` **50/50**; gate Biome ✅ |
+| — | Build + testes centrais | ✅ **verde** (contagens 2026-10-13, pós rest-timer lock-screen) | `npm run build` exit 0; `npm test` **2597/2597** (227 arquivos, 1 skip); `check-locales` **1578/1578** (2 locales in sync); `check-source-strings --strict` **0** pendências (1174 strings traduzidas); fingerprint `5bdbb09f…6727e4` (inherited **699** / overrides **879**); fatigue-probe ✅; `mcp` **88/88** + `node-loadable`; `api` **206 pass / 0 fail**; `functions` **50/50**; gate Biome ✅ |
 | — | Paridade com upstream (merge-base `de7f25c` → upstream `e88062e`; fases 0–6, mídia fora de escopo) | ✅ concluído | merges em `main` + esta rodada: sync core do store portado do upstream (meta por cópia em `WeakMap`, base `gym_sync` + `gym_dirty` para o que se deve ao servidor, listener de `storage` em `gym_sync` → `checkRev(true)`, ação `syncNow()`; teste `useStore.tabs.test.jsx` 10/10), CoachIntake/CoachSetup/CoachChat (fast-failure, demo-failure, cleartext), grip/impressão/progressão/troca de exercício, cartão de peso no Home, nova rotina no Plan, pausa/pronto do descanso, unidade/reset/import sync; **gates de string/locale**: 16 chaves novas em `pt.js` (inherited 676→692), mojibake UTF-8 duplo em 8 arquivos (84 ocorrências — `â€”`→`—` etc. + `Â·`/`Â©`) corrigido na origem, rebrand `Use my self-hosted openGym` → `GymTask` (`CoachSetup.jsx` + teste) |
 | — | Deploy Vercel/PWA | 🟡 configs no ar | Projeto `gymtask-jtu8` linkado (`.vercel/` gitignored); **envs 8 production + 6 preview** (6 `VITE_FIREBASE_*` em ambas + `VITE_IMG_BASE`/`VITE_GIF_BASE` em production) via CLI/API (2026-09-28/29); `rootDirectory=frontend` + build settings (`npm ci`/`npm run build`/`dist`) corrigidos via API PATCH; `vercel.json` **duplicado idêntico** (raiz + `frontend/`) com comandos relativos. Dois erros de build resolvidos: `cd: frontend: No such file or directory` (cwd já era o Root Directory) e limite de **12 Serverless Functions do Hobby** (Root Directory vazia via `api/` ~240 `.js`; agora `api/` fica fora do projeto Vercel — functions ficam no Firebase). Build verde ✅ (`1601e6c` READY 2026-09-28 21:18, headers PWA verificados ao vivo); falta `VITE_NUTRITION_PROXY_URL` |
 | — | Firebase deploy config | ✅ em produção | `firebase.json` (nodejs22), `.firebaserc` → **`gymtask-ce4b6`** (placeholder trocado 2026-09-28), `firestore.rules` **deployed** (`firebase deploy --only firestore:rules` exit 0, rules released) |
@@ -230,11 +230,11 @@ NUTRITIONIX_APP_KEY=...
   síncrono do servidor — aceito, documentado no código.
 - A função `coach` em `functions/` é autocontida (duplica 3 linhas de prompt): Firebase empacota
   só `functions/` no deploy e `api/` é ESM — débito sinalizado no código.
-- `pt-br-locale.test.js` faz censo de chaves (**752** overrides / **641** herdados) — qualquer
+- `pt-br-locale.test.js` faz censo de chaves (**879** overrides / **699** herdados) — qualquer
   agente que adicione/remova chaves deve recomputar; fingerprint
-  `frontend/scripts/pt-br-inheritance-fingerprint.mjs` é o guardião (hash novo
-  `4f9c1cf24a394a45ac8e14d412a97f0462e9ef4c6a9ae348a27203511aea84f3` após o strip das 20 chaves
-  APK/update em `pt.js` + 4 overrides em `pt-BR.js`; recomputar com `node scripts/pt-br-inheritance-fingerprint.mjs --list`).
+  `frontend/scripts/pt-br-inheritance-fingerprint.mjs` é o guardião (hash
+  `5bdbb09f6c8166531d7b95987875ee52721c5ddbc29903e8e4251c5c556727e4`; recomputar com
+  `node scripts/pt-br-inheritance-fingerprint.mjs --list`).
 - Testes apagados pelo strip: `e2e-apikey.test.js`, `server-admin-delete.test.js`,
   `server-admin-state.test.js` (+ `Admin*.test.js`, `audit.test.js`) — comportamento removido
   junto, handlers órfãos em `server.js` devem ser flagrados/limpos pelo agente de rebrand.
@@ -274,8 +274,8 @@ cd functions && npm install
 
 ### Nutrição
 - ✅ **Scanner de código de barras nos alimentos** (RF1, 2026-10-04) — `BarcodeDetector`
-  nativo quando existe, jsQR como fallback; EAN → entrada de alimento pré-preenchida
-  (`@capacitor-mlkit` saiu com a decisão PWA-only).
+  nativo quando existe, jsQR para QR e zxing-wasm para 1D; EAN → entrada de alimento
+  pré-preenchida (`@capacitor-mlkit` saiu com a decisão PWA-only).
 - ✅ **Sugestão automática de refeições** (RF9) — chips com os macros restantes do dia no
   Nutrition, com pratos prontos do banco TBCA.
 - ✅ **Fotos de refeição → estimativa de macros** (RF10) — visão Groq gratuita (decisão 2)
@@ -314,7 +314,21 @@ cd functions && npm install
 
 ---
 
-*Última atualização: 2026-10-08 — **cardápio por texto**. O painel de nutrição ganhou um
+*Última atualização: 2026-10-13 — **rest-timer na tela bloqueada do iPhone**. Um descanso com o
+celular travado só recebia o alerta do fim; a contagem vivia numa aba suspensa. Agora uma aba
+escondida agenda o descanso com `tick: true` e o servidor dispara push a cada 15 s do tempo
+restante, sempre com a **mesma tag**, então o `sw.js` (issue #172) mantém uma única linha contando
+na tela de bloqueio, trocada pelo alerta do fim em zero. `useUI.js` re-agenda a cada
+`visibilitychange` (travado → série; destravado → só o fim; pausado → nada), o cancelamento limpa a
+série inteira, e a rota `POST /api/push/rest-timer` ganhou `tick` (opcional; ausente = comportamento
+antigo). `restTickTimes` (schedule puro) + `restTickPush` em `api/push-messages.js`; testes novos em
+`push-messages.test.js`, `server-push-status.test.js` e `useUI.lock-tick.test.js`. **Contagens
+2026-10-13 (local)**: frontend vitest **2597/2597 (227 arq, 1 skip)**, `npm run build` exit 0,
+`check-locales` **1578/1578**, `check-source-strings --strict` 0 (1174 strings), fingerprint
+`5bdbb09f…6727e4` (inherited 699 / overrides 879), fatigue-probe ✅, `api` **206/206**, `functions`
+**50/50**, `mcp` **88/88**, gate Biome ✅.*
+
+*Anterior (2026-10-08) — **cardápio por texto**. O painel de nutrição ganhou um
 campo "Escreve o cardápio…" + "Interpretar o cardápio": o texto vai à IA (`menuFromText` —
 BYOK Groq direto ou rota `/photo` com `task:'menu'` + `text`, mesmo `MENU_PROMPT`), vira os
 mesmos chips do fluxo de foto e faz merge com o que a foto já leu; consentimento e demo

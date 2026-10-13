@@ -16,7 +16,8 @@ Firebase contract, Coach, Nutrition, pending work). Contributor rules: `CLAUDE.m
   `pushDailyReminder`.
 - `mcp/src/` — optional read-only stdio MCP bridge for LLM clients.
 - `firebase.json` / `firestore.rules` / `vercel.json` / `.github/workflows/test.yml` — deploy
-  and CI wiring (CI runs frontend/api/mcp tests on Node 22).
+  and CI wiring (CI runs frontend/api/mcp/functions tests plus the Biome gate and a Docker
+  image smoke test on Node 22).
 
 ## Root Files
 | File | Role |
