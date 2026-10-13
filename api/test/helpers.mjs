@@ -17,8 +17,14 @@ export function tempData() {
 }
 
 export function writeState(dir, uid, S) {
-  fs.writeFileSync(path.join(dir, 'state-' + uid + '.json'), JSON.stringify(S))
+  fs.writeFileSync(`${dir}/state-${uid}.json`, JSON.stringify(S))
 }
+
+/** An ISO date `n` days before today. The review window is measured against the current
+ *  clock (reviewWindow's 12-week cutoff), so fixture history anchored on fixed dates goes
+ *  stale as the calendar moves and the suite starts failing for reasons that have nothing to
+ *  do with the code — dates in the fixtures move with the clock instead. */
+export const daysAgo = (n, now = new Date()) => new Date(now.getTime() - n * 86400000).toISOString().slice(0, 10)
 
 /** A profile that has consented and has some history — the usual starting point. */
 export function sampleState(over = {}) {
@@ -47,14 +53,14 @@ export function sampleState(over = {}) {
     dayPlan: {},
     exWeights: { '0001': { w: 20 } },
     bodyweight: [
-      { d: '2026-07-01', w: 78 },
-      { d: '2026-07-20', w: 78.5 },
+      { d: daysAgo(20), w: 78 },
+      { d: daysAgo(1), w: 78.5 },
     ],
     customEx: [],
     workouts: [
       {
         id: 'w1',
-        d: '2026-07-20',
+        d: daysAgo(1),
         name: 'Full body A',
         start: 1000,
         end: 1000 + 45 * 60000,

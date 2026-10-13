@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { tempData, sampleState } from './helpers.mjs'
+import { tempData, sampleState, daysAgo } from './helpers.mjs'
 
 tempData()
 const payload = await import('../coach/core/payload.js')
@@ -75,7 +75,7 @@ test('review payload carries the plan, the window, effort and aggregates', () =>
 test('a stalling exercise shows up in the aggregates the way the engine counts it', () => {
   const S = sampleState()
   // Three sessions that all fell short of the 10-rep target.
-  S.workouts = ['2026-07-06', '2026-07-13', '2026-07-20'].map((d, i) => ({
+  S.workouts = [daysAgo(14), daysAgo(7), daysAgo(1)].map((d, i) => ({
     id: 'w' + i,
     d,
     name: 'A',
@@ -104,7 +104,7 @@ test('a set that was never ticked off is a miss, not a gap', () => {
   S.workouts = [
     {
       id: 'w1',
-      d: '2026-07-20',
+      d: daysAgo(1),
       name: 'A',
       start: 0,
       end: 60000,
@@ -223,7 +223,7 @@ const debriefState = () =>
     workouts: [
       {
         id: 'w0',
-        d: '2026-07-06',
+        d: daysAgo(14),
         name: 'Full body A',
         start: 1000,
         end: 1000 + 40 * 60000,
@@ -233,7 +233,7 @@ const debriefState = () =>
       },
       {
         id: 'wx',
-        d: '2026-07-10',
+        d: daysAgo(10),
         name: 'Other',
         start: 1000,
         end: 1000 + 30 * 60000,
@@ -243,7 +243,7 @@ const debriefState = () =>
       },
       {
         id: 'w1',
-        d: '2026-07-13',
+        d: daysAgo(7),
         name: 'Full body A',
         start: 1000,
         end: 1000 + 42 * 60000,
@@ -253,7 +253,7 @@ const debriefState = () =>
       },
       {
         id: 'w2',
-        d: '2026-07-20',
+        d: daysAgo(1),
         name: 'Full body A',
         start: 1000,
         end: 1000 + 45 * 60000,
@@ -282,12 +282,12 @@ test('a debrief payload carries one session, its predecessors of the same routin
   assert.equal(p.session.entries[0].sets.length, 4)
   assert.deepEqual(
     p.previous.map(w => w.d),
-    ['2026-07-06', '2026-07-13'],
+    [daysAgo(14), daysAgo(7)],
   )
   assert.equal('library' in p, false)
   assert.equal('window' in p, false)
   assert.ok(p.aggregates && Array.isArray(p.aggregates.exercises))
-  assert.ok(p.bodyweight.series.every(b => b.d <= '2026-07-20'))
+  assert.ok(p.bodyweight.series.every(b => b.d <= daysAgo(1)))
 })
 
 test('an unknown workout id falls back to the latest session', () => {
@@ -301,7 +301,7 @@ test('workoutMeta counts done work sets, keeps the stored volume and the PR coun
   const m = payload.workoutMeta(debriefState(), 'w2')
   assert.deepEqual(m, {
     id: 'w2',
-    d: '2026-07-20',
+    d: daysAgo(1),
     name: 'Full body A',
     minutes: 45,
     vol: 600,
@@ -315,7 +315,7 @@ test('workoutMeta counts done work sets, keeps the stored volume and the PR coun
     workouts: [
       {
         id: 'q',
-        d: '2026-07-01',
+        d: daysAgo(20),
         start: 1,
         end: 60001,
         entries: [

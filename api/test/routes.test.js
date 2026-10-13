@@ -49,7 +49,7 @@ test('the disclosure names the provider and the same six categories the payload 
 test('a debrief is enqueued as its own kind, and the cohort routes gate on the community switch and the opt-in', async () => {
   fresh({ community: false })
   const jobs = await import('../coach/jobs.js')
-  const { writeState, sampleState } = await import('./helpers.mjs')
+  const { writeState, sampleState, daysAgo } = await import('./helpers.mjs')
   const { forcePrivilegeVerdict } = await import('../coach/adapters/spawn.js')
   forcePrivilegeVerdict({ ok: true, dropped: false, why: 'pinned by the test suite' })
   writeState(process.env.DATA_DIR, 'admin-1', sampleState())
@@ -81,7 +81,7 @@ test('a debrief is enqueued as its own kind, and the cohort routes gate on the c
   assert.equal(s.pending.kind, 'debrief')
   assert.deepEqual(s.pending.workout, {
     id: 'w1',
-    d: '2026-07-20',
+    d: daysAgo(1),
     name: 'Full body A',
     minutes: 45,
     vol: 600,
@@ -105,7 +105,7 @@ test('a debrief is enqueued as its own kind, and the cohort routes gate on the c
 test('a meal plan is enqueued with the nutrition block from the body and lands as a reviewable proposal', async () => {
   fresh()
   const jobs = await import('../coach/jobs.js')
-  const { writeState, sampleState } = await import('./helpers.mjs')
+  const { writeState, sampleState, daysAgo } = await import('./helpers.mjs')
   const { forcePrivilegeVerdict } = await import('../coach/adapters/spawn.js')
   forcePrivilegeVerdict({ ok: true, dropped: false, why: 'pinned by the test suite' })
   writeState(process.env.DATA_DIR, 'admin-1', sampleState())
