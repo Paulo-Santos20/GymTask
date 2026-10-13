@@ -9,7 +9,7 @@ reference implementation its HTTP contract is written down in — `openapi.yaml`
 per registered route) is the source of truth for what this folder serves.
 
 - `server.js` (861 lines, ESM) — everything above: storage, auth, push, routes, dispatch.
-- `push-messages.js` — payload builders only (`dayReminderPush`, `restTimerPush`, `testPush`).
+- `push-messages.js` — payload builders only (`dayReminderPush`, `restTimerPush`, `restTickPush`, `testPush`); `restTickTimes` is the pure schedule behind the rest-timer countdown series.
 - `openapi.yaml` — hand-written spec of the HTTP fallback API; `Dockerfile` — two build
   targets; `test/*.test.js` — `npm test` = `node --test test/*.test.js`; `scripts/` — asset
   checks. Sign-in itself is **not** served here (see Design).

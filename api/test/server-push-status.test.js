@@ -156,3 +156,34 @@ test('a rest timer belongs to the device that set it: another device cancelling 
   await new Promise(r => setTimeout(r, 2500))
   assert.equal(sends(), 3, 'a legacy timer goes to every subscription of the account')
 })
+
+test('a locked phone gets the countdown series, and cancelling clears the whole series', async t => {
+  const mk = n => ({
+    userId: 'u_test_1',
+    endpoint: `https://localhost/${n}`,
+    keys,
+    deviceId: 'dev_phone000',
+    created: new Date().toISOString(),
+  })
+  const h = await startServer(t, [mk('phone')])
+  const sends = () => (h.log.match(/push send failed u_test_1/g) || []).length
+
+  // `tick: true` on a rest shorter than the 15 s cadence has no countdown of its own: exactly the
+  // end alert goes out, as with a client that never sent the flag.
+  assert.equal(
+    (await post(h, '/api/push/rest-timer', { seconds: 2, tick: true, deviceId: 'dev_phone000' })).status,
+    200,
+  )
+  await new Promise(r => setTimeout(r, 2500))
+  assert.equal(sends(), 1, `a short ticked rest is the end alert alone:\n${h.log}`)
+
+  // A tick series armed and then cancelled (skip/pause) leaves nothing pending — the first tick
+  // would have fired at 15 s, the end alert at 16 s; neither goes out.
+  assert.equal(
+    (await post(h, '/api/push/rest-timer', { seconds: 16, tick: true, deviceId: 'dev_phone000' })).status,
+    200,
+  )
+  assert.equal((await post(h, '/api/push/rest-timer/cancel', { deviceId: 'dev_phone000' })).status, 200)
+  await new Promise(r => setTimeout(r, 2500))
+  assert.equal(sends(), 1, 'the cancelled series sent nothing more')
+})

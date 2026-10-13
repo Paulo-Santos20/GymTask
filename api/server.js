@@ -14,7 +14,7 @@ import * as coachJobs from './coach/jobs.js'
 import { coachRoutes } from './coach/routes.js'
 import { startCadence } from './coach/cadence.js'
 import { startWarmup } from './coach/warmup.js'
-import { dayReminderPush, restTimerPush, testPush } from './push-messages.js'
+import { dayReminderPush, restTickPush, restTickTimes, restTimerPush, testPush } from './push-messages.js'
 
 const PORT = +(process.env.PORT || 3000)
 const DATA = process.env.DATA_DIR || '/data'
@@ -279,25 +279,30 @@ async function sendPush(userId, payload, deviceId) {
 // each carry their own, so the tab's on-screen completion (which cancels) cannot silence the
 // phone's alert. A client that sends no device id gets the old account-wide behaviour.
 // In memory only — an API restart drops whatever is pending.
-const restTimers = new Map() // `${userId}:${deviceId}` -> Timeout
+const restTimers = new Map() // `${userId}:${deviceId}` -> Timeout[] (countdown ticks + the end alert)
 const restKey = (userId, deviceId) => `${userId}:${deviceId || ''}`
-function scheduleRestTimer(userId, deviceId, sec, lang) {
+function scheduleRestTimer(userId, deviceId, sec, lang, tick) {
   const k = restKey(userId, deviceId)
-  const t = restTimers.get(k)
-  if (t) clearTimeout(t)
-  restTimers.set(
-    k,
+  cancelRestTimer(userId, deviceId)
+  // With `tick`, arm the countdown refreshes too: each fires the same tag as the end alert, so a
+  // locked phone shows one row counting down. A rest shorter than the cadence, or a client that
+  // sends no flag, is the end alert alone, exactly as before.
+  const timeouts = (tick ? restTickTimes(sec, REST_TICK_SEC) : []).map(({ at, left }) =>
+    setTimeout(() => sendPush(userId, restTickPush(lang, left), deviceId), at * 1000),
+  )
+  timeouts.push(
     setTimeout(() => {
       restTimers.delete(k)
       sendPush(userId, restTimerPush(lang), deviceId)
     }, sec * 1000),
   )
+  restTimers.set(k, timeouts)
 }
 function cancelRestTimer(userId, deviceId) {
   // no device id: an older client — clear everything the account has pending, as it always did
-  for (const [k, t] of restTimers) {
+  for (const [k, ts] of restTimers) {
     if (deviceId ? k === restKey(userId, deviceId) : k.startsWith(userId + ':')) {
-      clearTimeout(t)
+      ts.forEach(clearTimeout)
       restTimers.delete(k)
     }
   }
@@ -305,6 +310,11 @@ function cancelRestTimer(userId, deviceId) {
 // A device id is what the browser made up for itself (lib/push.js): one short token per browser
 // profile, nothing identifying. Anything else is treated as absent.
 const deviceIdOf = v => (typeof v === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(v) ? v : undefined)
+
+// How often a rest on a locked phone gets its countdown refreshed. One tag for the whole series,
+// so the service worker closes the previous notification and the lock screen holds a single row
+// that ticks down (sw.js, issue #172) instead of stacking one banner per update.
+const REST_TICK_SEC = 15
 
 // "Workout planned today" reminder — one per user per day, at their chosen time.
 // Duplicated (not imported) from frontend/src/lib/history.js effectiveRoutineId — tiny pure helper, not worth sharing across the two runtimes.
@@ -876,7 +886,9 @@ const routes = {
     const n = typeof raw === 'number' || typeof raw === 'string' ? Number(raw) : NaN
     if (!(n >= 1)) return json(res, 400, { error: 'seconds required' })
     const sec = Math.min(3600, Math.round(n))
-    scheduleRestTimer(user.id, deviceIdOf(body.deviceId), sec, readState(user.id)?.lang)
+    // `tick: true` — a client whose tab is hidden (phone locked) also wants the countdown
+    // refreshes, not only the end alert. Absent/false keeps the old single-push behaviour.
+    scheduleRestTimer(user.id, deviceIdOf(body.deviceId), sec, readState(user.id)?.lang, body.tick === true)
     json(res, 200, { ok: true })
   },
 

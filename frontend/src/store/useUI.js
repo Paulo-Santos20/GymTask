@@ -10,11 +10,15 @@ import { useStore } from './useStore.js'
 // before the local timer completes. No-ops for guests / offline. The device id keeps the
 // timer this browser's own: a desktop tab finishing its rest on screen used to cancel the
 // alert the phone in the gym was waiting for, because the server held one timer per account.
-const pushRestTimer = sec => {
+// `tick` — the tab is hidden (phone locked, app switched away): the server also refreshes the
+// countdown every 15 s, same tag, so the lock screen holds one row counting down (sw.js closes
+// the previous one; issue #172). Without it the server books the end alert alone, as always.
+const pushRestTimer = (sec, tick) => {
   if (useStore.getState().user)
-    api('/api/push/rest-timer', { method: 'POST', body: JSON.stringify({ seconds: sec, deviceId: deviceId() }) }).catch(
-      () => {},
-    )
+    api('/api/push/rest-timer', {
+      method: 'POST',
+      body: JSON.stringify({ seconds: sec, deviceId: deviceId(), ...(tick ? { tick: true } : {}) }),
+    }).catch(() => {})
 }
 const cancelPushRestTimer = () => {
   if (useStore.getState().user)
@@ -26,8 +30,8 @@ const cancelPushRestTimer = () => {
 // Books the end of a rest with the server push, which announces it if this tab is suspended
 // before the local timer completes. The mobile build's native alarm (lib/rest-alert.js) is not
 // carried in this fork: web only, as it always was here.
-const bookRestEnd = endsAt => {
-  pushRestTimer(Math.max(1, Math.round((endsAt - Date.now()) / 1000)))
+const bookRestEnd = (endsAt, tick) => {
+  pushRestTimer(Math.max(1, Math.round((endsAt - Date.now()) / 1000)), tick)
 }
 
 const notificationsSupported = () => typeof window !== 'undefined' && 'Notification' in window
@@ -43,6 +47,11 @@ let pageHiddenAt = null
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) pageHiddenAt = Date.now()
+    // A running rest re-books itself for the state it is in now: hidden (locked phone) gets the
+    // countdown series, visible gets the end alert alone — one POST per transition, replacing
+    // the server's whole schedule for this device. Paused/over rests have nothing running.
+    const tm = useUI.getState().timer
+    if (tm && !tm.ready && !tm.paused) bookRestEnd(tm.endsAt, document.hidden)
   })
 }
 
@@ -187,7 +196,7 @@ export const useUI = create((set, get) => ({
     pageHiddenAt = document.hidden ? Date.now() : null
     const endsAt = Date.now() + sec * 1000
     set({ timer: { left: sec, total: sec, endsAt, forIdx } })
-    bookRestEnd(endsAt, sec)
+    bookRestEnd(endsAt, document.hidden)
     runRest(set, get)
   },
   // Holding the rest where it is — a longer break than planned, a machine to wait for, a phone
@@ -214,7 +223,7 @@ export const useUI = create((set, get) => ({
     pageHiddenAt = document.hidden ? Date.now() : null
     const endsAt = Date.now() + tm.left * 1000
     set({ timer: { ...rest, endsAt } })
-    bookRestEnd(endsAt, tm.total)
+    bookRestEnd(endsAt, document.hidden)
     runRest(set, get)
   },
   addRest(sec) {
@@ -240,7 +249,7 @@ export const useUI = create((set, get) => ({
     }
     const endsAt = tm.endsAt + sec * 1000
     set({ timer: { ...tm, left, total: tm.total + sec, endsAt } })
-    bookRestEnd(endsAt, tm.total + sec)
+    bookRestEnd(endsAt, document.hidden)
   },
   // The active list changed shape (an exercise removed or inserted at `at`): keep the rest
   // pointing at the same exercise. Returns nothing; the caller decides whether to stop instead.
