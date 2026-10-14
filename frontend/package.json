@@ -15,7 +15,7 @@
   "license": "AGPL-3.0-or-later",
   "dependencies": {
     "@sec-ant/zxing-wasm": "^2.2.0",
-    "firebase": "^12.19.0",
+    "firebase": "^13.0.0",
     "jsqr": "^1.4.0",
     "lean-qr": "^2.7.4",
     "react": "^19.3.0",
@@ -25,10 +25,10 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.1.2",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^5.0.3",
     "happy-dom": "^20.14.6",
     "linkedom": "^0.18.13",
     "vite": "^8.3.4",
-    "vitest": "^4.1.10"
+    "vitest": "^5.0.3"
   }
 }
